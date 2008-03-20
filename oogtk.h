@@ -113,6 +113,14 @@ namespace gtk
             void Set(Pixbuf &pixbuf) { gtk_image_set_from_pixbuf(*this, pixbuf); }
     };
 
+    enum Justification
+    {
+      JustifyLeft = GTK_JUSTIFY_LEFT,
+      JustifyRight = GTK_JUSTIFY_RIGHT,
+      JustifyCenter = GTK_JUSTIFY_CENTER,
+      JustifyFill = GTK_JUSTIFY_FILL
+    };
+
     class Label : public Misc
     {
         public:
@@ -134,6 +142,19 @@ namespace gtk
 
             void Selectable(bool flag) { gtk_label_set_selectable(*this, flag); }
             bool Selectable() const { return gtk_label_get_selectable(*this); }
+
+            void Ellipsize(PangoEllipsizeMode mode) { gtk_label_set_ellipsize(*this, mode); }
+            PangoEllipsizeMode Ellipsize() const { return gtk_label_get_ellipsize(*this); }
+
+            OneOf<GtkJustification, Justification> Justify() const {
+                return gtk_label_get_justify(*this); 
+            }
+            void Justify(OneOf<GtkJustification, Justification> mode) {
+                gtk_label_set_justify(*this, mode); 
+            }
+
+            int WidthChars() const { return gtk_label_get_width_chars(*this); }
+            void WidthChars(int length) { return gtk_label_set_width_chars(*this, length); }
     };
 
     class Separator : public Widget
@@ -373,6 +394,10 @@ namespace gtk {
                 return (Object *)v;
             } else if (GTK_IS_ENTRY(o)) {
                 return new Entry(o);
+            } else if (GTK_IS_FILE_CHOOSER_DIALOG(o)) {
+                return new FileChooserDialog(o);
+            } else if (GTK_IS_MESSAGE_DIALOG(o)) {
+                return new MessageDialog(o);
             } else if (GTK_IS_DIALOG(o)) {
                 return new Dialog(o);
             } else if (GTK_IS_WINDOW(o)) {
@@ -399,6 +424,8 @@ namespace gtk {
                 return new ToggleButton(o);
             } else if (GTK_IS_BUTTON(o)) {
                 return new Button(o);
+            } else if (GTK_IS_STATUSBAR(o)) {
+                return new Statusbar(o);
             } else if (GTK_IS_VBUTTON_BOX(o)) {
                 return new VButtonBox(o);
             } else if (GTK_IS_HBUTTON_BOX(o)) {

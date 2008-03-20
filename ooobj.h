@@ -41,6 +41,12 @@ namespace gtk
             static gint real_callback_2(GtkWidget *w, GdkEvent *e, AbstractCbk *ce) {
                 return ce->notify(w, e);
             }
+            static gint real_callback_3(GtkWidget *w, GdkEvent *e, void *u1, AbstractCbk *ce) {
+                return ce->notify(w, e);
+            }
+            static gint real_callback_4(GtkWidget *w, GdkEvent *e, void *u1, void *u2, AbstractCbk *ce) {
+                return ce->notify(w, e);
+            }
     };
 
     class Widget;
@@ -172,6 +178,14 @@ namespace gtk
                         case 1:
                             g_signal_connect(obj_, signal, 
                                 GCallback(AbstractCbk::real_callback_2), e);
+                            break;
+                        case 2:
+                            g_signal_connect(obj_, signal, 
+                                GCallback(AbstractCbk::real_callback_3), e);
+                            break;
+                        case 3:
+                            g_signal_connect(obj_, signal, 
+                                GCallback(AbstractCbk::real_callback_4), e);
                             break;
                         default:
                             throw std::runtime_error(std::string("Unhandled signal in Connect: ") + signal);

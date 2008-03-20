@@ -66,12 +66,15 @@ namespace gtk {
                              
             int Line() const { return gtk_text_iter_get_line(&it_); }
             int Offset() const { return gtk_text_iter_get_offset(&it_); }
+            int LineOffset() const { return gtk_text_iter_get_line_offset(&it_); }
+
             TextBuffer &Buffer();
             bool HasTag(const TextTag &tag) const {
                 return gtk_text_iter_has_tag(&it_, tag);
             }
             bool IsStart() const { return gtk_text_iter_is_start(&it_); }
             bool IsEnd() const { return gtk_text_iter_is_end(&it_); }
+            void AtLineOffset(int offset) { gtk_text_iter_set_line_offset(&it_, offset); }
             void AtOffset(int offset) { gtk_text_iter_set_offset(&it_, offset); }
             void AtLine(int line) { gtk_text_iter_set_line(&it_, line); }
         private:
@@ -272,7 +275,16 @@ namespace gtk {
             TextIter End() { TextIter it; gtk_text_buffer_get_end_iter(*this, it); return it; }
             TextRange Bounds() { TextRange r; gtk_text_buffer_get_bounds(*this, r.first, r.second); return r; }
 
+            TextMark *Cursor() { return dynamic_cast<TextMark *>(Object::Find((GObject *)
+                                        gtk_text_buffer_get_insert(*this))); }
 
+            bool CursorIter(TextIter &it) { 
+                if (GtkTextMark *m = gtk_text_buffer_get_insert(*this)) {
+                    gtk_text_buffer_get_iter_at_mark(*this, it, m);
+                    return true;
+                }
+                return false;
+            }
             TextIter AtMark(const TextMark &mark) { 
                 TextIter it; 
                 gtk_text_buffer_get_iter_at_mark(*this, it, mark);
@@ -291,6 +303,16 @@ namespace gtk {
                 gtk_text_buffer_get_iter_at_offset(*this, it, offset);
                 return it;
             }
+            template <typename T>
+            void OnChanged(void (T::*cbk)(), T *base ) {
+                 callback("changed", cbk, base);
+            }
+            template <typename T, typename J>
+            void OnChanged(void (T::*cbk)(J), T *base, J user_data) {
+                 callback("changed", cbk, base, user_data);
+            }
+
+            void PlaceCursor(const TextIter &position) { gtk_text_buffer_place_cursor(*this, position); }
     };
 
     inline TextBuffer &TextIter::Buffer() { 
@@ -326,14 +348,6 @@ namespace gtk {
         WrapChar = GTK_WRAP_CHAR,
         WrapWord = GTK_WRAP_WORD,
         WrapWordChar = GTK_WRAP_WORD_CHAR
-    };
-
-    enum Justification
-    {
-      JustifyLeft = GTK_JUSTIFY_LEFT,
-      JustifyRight = GTK_JUSTIFY_RIGHT,
-      JustifyCenter = GTK_JUSTIFY_CENTER,
-      JustifyFill = GTK_JUSTIFY_FILL
     };
 
     class TextView : public Container
@@ -437,6 +451,17 @@ namespace gtk {
 
             // misc CUSTOM predicates
             void WordWrap() { WrapMode(WrapWord); }
+
+
+            // signals
+            template <typename T>
+            void OnCursorMove(void (T::*cbk)(), T *base ) {
+                 callback("move-cursor", cbk, base);
+            }
+            template <typename T, typename J>
+            void OnCursorMove(void (T::*cbk)(J), T *base, J user_data) {
+                 callback("move-cursor", cbk, base, user_data);           
+            }
     };
 }
 

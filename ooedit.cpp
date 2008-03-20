@@ -1,5 +1,6 @@
 #include "oogtk.h"
 #include <fstream>
+#include <sstream>
 
 using namespace gtk;
 
@@ -18,8 +19,12 @@ class OoView : public TextView
     public:
         OoView(OoEdit *app, const std::string &filename = "");
         const std::string &Filename() { return m_name; }
-        void SetLabel(const std::string &filename) {
+        void UpdateLabel() {
+            std::string filename = m_name;
             int pos = filename.find_last_of("/");
+
+            if (filename.empty())
+                m_label.Set("<b>New Document</b>");
             if (pos == std::string::npos)
                 m_label.Set(filename);
             else
@@ -28,8 +33,9 @@ class OoView : public TextView
 
         void Filename(const std::string &filename) {
             m_name = filename;
-            SetLabel(filename);
+            UpdateLabel();
         }
+
         Widget &GetLabel() { return m_cont; }
         Widget &GetContainer() { return m_scrolled; }
         bool CheckModified();
@@ -43,6 +49,7 @@ class OoEdit : public Application
         ViewVec m_views;
         Toolbar build_toolbar();
         MenuBar build_menubar();
+        Label m_line, m_column;
     public:
         OoEdit(const StrVec &files);
 
@@ -143,6 +150,38 @@ class OoEdit : public Application
                 }
             }
         }
+        void switched() {
+            UpdatePosition();
+        }
+
+        void about() {
+            MessageDialog diag(&m_window,
+                    DialogModal,
+                    MessageInfo,
+                    ButtonsClose,
+                    "<b>OOGtk Editor v1.0</b>\n\n"
+                    "This small text editor shows how to use oogtk for a complete program and not a simple demo. It isn't certainly a very complete editor but it's indeed a complete program!");
+            diag.Run();        
+        }
+
+        void UpdatePosition() {
+            int pos = m_notebook.Current();
+
+            if (pos == -1) 
+                return;
+
+            TextBuffer &b = m_views[pos]->Buffer();
+            TextIter it;
+
+            if (b.CursorIter(it)) {
+                std::ostringstream os;
+                os << it.Line() << '/' << b.Lines();
+                m_line.Set(os.str());
+                os.str("");
+                os << it.LineOffset();
+                m_column.Set(os.str());
+            }
+        }
 };
 
 Toolbar OoEdit::
@@ -159,6 +198,7 @@ build_toolbar()
     topen.OnClick(&OoEdit::open, this);
     tsave.OnClick(&OoEdit::save, this);
     tquit.OnClick(&OoEdit::checkquit, this);
+    thelp.OnClick(&OoEdit::about, this);
 
       // let's place Help on the right side with the "help" of a separator
     SeparatorToolItem tsep;
@@ -174,31 +214,65 @@ build_menubar()
 {
     MenuBar bar;
 
+    // create a File menu
     MenuItem file("File");
     Menu filemenu;
     file.Submenu(filemenu);
-    filemenu.Append(ImageMenuItem(GTK_STOCK_NEW));
+    ImageMenuItem mnew (GTK_STOCK_NEW);
+    ImageMenuItem mopen(GTK_STOCK_OPEN);
+    ImageMenuItem msave(GTK_STOCK_SAVE);
+    ImageMenuItem mquit(GTK_STOCK_QUIT);
+
+    mnew.OnActivate(&OoEdit::newdoc, this);
+    mopen.OnActivate(&OoEdit::open, this);
+    msave.OnActivate(&OoEdit::save, this);
+    mquit.OnActivate(&OoEdit::checkquit, this);
+
+    filemenu.Append(mnew);
     filemenu.Append(SeparatorMenuItem());
-    filemenu.Append(ImageMenuItem(GTK_STOCK_OPEN));
-    filemenu.Append(ImageMenuItem(GTK_STOCK_SAVE));
+    filemenu.Append(mopen);
+    filemenu.Append(msave);
     filemenu.Append(SeparatorMenuItem());
-    filemenu.Append(ImageMenuItem(GTK_STOCK_QUIT));
+    filemenu.Append(mquit);
+
+    // Create an help menu
+    MenuItem help("Help");
+    Menu helpmenu;
+    help.Submenu(helpmenu);
+    ImageMenuItem about(GTK_STOCK_ABOUT);
+    about.OnActivate(&OoEdit::about, this);
+    helpmenu.Append(about);
+
+    // append both menus to our bar and justify the help menu to the right
     bar.Append(file);
+    bar.Append(help);
+    help.RightJustified(true);
     return bar;
 }
 
-OoEdit::OoEdit(const StrVec &files) : m_window("OoEdit - mini text editor")
+OoEdit::OoEdit(const StrVec &files) : 
+    m_window("OoEdit - mini text editor"), m_line("----"), m_column("----")
 {
     VBox box(false, 2);
+
+    HBox bottom(false, 4);
+    bottom.PackStart(Label(" Line:"), false, false);
+    bottom.PackStart(m_line, false, false);
+    bottom.PackStart(VSeparator(), false, false);
+    bottom.PackStart(Label(" Column:"), false, false);
+    bottom.PackStart(m_column, false, false);
+    bottom.PackStart(Statusbar()); // used only for the resize corner
 
     box.PackStart(build_menubar(), false, false);
     box.PackStart(build_toolbar(), false, false);
     box.PackStart(m_notebook, true, true);
-
+    box.PackStart(bottom, false, false);
     m_window.SizeRequest(600, 400);
     m_window.OnDelete(&OoEdit::checkquit, this, true);
     m_window.Child(box);
     m_window.ShowAll();
+
+    m_notebook.OnPageSwitch(&OoEdit::switched, this);
 
     for (StrVec::const_iterator it = files.begin(); it != files.end(); ++it)
         opendoc(*it);
@@ -207,10 +281,7 @@ OoEdit::OoEdit(const StrVec &files) : m_window("OoEdit - mini text editor")
 OoView::OoView(OoEdit *app, const std::string &filename) : 
    m_name(filename), m_cont(false, 2), m_app(app)
 {
-    if (filename.empty())
-        m_label.Set("<b>New Document</b>");
-    else
-        SetLabel(filename);
+    UpdateLabel();
 
     Button button;
     Image img(IconSizeMenu, GTK_STOCK_CLOSE);
@@ -222,6 +293,8 @@ OoView::OoView(OoEdit *app, const std::string &filename) :
     m_cont.ShowAll();
     m_scrolled.Child(*this);
     m_scrolled.ShowAll();
+    CursorVisible(true);
+    TextView::OnCursorMove(&OoEdit::UpdatePosition, app);
 }
 
 bool OoView::CheckModified()

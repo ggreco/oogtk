@@ -140,6 +140,7 @@ namespace gtk {
 
     class HBox : public Box { // COMPLETE API
         public:
+            HBox(const DerivedType &) {} // do nothing
             HBox(GObject *obj) { Init(obj); }
             HBox(bool homogenous = true, int spacing = 0) { Init(gtk_hbox_new(homogenous, spacing)); Internal(true); }
             
@@ -610,6 +611,15 @@ namespace gtk {
                         Object::Find((GObject *)gtk_notebook_get_nth_page(*this, page)));
             }
 
+            template <typename T>
+            void OnPageSwitch(void (T::*cbk)(), T *base ) {
+                 callback("page-switch", cbk, base);
+            }
+            template <typename T, typename J>
+            void OnPageSwitch(void (T::*cbk)(J), T *base, J user_data) {
+                 callback("page-switch", cbk, base, user_data);
+            }
+
             Widget &CurrentPage() {
                 if (Widget *w = GetNth(Current()))
                     return *w;
@@ -887,6 +897,32 @@ namespace gtk {
                 gtk_toolbar_insert(*this, item, pos);
             }
             void Append(const ToolItem &item) { Insert(item, -1); }
+    };
+
+    class Statusbar : public HBox // complete API
+    {
+        public:
+            operator  GtkStatusbar *() const { return GTK_STATUSBAR(Obj()); }
+            Statusbar(GObject *obj) : HBox(DerivedType()) { Init(obj); }
+            Statusbar() : HBox(DerivedType()) { 
+                Init(gtk_statusbar_new());
+                Internal(true);
+            }
+
+            int ContextId(const std::string &desc) {
+                return gtk_statusbar_get_context_id(*this, desc.c_str());
+            }
+
+            int Push(int context_id, const std::string &text) {
+                return gtk_statusbar_push(*this, context_id, text.c_str());
+            }
+            void Pop(int context_id) { gtk_statusbar_pop(*this, context_id); }
+            void Remove(int context_id, int message_id) {
+                gtk_statusbar_remove(*this, context_id, message_id);
+            }
+
+            void ResizeGrip(bool flag) { gtk_statusbar_set_has_resize_grip(*this, flag); }
+            bool ResizeGrip() const { return gtk_statusbar_get_has_resize_grip(*this); }
     };
 }
 
