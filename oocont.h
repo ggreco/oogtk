@@ -386,7 +386,7 @@ namespace gtk {
                 if (parent) 
                     Window::TransientFor(*parent);
             }
-            void AddBody(Widget &widget) {
+            void Body(Widget &widget) {
                 gtk_container_add(GTK_CONTAINER(GTK_DIALOG(Obj())->vbox), 
                                   widget);
             }
@@ -613,11 +613,11 @@ namespace gtk {
 
             template <typename T>
             void OnPageSwitch(void (T::*cbk)(), T *base ) {
-                 callback("page-switch", cbk, base);
+                 callback("switch-page", cbk, base);
             }
             template <typename T, typename J>
             void OnPageSwitch(void (T::*cbk)(J), T *base, J user_data) {
-                 callback("page-switch", cbk, base, user_data);
+                 callback("switch-page", cbk, base, user_data);
             }
 
             Widget &CurrentPage() {

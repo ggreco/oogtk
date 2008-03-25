@@ -13,6 +13,7 @@ class OoView : public TextView
     private:
         std::string m_name;
         Label m_label;
+        Label m_modified;
         HBox m_cont;
         ScrolledWindow m_scrolled;
         OoEdit *m_app;
@@ -25,10 +26,12 @@ class OoView : public TextView
 
             if (filename.empty())
                 m_label.Set("<b>New Document</b>");
-            if (pos == std::string::npos)
+            else if (pos == std::string::npos)
                 m_label.Set(filename);
             else
                 m_label.Set(filename.substr(pos+1));
+
+            m_modified.Show(Buffer().Modified());
         }
 
         void Filename(const std::string &filename) {
@@ -38,6 +41,11 @@ class OoView : public TextView
 
         Widget &GetLabel() { return m_cont; }
         Widget &GetContainer() { return m_scrolled; }
+
+        void Modified(bool flag) {
+            Buffer().Modified(flag);
+            m_modified.Show(flag);
+        }
         bool CheckModified();
 };
 
@@ -99,7 +107,9 @@ class OoEdit : public Application
                     }
                 }
             }
-            v->Buffer().Modified(false);
+            v->Modified(false);
+            UpdatePosition();
+            v->Buffer().PlaceCursor(v->Buffer().Begin());
         }
 
         void newdoc() {
@@ -114,7 +124,7 @@ class OoEdit : public Application
                         it !=  bounds.second; ++it) 
                     os << (char) *it;
 
-                m_views[page]->Buffer().Modified(false);
+                m_views[page]->Modified(false);
                 m_views[page]->Filename(filename);
             }
         }
@@ -152,6 +162,10 @@ class OoEdit : public Application
         }
         void switched() {
             UpdatePosition();
+      
+            int pos = m_notebook.Current();
+            if (pos != -1)
+                m_views[pos]->GrabFocus();
         }
 
         void about() {
@@ -182,6 +196,88 @@ class OoEdit : public Application
                 m_column.Set(os.str());
             }
         }
+
+        // this is to force dialog response if a user hit enter on the search widget
+        void diag_search_ok(Dialog *dialog) {
+            dialog->Response(ResponseOk);
+        }
+
+        void find() {
+            int pos = m_notebook.Current();
+
+            if (pos == -1) {
+                MessageDialog diag(&m_window,
+                        DialogDestroyWithParent,
+                        MessageInfo,
+                        ButtonsClose,
+                        "You need an active buffer to search for something!");
+                diag.Run();
+                return;
+            }
+
+            ButtonVec buttons;
+            buttons.push_back(ButtonData(GTK_STOCK_FIND, ResponseOk));
+            buttons.push_back(ButtonData(GTK_STOCK_CLOSE, ResponseCancel));
+
+            // let's build a local search dialog.
+            Dialog diag("OOEdit Find for " + m_views[pos]->Filename(), buttons, &m_window);
+            Entry entry;
+            VBox box(Label("Insert the text to search"), entry);
+            box.Spacing(8);
+            box.Border(16);
+            diag.Body(box);
+            diag.ShowAll();
+            diag.Modal(false);
+
+            // this callback allow us to start search pressing enter on the entry widget
+            entry.OnActivate(&OoEdit::diag_search_ok, this, &diag);
+
+            int r;
+
+            TextBuffer &b =  m_views[pos]->Buffer();
+            TextIter it = b.Begin();
+            bool ifoundit = false;
+
+            // we do a cycle cause we want to stay here until we have no more matches or the user
+            // clicks cancel
+            for(;;) {
+                r = diag.Run();
+
+                if (r == ResponseOk) {
+                    // no search if the keyword is empty
+                    if (entry.Get().empty()) 
+                        continue;
+
+                    TextRange result;
+
+                    // this will search on the buffer and highlight the result
+                    if (it.Search(entry.Get(), result)) {
+                        it = result.second;
+                        b.Select(result);
+                        // our result may be out of the displayed part of the TextBuffer,
+                        // so we scroll the textview to be sure it's visible.
+                        m_views[pos]->Scroll(it);
+                        ifoundit = true;
+                    }
+                    else { // if we don't found a result hide the search dialog...
+                        diag.Hide();
+
+                        // ... and display a message
+                        MessageDialog diag2(&m_window,
+                                DialogModal,
+                                ifoundit ? MessageInfo : MessageWarning,
+                                ButtonsClose,
+                                ifoundit ? "No more occurencies of <b>%s</b> in the document"
+                                : "The search keyword <b>%s</b> has not been found in the document",
+                                entry.Get().c_str());
+                        diag2.Run();
+                        break;
+                    }
+                }
+                else  // we break out of the loop if we don't receive OK!
+                    break;
+            }
+        }
 };
 
 Toolbar OoEdit::
@@ -194,9 +290,11 @@ build_toolbar()
     ToolButton tquit(GTK_STOCK_QUIT);
     ToolButton thelp(GTK_STOCK_HELP);
 
+    // give every button its callback
     tnew.OnClick(&OoEdit::newdoc, this);
     topen.OnClick(&OoEdit::open, this);
     tsave.OnClick(&OoEdit::save, this);
+    tfind.OnClick(&OoEdit::find, this);
     tquit.OnClick(&OoEdit::checkquit, this);
     thelp.OnClick(&OoEdit::about, this);
 
@@ -216,24 +314,20 @@ build_menubar()
 
     // create a File menu
     MenuItem file("File");
-    Menu filemenu;
-    file.Submenu(filemenu);
     ImageMenuItem mnew (GTK_STOCK_NEW);
     ImageMenuItem mopen(GTK_STOCK_OPEN);
     ImageMenuItem msave(GTK_STOCK_SAVE);
     ImageMenuItem mquit(GTK_STOCK_QUIT);
 
+    // give every entry its callback
     mnew.OnActivate(&OoEdit::newdoc, this);
     mopen.OnActivate(&OoEdit::open, this);
     msave.OnActivate(&OoEdit::save, this);
     mquit.OnActivate(&OoEdit::checkquit, this);
 
-    filemenu.Append(mnew);
-    filemenu.Append(SeparatorMenuItem());
-    filemenu.Append(mopen);
-    filemenu.Append(msave);
-    filemenu.Append(SeparatorMenuItem());
-    filemenu.Append(mquit);
+    // appends items to the menu
+    Menu filemenu(mnew, SeparatorMenuItem(), mopen, msave, SeparatorMenuItem(), mquit);
+    file.Submenu(filemenu);
 
     // Create an help menu
     MenuItem help("Help");
@@ -279,8 +373,9 @@ OoEdit::OoEdit(const StrVec &files) :
 }
 
 OoView::OoView(OoEdit *app, const std::string &filename) : 
-   m_name(filename), m_cont(false, 2), m_app(app)
+   m_name(filename), m_modified("*"), m_cont(false, 2), m_app(app)
 {
+    m_modified.Padding(2);
     UpdateLabel();
 
     Button button;
@@ -289,11 +384,14 @@ OoView::OoView(OoEdit *app, const std::string &filename) :
     button.Relief(ReliefNone);
     button.OnClick(&OoEdit::closeview, app, this);
     m_cont.PackStart(m_label, true, true);
+    m_cont.PackStart(m_modified, false, false);
     m_cont.PackStart(button, false, false);
     m_cont.ShowAll();
     m_scrolled.Child(*this);
     m_scrolled.ShowAll();
     CursorVisible(true);
+
+    Buffer().OnChanged(&Widget::Show, dynamic_cast<Widget *>(&m_modified), true);
     TextView::OnCursorMove(&OoEdit::UpdatePosition, app);
 }
 

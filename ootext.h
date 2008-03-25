@@ -260,6 +260,14 @@ namespace gtk {
             void Add(const TextTag &tag) {
                 TagTable().Add(tag);
             }
+
+            // selection
+            void Select(const TextIter &begin, const TextIter &end) { gtk_text_buffer_select_range(*this, begin, end); }
+            void Select(const TextRange &range) { Select(range.first, range.second); }
+            bool HasSelection() const { return gtk_text_buffer_get_has_selection(*this); }
+            bool SelectionBounds(TextRange &range) const { 
+                return gtk_text_buffer_get_selection_bounds(*this, range.first, range.second);
+            }
             // mark operations
             void Move(TextMark &mark, const TextIter &where) { gtk_text_buffer_move_mark(*this, mark, where); }
             void Add(TextMark &mark, const TextIter &where) { gtk_text_buffer_add_mark(*this, mark, where); }

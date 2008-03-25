@@ -45,6 +45,68 @@ namespace gtk {
                 Init(gtk_menu_new());
                 Internal(true);
             }
+            Menu(const Widget &w1) {
+                Init(gtk_menu_new());
+                Internal(true);
+                Append(w1);
+            }
+            Menu(const Widget &w1, const Widget &w2) {
+                Init(gtk_menu_new());
+                Internal(true);
+                Append(w1);
+                Append(w2);
+            }
+            Menu(const Widget &w1, const Widget &w2, const Widget &w3) {
+                Init(gtk_menu_new());
+                Internal(true);
+                Append(w1);
+                Append(w2);
+                Append(w3);
+            }
+            Menu(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4) {
+                Init(gtk_menu_new());
+                Internal(true);
+                Append(w1);
+                Append(w2);
+                Append(w3);
+                Append(w4);
+            }
+            Menu(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4, const Widget &w5) {
+                Init(gtk_menu_new());
+                Internal(true);
+                Append(w1);
+                Append(w2);
+                Append(w3);
+                Append(w4);
+                Append(w5);
+            }
+            Menu(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4, const Widget &w5, const Widget &w6) {
+                Init(gtk_menu_new());
+                Internal(true);
+                Append(w1);
+                Append(w2);
+                Append(w3);
+                Append(w4);
+                Append(w5);
+                Append(w6);
+            }
+            Menu(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4, const Widget &w5, const Widget &w6, const Widget &w7) {
+                Init(gtk_menu_new());
+                Internal(true);
+                Append(w1);
+                Append(w2);
+                Append(w3);
+                Append(w4);
+                Append(w5);
+                Append(w6);
+                Append(w7);
+            }
+
+            void Title(const std::string &title) { gtk_menu_set_title(*this, title.c_str()); }
+            std::string Title() const { return gtk_menu_get_title(*this); }
+
+            void TearoffState(bool state) { gtk_menu_set_tearoff_state(*this, state); }
+            bool TearoffState() const { return gtk_menu_get_tearoff_state(*this); }
     };
 
     // TODO AccelPath stuff

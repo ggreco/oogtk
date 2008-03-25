@@ -31,7 +31,7 @@ namespace gtk
             operator  GdkDrawable *() const { return GDK_DRAWABLE(GTK_WIDGET(obj_)->window); }
             Widget &Ref() { g_object_ref(obj_); return *this; }
             void Hide() { gtk_widget_hide(*this); }
-            void Show() { gtk_widget_show(*this); }
+            void Show(bool flag = true) { if (flag) gtk_widget_show(*this); else gtk_widget_hide(*this); }
             void ShowAll() { gtk_widget_show_all(*this); }
             void Sensitive() { gtk_widget_set_sensitive(*this, TRUE); }
             void Insensitive() { Sensitive(false); }
@@ -45,9 +45,9 @@ namespace gtk
             void ModifyText(Color &color, GtkStateType type = GTK_STATE_NORMAL) {
                  gtk_widget_modify_text(*this, type, color);
             }
-            void ModifyFont(FontDesc &font) {
-                gtk_widget_modify_font(*this, font);
-            }
+            void ModifyFont(FontDesc &font) { gtk_widget_modify_font(*this, font); }
+            void GrabFocus() { gtk_widget_grab_focus(*this); }
+            void GrabDefault() { gtk_widget_grab_default(*this); }
     };
 
  
@@ -229,6 +229,24 @@ namespace gtk
             }
             void Set(const std::string &name) { gtk_entry_set_text(*this, name.c_str()); }
             std::string Get() const { return gtk_entry_get_text(*this); }
+
+            // callbacks
+            template <typename T>
+            void OnActivate(void (T::*cbk)(), T *base ) {
+                callback("activate", cbk, base);
+            }
+            template <typename T, typename J>
+            void OnActivate(void (T::*cbk)(J), T *base, J data ) {
+                callback("activate", cbk, base, data);
+            }
+            template <typename T>
+            void OnActivate(void (T::*cbk)(Widget &), T *base ) {
+                callback("activate", cbk, base);
+            }
+            template <typename T, typename J>
+            void OnActivate(void (T::*cbk)(Widget &, J), T *base, J data ) {
+                callback("activate", cbk, base, data);
+            }
     };
 
     class DrawingArea : public Widget {

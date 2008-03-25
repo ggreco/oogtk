@@ -14,7 +14,7 @@ class MyApp : public Application
             box.PackStart(l1);
             box.PackStart(l2);
             box.ShowAll();
-            m_dialog.AddBody(box);
+            m_dialog.Body(box);
             m_dialog.AddButton("Ok", 0);
             m_dialog.AddButton("Fanculo", 1);
         }

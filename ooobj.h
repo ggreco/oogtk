@@ -166,33 +166,39 @@ namespace gtk
                     g_object_set_data(obj_, "events", events);
                 }
 
+                bool after = false;
+
+                after |= !strcmp(signal, "switch-page");
+
                 if (int id = g_signal_lookup(signal, G_OBJECT_TYPE(obj_))) {
                     GSignalQuery query;
+                    GCallback cbk;
 
                     g_signal_query(id, &query);
                     switch(query.n_params) {
                         case 0:
-                            g_signal_connect(obj_, signal, 
-                                GCallback(AbstractCbk::real_callback_1), e);
+                            cbk = GCallback(AbstractCbk::real_callback_1);
                             break;
                         case 1:
-                            g_signal_connect(obj_, signal, 
-                                GCallback(AbstractCbk::real_callback_2), e);
+                            cbk = GCallback(AbstractCbk::real_callback_2);
                             break;
                         case 2:
-                            g_signal_connect(obj_, signal, 
-                                GCallback(AbstractCbk::real_callback_3), e);
+                            cbk = GCallback(AbstractCbk::real_callback_3);
                             break;
                         case 3:
-                            g_signal_connect(obj_, signal, 
-                                GCallback(AbstractCbk::real_callback_4), e);
+                            cbk = GCallback(AbstractCbk::real_callback_4);
                             break;
                         default:
                             throw std::runtime_error(std::string("Unhandled signal in Connect: ") + signal);
                     }
+
+                    if (after)
+                        g_signal_connect_after(obj_, signal, cbk, e);
+                    else
+                        g_signal_connect(obj_, signal, cbk, e);
                 }
                 else 
-                    throw std::runtime_error("Bad signal type for object!");
+                    throw std::runtime_error(std::string("Bad signal type for object: ") + signal);
 
                 events->push_back(e);
             }
