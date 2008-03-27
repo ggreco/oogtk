@@ -27,38 +27,6 @@ namespace gtk {
 
                 Internal(true);
             }
-            template <typename T>
-            void OnClick(void (T::*cbk)(), T *base ) {
-                callback("clicked", cbk, base);
-            }
-            template <typename T, typename J>
-            void OnClick(void (T::*cbk)(J), T *base, J data ) {
-                callback("clicked", cbk, base, data);
-            }
-            template <typename T>
-            void OnClick(void (T::*cbk)(Widget &), T *base ) {
-                callback("clicked", cbk, base);
-            }
-            template <typename T, typename J>
-            void OnClick(void (T::*cbk)(Widget &, J), T *base, J data ) {
-                callback("clicked", cbk, base, data);
-            }
-            template <typename T>
-            void OnPress(void (T::*cbk)(), T *base ) {
-                callback("pressed", cbk, base);
-            }
-            template <typename T>
-            void OnRelease(void (T::*cbk)(), T *base ) {
-                callback("released", cbk, base);
-            }
-            template <typename T>
-            void OnPress(void (T::*cbk)(Widget &), T *base ) {
-                callback("pressed", cbk, base);
-            }
-            template <typename T>
-            void OnRelease(void (T::*cbk)(Widget &), T *base ) {
-                callback("released", cbk, base);
-            }
 
             void Relief(OneOf<GtkReliefStyle, ReliefStyle> relief) {
                 gtk_button_set_relief(*this, relief);
@@ -101,6 +69,10 @@ namespace gtk {
             void FocusOnClick(bool flag) { gtk_button_set_focus_on_click(*this, flag); }
             bool FocusOnClick() const { return gtk_button_get_focus_on_click(*this); }
 
+            // button specific signals
+            BUILD_VOID_EVENT(OnClick, "clicked");
+            BUILD_VOID_EVENT(OnPress, "pressed");
+            BUILD_VOID_EVENT(OnRelease, "released");
     };
 
     class StockButton : public Button
@@ -134,14 +106,7 @@ namespace gtk {
             bool Mode() const { return gtk_toggle_button_get_mode(*this); }
             void Mode(bool flag) { gtk_toggle_button_set_mode(*this, flag); }
 
-            template <typename T>
-            void OnToggle(void (T::*cbk)(Widget &), T *base ) {
-                callback("toggled", cbk, base);
-            }
-            template <typename T>
-            void OnToggle(void (T::*cbk)(), T *base ) {
-                callback("toggled", cbk, base);
-            }
+            BUILD_VOID_EVENT(OnToggle, "toggled");
     };
 
     class CheckButton : public ToggleButton

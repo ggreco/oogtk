@@ -1,4 +1,4 @@
-CXXFLAGS = `pkg-config --cflags gtk+-2.0` -g
+CXXFLAGS = `pkg-config --cflags gtk+-2.0` -g -DOOGTK_DEBUG
 
 MODULES = testinline testbuilder testtree testdialog testobjects testcbks testtext testbutton
 all: $(MODULES)

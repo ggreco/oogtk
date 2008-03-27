@@ -8,9 +8,16 @@ typedef std::vector<std::string> StrVec;
 
 class OoEdit;
 
+// OoView is a class that represent the single document view in the editor interface
+// it's derived from textview since textview (and buffer) are the elements most used
+// by the editing operations
 class OoView : public TextView
 {
     private:
+        // here we declare only the objects we need to remember since we need to change
+        // them through callbacks.
+        // Most callbacks are not in the view class itself but in the main program
+        // class.
         std::string m_name;
         Label m_label;
         Label m_modified;
@@ -21,15 +28,14 @@ class OoView : public TextView
         OoView(OoEdit *app, const std::string &filename = "");
         const std::string &Filename() { return m_name; }
         void UpdateLabel() {
-            std::string filename = m_name;
-            int pos = filename.find_last_of("/");
+            int pos = m_name.find_last_of("/");
 
-            if (filename.empty())
+            if (m_name.empty())
                 m_label.Set("<b>New Document</b>");
             else if (pos == std::string::npos)
-                m_label.Set(filename);
+                m_label.Set(m_name);
             else
-                m_label.Set(filename.substr(pos+1));
+                m_label.Set(m_name.substr(pos+1));
 
             m_modified.Show(Buffer().Modified());
         }
@@ -39,8 +45,8 @@ class OoView : public TextView
             UpdateLabel();
         }
 
-        Widget &GetLabel() { return m_cont; }
-        Widget &GetContainer() { return m_scrolled; }
+        Widget &GetLabel() { return m_cont; } // we return the hbox as label for the notebook page
+        Widget &GetContainer() { return m_scrolled; } // we return the scrolledwin as container to create the notebook page
 
         void Modified(bool flag) {
             Buffer().Modified(flag);
@@ -49,6 +55,8 @@ class OoView : public TextView
         bool CheckModified();
 };
 
+// the main program class. Derived from Application as it's better to do in a oogtk project.
+// most of the callbacks are defined inside this class.
 class OoEdit : public Application
 {
         Window m_window;
@@ -63,22 +71,22 @@ class OoEdit : public Application
 
         Window &MainWindow() { return m_window; }
 
+        // callback activated if you click on the close page widget
         void closeview(OoView *view) {
             if (view->CheckModified())
                 return;
 
             int page = m_notebook.Page(view->GetContainer());
-            for (ViewVec::iterator it = m_views.begin();
-                 it != m_views.end(); ++it) {
-                if (*it == view) {
-                    m_views.erase(it);
-                    break;
-                }
-            }
+            ViewVec::iterator it = std::find(m_views.begin(), m_views.end(), view);
+            if (it != m_views.end())
+                m_views.erase(it);
+
             delete view;
             m_notebook.Remove(page);
         }
 
+        // callback activated if you attempt to close the program, it scans the container
+        // to find for changed documents.
         void checkquit(void) {
             for (ViewVec::iterator it = m_views.begin();
                  it != m_views.end(); ++it) {
@@ -90,11 +98,14 @@ class OoEdit : public Application
         }
 
         void opendoc(const std::string &filename = "") {
+            // let's create a new document tab
             OoView *v = new OoView(this, filename);
             m_views.push_back(v);
+            // let's give notebook widget the widgets to be used as body and label of the notebook page
             int newpage = m_notebook.Append(v->GetContainer(), v->GetLabel());
             m_notebook.Current(newpage);
 
+            // read the file is the name is not empty (existing document)
             if (!filename.empty()) {
                 std::ifstream f(filename.c_str());
 
@@ -107,18 +118,23 @@ class OoEdit : public Application
                     }
                 }
             }
+            // set the text buffer as not modified, this also hides the small * in the label.
             v->Modified(false);
-            UpdatePosition();
+            // move cursor to the beginning of the document
             v->Buffer().PlaceCursor(v->Buffer().Begin());
+            // update the position and other datas in the bottombar
+            UpdatePosition();
         }
 
-        void newdoc() {
-            opendoc();
-        }
+        void newdoc() { opendoc(); }
+
         void savedoc(int page, const std::string &filename) {
+            // get start and end iterator to the document of a particular page
             TextRange bounds = m_views[page]->Buffer().Bounds();
             std::ofstream os(filename.c_str(), std::ios::binary);
 
+            // write document character by character, not the fastest way, but
+            // it shows how a text iterator can be used similar to a STL one.
             if (os) {
                 for (TextIter it = bounds.first;
                         it !=  bounds.second; ++it) 
@@ -130,12 +146,15 @@ class OoEdit : public Application
         }
 
         void open() {
+            // let's create a new modal file chooser to load a file
             FileChooserDialog dialog("Choose a text file to load...", &m_window);
 
+            // add a pair of buttons
             dialog.AddButton(GTK_STOCK_OK, ResponseOk);
             dialog.AddButton(GTK_STOCK_CANCEL, ResponseCancel);
             dialog.ShowAll();
 
+            // run the dialog and if we click Ok then open the document
             if (dialog.Run() == ResponseOk)
                 opendoc(dialog.Filename());
         }
@@ -143,18 +162,24 @@ class OoEdit : public Application
             int page = m_notebook.Current();
 
             if (page >=0 && page < m_views.size()) {
+                // create a pair of buttons for a Dialog with the alternative
+                // API (look at open() implementation for the basic one).
                 ButtonVec buttons;
                 buttons.push_back(ButtonData(GTK_STOCK_OK, ResponseOk));
                 buttons.push_back(ButtonData(GTK_STOCK_CANCEL, ResponseCancel));
 
+                // Create a new dialog with the buttons defined above, specify "save"
+                // as action type, this will change the browser.
                 FileChooserDialog dialog("Select a name for the file...", &m_window, 
                         FileChooserActionSave, buttons);
 
+                // if we have a filename give it to the dialog
                 if (!m_views[page]->Filename().empty())
                     dialog.Filename(m_views[page]->Filename());
 
                 dialog.ShowAll();
 
+            // run the dialog and if we click Ok then SAVE the document
                 if (dialog.Run() == ResponseOk) {
                     savedoc(page, dialog.Filename());
                 }
@@ -202,9 +227,11 @@ class OoEdit : public Application
             dialog->Response(ResponseOk);
         }
 
+        // this method will popup a search dialog and will handle it inline
         void find() {
             int pos = m_notebook.Current();
 
+            // quit if we don't have a buffer!
             if (pos == -1) {
                 MessageDialog diag(&m_window,
                         DialogDestroyWithParent,
@@ -215,6 +242,7 @@ class OoEdit : public Application
                 return;
             }
 
+            // add two buttons to the dialog
             ButtonVec buttons;
             buttons.push_back(ButtonData(GTK_STOCK_FIND, ResponseOk));
             buttons.push_back(ButtonData(GTK_STOCK_CLOSE, ResponseCancel));
@@ -232,8 +260,6 @@ class OoEdit : public Application
             // this callback allow us to start search pressing enter on the entry widget
             entry.OnActivate(&OoEdit::diag_search_ok, this, &diag);
 
-            int r;
-
             TextBuffer &b =  m_views[pos]->Buffer();
             TextIter it = b.Begin();
             bool ifoundit = false;
@@ -241,7 +267,7 @@ class OoEdit : public Application
             // we do a cycle cause we want to stay here until we have no more matches or the user
             // clicks cancel
             for(;;) {
-                r = diag.Run();
+                int r = diag.Run();
 
                 if (r == ResponseOk) {
                     // no search if the keyword is empty
@@ -283,6 +309,7 @@ class OoEdit : public Application
 Toolbar OoEdit::
 build_toolbar()
 {
+    // build some stock toolbutton items
     ToolButton tnew(GTK_STOCK_NEW);
     ToolButton topen(GTK_STOCK_OPEN);
     ToolButton tsave(GTK_STOCK_SAVE);
@@ -355,6 +382,7 @@ OoEdit::OoEdit(const StrVec &files) :
     bottom.PackStart(VSeparator(), false, false);
     bottom.PackStart(Label(" Column:"), false, false);
     bottom.PackStart(m_column, false, false);
+    bottom.PackStart(VSeparator(), false, false);
     bottom.PackStart(Statusbar()); // used only for the resize corner
 
     box.PackStart(build_menubar(), false, false);
@@ -362,10 +390,12 @@ OoEdit::OoEdit(const StrVec &files) :
     box.PackStart(m_notebook, true, true);
     box.PackStart(bottom, false, false);
     m_window.SizeRequest(600, 400);
+    // check if we can quit if someone try to close the window
     m_window.OnDelete(&OoEdit::checkquit, this, true);
     m_window.Child(box);
     m_window.ShowAll();
 
+    // update bottombar if we switch view.
     m_notebook.OnPageSwitch(&OoEdit::switched, this);
 
     for (StrVec::const_iterator it = files.begin(); it != files.end(); ++it)
@@ -375,10 +405,11 @@ OoEdit::OoEdit(const StrVec &files) :
 OoView::OoView(OoEdit *app, const std::string &filename) : 
    m_name(filename), m_modified("*"), m_cont(false, 2), m_app(app)
 {
-    m_modified.Padding(2);
     UpdateLabel();
 
+    // create the notebook label with filename, modify indicator and a close button.
     Button button;
+    m_modified.Padding(2);
     Image img(IconSizeMenu, GTK_STOCK_CLOSE);
     button.Image(img);
     button.Relief(ReliefNone);
@@ -387,16 +418,24 @@ OoView::OoView(OoEdit *app, const std::string &filename) :
     m_cont.PackStart(m_modified, false, false);
     m_cont.PackStart(button, false, false);
     m_cont.ShowAll();
+
+    // this will add our textview to the scrolled window.
     m_scrolled.Child(*this);
     m_scrolled.ShowAll();
     CursorVisible(true);
 
+    // autumatically call the Widget::Show(true) method if we modify the buffer...
     Buffer().OnChanged(&Widget::Show, dynamic_cast<Widget *>(&m_modified), true);
+    // ... and update cursor position cause it can be moved
+    Buffer().OnChanged(&OoEdit::UpdatePosition, app);
+    // ... obviously we should update the cursor position also on cursormoive
     TextView::OnCursorMove(&OoEdit::UpdatePosition, app);
 }
 
 bool OoView::CheckModified()
 {
+    // if a view is modified show a dialog prompting if we want to quit anyway
+    // or abort the quit view / program operation.
     if (Buffer().Modified()) {
         MessageDialog diag(&m_app->MainWindow(),
                 DialogModal,
@@ -416,10 +455,12 @@ int main(int argc, char *argv[])
 {
     StrVec files;
 
+    // every argument is a file to open
     for (int i = 1; i < argc; ++i)
         files.push_back(argv[i]);
 
     OoEdit edit(files);
 
+    // enter GTK main loop
     edit.Run();
 }

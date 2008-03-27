@@ -24,6 +24,25 @@ namespace gtk
       PosBottom = GTK_POS_BOTTOM
     };
 
+#define BUILD_EVENT(method, signal) \
+            template <typename T, typename R> \
+            void method(R (T::*cbk)(), T *base, bool rc = false ) { callback(signal, cbk, base, rc); } \
+            template <typename T, typename R, typename J> \
+            void method(R (T::*cbk)(J), T *base, J data, bool rc = false ) { callback(signal, cbk, base, data, rc); } \
+            template <typename T, typename R> \
+            void method(R (T::*cbk)(Widget &), T *base, bool rc = false ) {  callback(signal, cbk, base, rc); } \
+            template <typename T, typename R, typename J> \
+            void method(R (T::*cbk)(Widget &, J), T *base, J data, bool rc = false ) { callback(signal, cbk, base, data, rc); }
+#define BUILD_VOID_EVENT(method, signal) \
+            template <typename T> \
+            void method(void (T::*cbk)(), T *base) { callback(signal, cbk, base); } \
+            template <typename T, typename J> \
+            void method(void (T::*cbk)(J), T *base, J data) { callback(signal, cbk, base, data); } \
+            template <typename T> \
+            void method(void (T::*cbk)(Widget &), T *base) {  callback(signal, cbk, base); } \
+            template <typename T, typename J> \
+            void method(void (T::*cbk)(Widget &, J), T *base, J data) { callback(signal, cbk, base, data); }
+
     class Widget : public Object
     {
         public:
@@ -48,6 +67,10 @@ namespace gtk
             void ModifyFont(FontDesc &font) { gtk_widget_modify_font(*this, font); }
             void GrabFocus() { gtk_widget_grab_focus(*this); }
             void GrabDefault() { gtk_widget_grab_default(*this); }
+
+            BUILD_EVENT(FocusIn,  "focus-in-event");
+            BUILD_EVENT(FocusOut, "focus-out-event");
+            BUILD_EVENT(Expose,   "expose-event");
     };
 
  
@@ -231,22 +254,7 @@ namespace gtk
             std::string Get() const { return gtk_entry_get_text(*this); }
 
             // callbacks
-            template <typename T>
-            void OnActivate(void (T::*cbk)(), T *base ) {
-                callback("activate", cbk, base);
-            }
-            template <typename T, typename J>
-            void OnActivate(void (T::*cbk)(J), T *base, J data ) {
-                callback("activate", cbk, base, data);
-            }
-            template <typename T>
-            void OnActivate(void (T::*cbk)(Widget &), T *base ) {
-                callback("activate", cbk, base);
-            }
-            template <typename T, typename J>
-            void OnActivate(void (T::*cbk)(Widget &, J), T *base, J data ) {
-                callback("activate", cbk, base, data);
-            }
+            BUILD_EVENT(OnActivate, "activate");
     };
 
     class DrawingArea : public Widget {

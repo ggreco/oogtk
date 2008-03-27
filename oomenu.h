@@ -135,23 +135,7 @@ namespace gtk {
             }
 
             // callbacks
-            template <typename T>
-            void OnActivate(void (T::*cbk)(), T *base ) {
-                callback("activate", cbk, base);
-            }
-            template <typename T, typename J>
-            void OnActivate(void (T::*cbk)(J), T *base, J data ) {
-                callback("activate", cbk, base, data);
-            }
-            template <typename T>
-            void OnActivate(void (T::*cbk)(Widget &), T *base ) {
-                callback("activate", cbk, base);
-            }
-            template <typename T, typename J>
-            void OnActivate(void (T::*cbk)(Widget &, J), T *base, J data ) {
-                callback("activate", cbk, base, data);
-            }
-
+            BUILD_VOID_EVENT(OnActivate, "activate");
     };
 
     class SeparatorMenuItem : public MenuItem // COMPLETE API

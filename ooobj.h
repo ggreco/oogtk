@@ -143,6 +143,12 @@ namespace gtk
             virtual ~Object() {
 
                 if (obj_) {
+#ifdef OOGTK_DEBUG
+                std::cerr << "Destructor for " << (void *)obj_ << " type:"
+                          << g_type_name(GTK_OBJECT_TYPE(obj_))  
+                          << " references: " << obj_->ref_count << std::endl;
+#endif
+
                     if (id_ >= 0 && g_signal_handler_is_connected (obj_, id_))
                         g_signal_handler_disconnect (obj_, id_);
 
@@ -261,6 +267,10 @@ namespace gtk
             int id_;
 
             static void purge(GObject *obj, Object *d) {
+#ifdef OOGTK_DEBUG
+                std::cerr << "Purge called for " << (void *)obj << " type:"
+                          << g_type_name(GTK_OBJECT_TYPE(obj)) << std::endl;
+#endif
                 d->Dispose();
             }
         private:

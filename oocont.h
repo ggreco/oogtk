@@ -279,12 +279,7 @@ namespace gtk {
             // windows are special objects and must be destroyed
             virtual ~Window() { if (ObjType() == InternalObj) gtk_widget_destroy(GTK_WIDGET(Obj())); }
             // window signals
-            template <typename T>
-            void OnDelete(bool (T::*cbk)(), T *base) { callback("delete_event", cbk, base); }
-            template <typename T>
-            void OnDelete(void (T::*cbk)(), T *base, bool rc = false) { 
-                callback("delete_event", cbk, base, rc); 
-            }
+            BUILD_EVENT(OnDelete, "delete_event");
 
             // flags get/set 
             bool Resizable() const { return gtk_window_get_resizable(*this); }

@@ -311,16 +311,10 @@ namespace gtk {
                 gtk_text_buffer_get_iter_at_offset(*this, it, offset);
                 return it;
             }
-            template <typename T>
-            void OnChanged(void (T::*cbk)(), T *base ) {
-                 callback("changed", cbk, base);
-            }
-            template <typename T, typename J>
-            void OnChanged(void (T::*cbk)(J), T *base, J user_data) {
-                 callback("changed", cbk, base, user_data);
-            }
 
             void PlaceCursor(const TextIter &position) { gtk_text_buffer_place_cursor(*this, position); }
+
+            BUILD_VOID_EVENT(OnChanged, "changed");
     };
 
     inline TextBuffer &TextIter::Buffer() { 
@@ -462,14 +456,8 @@ namespace gtk {
 
 
             // signals
-            template <typename T>
-            void OnCursorMove(void (T::*cbk)(), T *base ) {
-                 callback("move-cursor", cbk, base);
-            }
-            template <typename T, typename J>
-            void OnCursorMove(void (T::*cbk)(J), T *base, J user_data) {
-                 callback("move-cursor", cbk, base, user_data);           
-            }
+            BUILD_VOID_EVENT(OnCursorMove, "move-cursor");
+            BUILD_VOID_EVENT(OnViewportMove, "move-viewport");
     };
 }
 
