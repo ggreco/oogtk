@@ -407,6 +407,7 @@ namespace gtk
 #include "oobutton.h"
 #include "ootree.h"
 #include "ootext.h"
+#include "ooui.h"
 #include "oomenu.h"
 
 // questo va incluso alla fine per problemi di forward declarations
@@ -472,7 +473,7 @@ namespace gtk {
                 return new TextBuffer(o);
             } else if (GTK_IS_TEXT_VIEW(o)) {
                 return new TextView(o);
-            } else if (GTK_IS_TREE_SELECTION(o)) {
+            } else if (GTK_IS_TREE_SELECTION(o)) { // treeview stuff
                 return new TreeSelection(o);
             } else if (GTK_IS_CELL_RENDERER_TEXT(o)) {
                 return new CellRendererText(o);
@@ -482,11 +483,15 @@ namespace gtk {
                 return new CellRendererPixbuf(o);
             } else if (GTK_IS_TREE_VIEW_COLUMN(o)) {
                 return new TreeViewColumn(o);
-            } else if (GTK_IS_SCROLLED_WINDOW(o)) {
-                return new ScrolledWindow(o);
+            } else if (GTK_IS_TREE_STORE(o)) {
+                return new TreeStore(o);
+            } else if (GTK_IS_LIST_STORE(o)) {
+                return new ListStore(o);
             } else if (GTK_IS_TREE_VIEW(o)) {
                 return new TreeView(o);
-            } else if (GTK_IS_SEPARATOR_TOOL_ITEM(o)) {
+            } else if (GTK_IS_SCROLLED_WINDOW(o)) {
+                return new ScrolledWindow(o);
+            } else if (GTK_IS_SEPARATOR_TOOL_ITEM(o)) { // toolbar stuff
                 return new SeparatorToolItem(o);
             } else if (GTK_IS_TOOL_BUTTON(o)) {
                 return new ToolButton(o);
@@ -504,12 +509,14 @@ namespace gtk {
                 return new Table(o);
             } else if (GTK_IS_LABEL(o)) {
                 return new Label(o);
-            } else if (GTK_IS_TREE_SELECTION(o)) {
-                return new TreeSelection(o);
-            } else if (GTK_IS_TREE_STORE(o)) {
-                return new TreeStore(o);
-            } else if (GTK_IS_LIST_STORE(o)) {
-                return new ListStore(o);
+            } else if (GTK_IS_UI_MANAGER(o)) { // UI Manager stuff
+                return new UIManager(o);
+            } else if (GTK_IS_ACCEL_GROUP(o)) {
+                return new AccelGroup(o);
+            } else if (GTK_IS_ACTION_GROUP(o)) {
+                return new ActionGroup(o);
+            } else if (GTK_IS_ACTION(o)) {
+                return new Action(o);
             } else
                 std::cerr << "Undefined type " << g_type_name(GTK_OBJECT_TYPE(o));
         }

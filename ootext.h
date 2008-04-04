@@ -315,6 +315,7 @@ namespace gtk {
             void PlaceCursor(const TextIter &position) { gtk_text_buffer_place_cursor(*this, position); }
 
             BUILD_VOID_EVENT(OnChanged, "changed");
+            BUILD_VOID_EVENT(OnMarkSet, "mark-set");
     };
 
     inline TextBuffer &TextIter::Buffer() { 

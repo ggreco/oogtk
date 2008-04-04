@@ -214,7 +214,7 @@ class OoEdit : public Application
 
             if (b.CursorIter(it)) {
                 std::ostringstream os;
-                os << it.Line() << '/' << b.Lines();
+                os << (it.Line()+1) << '/' << b.Lines();
                 m_line.Set(os.str());
                 os.str("");
                 os << it.LineOffset();
@@ -426,10 +426,10 @@ OoView::OoView(OoEdit *app, const std::string &filename) :
 
     // autumatically call the Widget::Show(true) method if we modify the buffer...
     Buffer().OnChanged(&Widget::Show, dynamic_cast<Widget *>(&m_modified), true);
-    // ... and update cursor position cause it can be moved
-    Buffer().OnChanged(&OoEdit::UpdatePosition, app);
-    // ... obviously we should update the cursor position also on cursormoive
-    TextView::OnCursorMove(&OoEdit::UpdatePosition, app);
+    // ... and update cursor position cause it can be moved, also by editing operations
+    // we have a signal that is thrown every time a mark changes and the cursor is a
+    // mark so let's connect to it.
+    Buffer().OnMarkSet(&OoEdit::UpdatePosition, app);
 }
 
 bool OoView::CheckModified()

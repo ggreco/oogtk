@@ -261,6 +261,13 @@ namespace gtk {
       PositionCenterOnParent = GTK_WIN_POS_CENTER_ON_PARENT
     };
 
+    class AccelGroup : public Object {
+        public:
+            operator  GtkAccelGroup *() const { return GTK_ACCEL_GROUP(obj_); }
+            AccelGroup(GObject *obj) { Init(obj); }
+    };
+
+
     class Window : public Bin
     {
         public:
@@ -280,6 +287,10 @@ namespace gtk {
             virtual ~Window() { if (ObjType() == InternalObj) gtk_widget_destroy(GTK_WIDGET(Obj())); }
             // window signals
             BUILD_EVENT(OnDelete, "delete_event");
+
+            // accel group stuff
+            void Add(const AccelGroup &group) { gtk_window_add_accel_group(*this, group); }
+            void Remove(const AccelGroup &group) { gtk_window_remove_accel_group(*this, group); }
 
             // flags get/set 
             bool Resizable() const { return gtk_window_get_resizable(*this); }
