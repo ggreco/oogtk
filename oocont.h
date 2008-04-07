@@ -340,7 +340,7 @@ namespace gtk {
         DialogNoSeparator = GTK_DIALOG_NO_SEPARATOR
     };
 
-    DialogFlags operator|(DialogFlags a, DialogFlags b) { return (DialogFlags)(((int)a)|((int)b)); }
+    inline DialogFlags operator|(DialogFlags a, DialogFlags b) { return (DialogFlags)(((int)a)|((int)b)); }
 
     enum ResponseType
     {
@@ -642,7 +642,7 @@ namespace gtk {
         Fill   = GTK_FILL
     };
 
-    AttachOptions operator|(const AttachOptions &a, const AttachOptions &b) {
+    inline AttachOptions operator|(const AttachOptions &a, const AttachOptions &b) {
         return (AttachOptions)(((int)a)|((int)b));
     }
 

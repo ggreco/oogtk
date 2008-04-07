@@ -520,7 +520,7 @@ namespace gtk {
             }
     };
 
-    gtk::TreeView &TreeSelection::
+    inline gtk::TreeView &TreeSelection::
     TreeView() {
         GtkTreeView *tv = gtk_tree_selection_get_tree_view(*this);
         gtk::TreeView *t = dynamic_cast<gtk::TreeView *>(Object::Find((GObject *)tv));
