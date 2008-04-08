@@ -203,11 +203,8 @@ namespace gtk {
             UIManager() { Init(gtk_ui_manager_new()); Internal(true); }
             UIManager(const ActionGroup &group, const std::string &desc = "") { 
                 Init(gtk_ui_manager_new()); Internal(true); 
-                if (!desc.empty()) FromString(desc);
                 Append(group);
-            }
-            UIManager(const std::string &desc) {
-                Init(gtk_ui_manager_new()); Internal(true); 
+                if (!desc.empty()) FromString(desc);
             }
 
             // import datas

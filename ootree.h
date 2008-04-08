@@ -157,8 +157,18 @@ namespace gtk {
             operator GtkListStore *() const { return GTK_LIST_STORE(obj_); }            
             ListStore(GObject *o) { Init(o); }
 
-            ListStore(int size, GType *types) {
-                Init(gtk_list_store_newv(size, types));
+            ListStore(int size, const GType *types) {
+                Init(gtk_list_store_newv(size, const_cast<GType *>(types)));
+                Internal(true);
+            }
+            ListStore(size_t size, ...) {
+                va_list va;
+                TypeList types;
+                va_start(va, size);
+                while (size--)
+                    types.push_back(va_arg(va, GType));
+                va_end(va);
+                Init(gtk_list_store_newv(types.size(), (GType *)&types[0]));
                 Internal(true);
             }
             ListStore(const TypeList &types) {
@@ -229,6 +239,16 @@ namespace gtk {
             }
             TreeStore(TypeList &types) {
                 Init(gtk_tree_store_newv(types.size(), (GType *)&types[0]));
+                Internal(true);
+            }
+            TreeStore(size_t size, ...) {
+                va_list va;
+                TypeList types;
+                va_start(va, size);
+                while (size--)
+                    types.push_back(va_arg(va, GType));
+                va_end(va);
+                Init(gtk_list_store_newv(types.size(), (GType *)&types[0]));
                 Internal(true);
             }
             void Set(const TreeIter &it, ...) {
