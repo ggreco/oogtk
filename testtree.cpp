@@ -32,6 +32,8 @@ public:
         tv.AddTextColumn("Test", 0);
         tv.AddTextColumn("Prova", 1);
 
+        tv.OnButtonPress(&MyApp::event_clicked, this);
+
         for (int i = 0; i < 10; ++i) {
             std::ostringstream os1, os2;
             os1 << "Campo1 " << i;
@@ -43,6 +45,18 @@ public:
 
         win.ShowAll();
     }
+    void event_clicked(gtk::Event &e)
+    {
+        // the cast operator is defined not to match wrong types
+        if (gtk::EventKey *k = e) {
+            std::cerr << "Got keyevent!?!?!?\n";
+        }
+        else if (gtk::EventButton *b = e) {
+            if (b->IsDoubleClick())
+                std::cerr << "Got doubleclick in " << b->Coords() << "\n";
+        }
+    }
+
     void myclick()
     {
         Quit();

@@ -50,6 +50,7 @@ namespace gtk
     };
 
     class Widget;
+    struct Event;
 
     template <typename T, typename R, typename J = int> struct ReturnType {
        bool notify(R (T::*fnc)(void), T *obj, bool rc) const { 
@@ -62,6 +63,12 @@ namespace gtk
             return (obj->*fnc)(w);
        }
        bool notify(Widget &w, J arg, R (T::*fnc)(Widget &, J), T *obj, bool rc) const { 
+            return (obj->*fnc)(w,arg);
+       }
+       bool notify(Event &w, R (T::*fnc)(Event &), T *obj, bool rc) const { 
+            return (obj->*fnc)(w);
+       }
+       bool notify(Event &w, J arg, R (T::*fnc)(Event &, J), T *obj, bool rc) const { 
             return (obj->*fnc)(w,arg);
        }
     };
@@ -83,22 +90,35 @@ namespace gtk
             (obj->*fnc)(w,arg);
             return rc;
        }
+       bool notify(Event &w, void (T::*fnc)(Event &), T *obj, bool rc) const { 
+            (obj->*fnc)(w);
+            return rc;
+       }
+       bool notify(Event &w, J arg, void (T::*fnc)(Event &, J), T *obj, bool rc) const { 
+            (obj->*fnc)(w,arg);
+            return rc;
+       }
     };
 
     template <typename T, typename R, typename J = int>
         class CbkEvent : public AbstractCbk
     {
+            enum CbkType {NoParam, HasWidget, HasEvent};
         public:
             // two constructs for widgetless returning callbacks
             CbkEvent( T* obj, R (T::*fnc)(void), bool rc = true)
-                : myObj(obj), myFnc0(fnc), rccode(rc), haswidget(false) {}
+                : myObj(obj), myFnc0(fnc), rccode(rc), type(NoParam) {}
             CbkEvent( T* obj, R (T::*fnc)(J), J a1, bool rc = true)
-                : myObj(obj), myFnc0(NULL), myFnc1(fnc), ma1(a1), rccode(rc), haswidget(false) {}
+                : myObj(obj), myFnc0(NULL), myFnc1(fnc), ma1(a1), rccode(rc), type(NoParam) {}
             // two constructor with originating widget support
             CbkEvent( T* obj, R (T::*fnc)(Widget &), bool rc = true)
-                : myObj(obj), mywFnc0(fnc), rccode(rc), haswidget(true) {}
+                : myObj(obj), mywFnc0(fnc), rccode(rc), type(HasWidget) {}
             CbkEvent( T* obj, R (T::*fnc)(Widget &, J), J a1, bool rc = true)
-                : myObj(obj), mywFnc0(NULL), mywFnc1(fnc), ma1(a1), rccode(rc), haswidget(true) {}
+                : myObj(obj), mywFnc0(NULL), mywFnc1(fnc), ma1(a1), rccode(rc), type(HasWidget) {}
+            CbkEvent( T* obj, R (T::*fnc)(Event &), bool rc = true)
+                : myObj(obj), myeFnc0(fnc), rccode(rc), type(HasEvent) {}
+            CbkEvent( T* obj, R (T::*fnc)(Event &, J), J a1, bool rc = true)
+                : myObj(obj), myeFnc0(NULL), myeFnc1(fnc), ma1(a1), rccode(rc), type(HasEvent) {}
 
         private:    
             T*  myObj ;
@@ -106,9 +126,11 @@ namespace gtk
             R (T::*myFnc1)(J);
             R (T::*mywFnc0)(Widget &);
             R (T::*mywFnc1)(Widget &, J);
+            R (T::*myeFnc0)(Event &);
+            R (T::*myeFnc1)(Event &, J);
             J ma1;
             bool rccode;
-            bool haswidget;
+            CbkType type;
 
             virtual bool notify(GtkWidget *w = NULL, GdkEvent *e = NULL) const;
     };
@@ -228,6 +250,15 @@ namespace gtk
                           bool returncode = true) 
             { Connect(new CbkEvent<T,R,J>(classbase, cbk, data, returncode), signal); }
 
+            // event callbacks...
+            template< typename T, typename R>
+            void callback(const char *signal, R (T::*cbk)(Event &), T *classbase, bool returncode = true)
+            { Connect(new CbkEvent<T,R>(classbase, cbk, returncode), signal); }
+            template< typename T, typename R, typename J>
+            void callback(const char *signal, R (T::*cbk)(Event &, J), T *classbase, J data, 
+                          bool returncode = true) 
+            { Connect(new CbkEvent<T,R,J>(classbase, cbk, data, returncode), signal); }
+
             void Dispose();
             
             void Set(const char *property, int value) {
@@ -323,24 +354,34 @@ namespace gtk
     inline bool CbkEvent<T,R,J>::
     notify(GtkWidget *w, GdkEvent *e) const
     { 
-        ReturnType<T, R, J> type;
+        ReturnType<T, R, J> rtype;
 
-        if (!haswidget) {
-            if (myFnc0)
-                return type.notify(myFnc0, myObj, rccode);
-            else
-                return type.notify(ma1, myFnc1, myObj, rccode);
-        }
-        else {
-            Widget *ww = dynamic_cast<Widget *>(Object::Find((GObject *)w));
+        switch (type) {
+            case NoParam:
+                if (myFnc0)
+                    return rtype.notify(myFnc0, myObj, rccode);
+                else
+                    return rtype.notify(ma1, myFnc1, myObj, rccode);
+        
 
-            if (!ww)
-                throw std::runtime_error("Callback asking for a widget with widget NULL!");
-
-            if (mywFnc0)
-                return type.notify(*ww, mywFnc0, myObj, rccode);
-            else
-                return type.notify(*ww, ma1, mywFnc1, myObj, rccode);
+            case HasWidget:
+                if (Widget *ww = dynamic_cast<Widget *>(Object::Find((GObject *)w))) {
+                    if (mywFnc0)
+                        return rtype.notify(*ww, mywFnc0, myObj, rccode);
+                    else
+                        return rtype.notify(*ww, ma1, mywFnc1, myObj, rccode);
+                }
+                else
+                    throw std::runtime_error("Callback asking for a widget with widget NULL!");
+            case HasEvent:
+                if (Event *ee = (Event *)e) {
+                    if (myeFnc0)
+                        return rtype.notify(*ee, myeFnc0, myObj, rccode);
+                    else
+                        return rtype.notify(*ee, ma1, myeFnc1, myObj, rccode);
+                }
+                else
+                    throw std::runtime_error("Callback asking for an event with event NULL!");
         }
     }
 

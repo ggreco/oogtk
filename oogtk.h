@@ -43,6 +43,12 @@ namespace gtk
             template <typename T, typename J> \
             void method(void (T::*cbk)(Widget &, J), T *base, J data) { callback(signal, cbk, base, data); }
 
+#define BUILD_EVENTED_EVENT(method, signal) \
+            template <typename T, typename R> \
+            void method(R (T::*cbk)(Event &), T *base, bool rc = false) {  callback(signal, cbk, base, rc); } \
+            template <typename T, typename R, typename J> \
+            void method(R (T::*cbk)(Event &, J), T *base, J data, bool rc = false) { callback(signal, cbk, base, data, rc); }
+
     class Widget : public Object
     {
         public:
@@ -68,9 +74,14 @@ namespace gtk
             void GrabFocus() { gtk_widget_grab_focus(*this); }
             void GrabDefault() { gtk_widget_grab_default(*this); }
 
-            BUILD_EVENT(FocusIn,  "focus-in-event");
-            BUILD_EVENT(FocusOut, "focus-out-event");
-            BUILD_EVENT(Expose,   "expose-event");
+            BUILD_EVENT(OnFocusIn,  "focus-in-event");
+            BUILD_EVENT(OnFocusOut, "focus-out-event");
+            BUILD_EVENT(OnExpose,   "expose-event");
+            BUILD_EVENTED_EVENT(OnExpose,   "expose-event");
+
+            BUILD_EVENTED_EVENT(OnButtonRelease, "button-release-event");
+            BUILD_EVENTED_EVENT(OnButtonPress, "button-press-event");
+
     };
 
  
@@ -421,7 +432,7 @@ namespace gtk {
                 return (Object *)v;
             } else if (GTK_IS_ENTRY(o)) {
                 return new Entry(o);
-            } else if (GTK_IS_FILE_CHOOSER_DIALOG(o)) {
+            } else if (GTK_IS_FILE_CHOOSER_DIALOG(o)) { // window's derived stuff
                 return new FileChooserDialog(o);
             } else if (GTK_IS_MESSAGE_DIALOG(o)) {
                 return new MessageDialog(o);

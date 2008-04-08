@@ -16,6 +16,7 @@ namespace gtk
 
     struct Rect
     {
+        Rect(const GdkRectangle *r) : x(r->x), y(r->y), w(r->width), h(r->height) {}
         Rect(const GdkRectangle &r) : x(r.x), y(r.y), w(r.width), h(r.height) {}
         Rect(int leftedge, int topedge, int width, int height) :
             x(leftedge), y(topedge), w(width), h(height) {}
@@ -67,7 +68,62 @@ namespace gtk
     	InterpHyper = GDK_INTERP_HYPER
     };
 
-//    InterpType operator|(InterpType &a, InterpType &b) { return (InterpType)((int)a|(int)b); }
+    struct EventExpose : public GdkEventExpose {
+        gtk::Rect  Rect() const { return gtk::Rect(area); }
+    };
+    struct EventButton : public GdkEventButton {
+        bool IsDoubleClick() const { 
+            return (type == GDK_2BUTTON_PRESS ||
+                    type == GDK_3BUTTON_PRESS);
+        }
+        bool IsPress()   const { return type == GDK_BUTTON_PRESS; }
+        bool IsRelease() const { return type == GDK_BUTTON_RELEASE; }
+        Point Coords()   const { return Point((int)x,(int)y); }
+    };
+    struct EventMotion : public GdkEventMotion {
+        Point Coords() const { return Point((int)x,(int)y); }
+    };
+    struct EventConfigure : public GdkEventConfigure {
+        Point Coords() const { return Point(x, y); }
+        Point Size() const { return Point(width, height); }
+    };
+    struct EventKey : public GdkEventKey {
+        unsigned int KeyVal() const { return keyval; }
+    };
+
+    struct Event : public GdkEventAny
+    {
+        operator EventExpose *() const {
+            if (type == GDK_EXPOSE)
+                return (EventExpose *)this;
+            else
+                return NULL;
+        }
+        operator EventButton *() const {
+            if (type == GDK_BUTTON_PRESS ||
+                type == GDK_2BUTTON_PRESS ||
+                type == GDK_3BUTTON_PRESS ||
+                type == GDK_BUTTON_RELEASE)
+                return (EventButton *)this;
+            else
+                return NULL;
+        }
+        operator EventKey *() const {
+            if (type == GDK_KEY_PRESS ||
+                type == GDK_KEY_RELEASE)
+                return (EventKey *)this;
+            else
+                return NULL;
+        }
+        operator EventMotion *() const {
+            if (type == GDK_MOTION_NOTIFY)
+                return (EventMotion *)this;
+            else
+                return NULL;
+        }
+        GdkWindow *Window() const { return window; }
+        unsigned int Type() const { return type; }
+    };
 
     class Pixbuf : public Object
     {
@@ -122,5 +178,13 @@ namespace gtk
             void Fill(guint32 color = 0) { gdk_pixbuf_fill(*this, color); }
             void Flip(bool horizontal = true) { gdk_pixbuf_flip(*this, horizontal); }
     };
+}
+std::ostream &operator<<(std::ostream &dest, const gtk::Point &point) {
+    dest << '(' << point.x << ',' << point.y << ')';
+    return dest;
+}
+std::ostream &operator<<(std::ostream &dest, const gtk::Rect &rect) {
+    dest << '(' << rect.x << ',' << rect.y << ' ' << rect.w << 'x' << rect.h << ')';
+    return dest;
 }
 #endif

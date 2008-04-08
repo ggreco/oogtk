@@ -538,6 +538,7 @@ namespace gtk {
                 if (!s) throw std::runtime_error("TreeView without TreeSelection!");
                 return dynamic_cast<TreeSelection&>(*(Object::Find((GObject *)s)));
             }
+
     };
 
     inline gtk::TreeView &TreeSelection::
