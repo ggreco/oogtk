@@ -93,6 +93,12 @@ namespace gtk
 
     struct Event : public GdkEventAny
     {
+        operator EventConfigure *() const {
+            if (type == GDK_CONFIGURE)
+                return (EventConfigure *)this;
+            else
+                return NULL;
+        }
         operator EventExpose *() const {
             if (type == GDK_EXPOSE)
                 return (EventExpose *)this;
@@ -179,11 +185,11 @@ namespace gtk
             void Flip(bool horizontal = true) { gdk_pixbuf_flip(*this, horizontal); }
     };
 }
-std::ostream &operator<<(std::ostream &dest, const gtk::Point &point) {
+inline std::ostream &operator<<(std::ostream &dest, const gtk::Point &point) {
     dest << '(' << point.x << ',' << point.y << ')';
     return dest;
 }
-std::ostream &operator<<(std::ostream &dest, const gtk::Rect &rect) {
+inline std::ostream &operator<<(std::ostream &dest, const gtk::Rect &rect) {
     dest << '(' << rect.x << ',' << rect.y << ' ' << rect.w << 'x' << rect.h << ')';
     return dest;
 }

@@ -164,14 +164,16 @@ class OoEdit : public Application
             if (page >=0 && page < m_views.size()) {
                 // create a pair of buttons for a Dialog with the alternative
                 // API (look at open() implementation for the basic one).
-                ButtonVec buttons;
-                buttons.push_back(ButtonData(GTK_STOCK_OK, ResponseOk));
-                buttons.push_back(ButtonData(GTK_STOCK_CANCEL, ResponseCancel));
+                // ButtonVec buttons;
+                // buttons.push_back(ButtonData(GTK_STOCK_OK, ResponseOk));
+                // buttons.push_back(ButtonData(GTK_STOCK_CANCEL, ResponseCancel));
 
                 // Create a new dialog with the buttons defined above, specify "save"
                 // as action type, this will change the browser.
                 FileChooserDialog dialog("Select a name for the file...", &m_window, 
-                        FileChooserActionSave, buttons);
+                        FileChooserActionSave, 
+                        make_vector(ButtonData(GTK_STOCK_OK, ResponseOk))
+                                   (ButtonData(GTK_STOCK_CANCEL, ResponseCancel)) );
 
                 // if we have a filename give it to the dialog
                 if (!m_views[page]->Filename().empty())
@@ -242,13 +244,11 @@ class OoEdit : public Application
                 return;
             }
 
-            // add two buttons to the dialog
-            ButtonVec buttons;
-            buttons.push_back(ButtonData(GTK_STOCK_FIND, ResponseOk));
-            buttons.push_back(ButtonData(GTK_STOCK_CLOSE, ResponseCancel));
-
             // let's build a local search dialog.
-            Dialog diag("OOEdit Find for " + m_views[pos]->Filename(), buttons, &m_window);
+            Dialog diag("OOEdit Find for " + m_views[pos]->Filename(), 
+                        make_vector(ButtonData(GTK_STOCK_FIND, ResponseOk))
+                                   (ButtonData(GTK_STOCK_CLOSE, ResponseCancel)),
+                        &m_window);
             Entry entry;
             VBox box(Label("Insert the text to search"), entry);
             box.Spacing(8);

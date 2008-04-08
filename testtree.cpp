@@ -1,8 +1,6 @@
 #include "oogtk.h"
 #include <sstream>
 
-GType columns[] = { G_TYPE_STRING, G_TYPE_STRING};
-
 class MyApp : public gtk::Application
 {
     gtk::Window win;
@@ -14,7 +12,8 @@ class MyApp : public gtk::Application
     gtk::TreeView tv;
     gtk::ScrolledWindow sw;
 public:
-    MyApp() : win("Test TreeView"), bt("Uscita"), next("Prova un albero"), list(2, columns), tv(list) {
+    MyApp() : win("Test TreeView"), bt("Uscita"), next("Prova un albero"), 
+              list(make_vector(G_TYPE_STRING)(G_TYPE_STRING)), tv(list) {
         win.Child(box);
         win.Border(8);
         box.PackStart(sw);
@@ -28,7 +27,7 @@ public:
         box.Homogeneous(false);
         bt.OnClick(&MyApp::myclick, this);
         next.OnClick(&MyApp::mynext, this);
-
+        win.OnDelete(&MyApp::myclick, this, true);
         tv.AddTextColumn("Test", 0);
         tv.AddTextColumn("Prova", 1);
 
@@ -63,7 +62,7 @@ public:
     }
     void mynext()
     {
-        gtk::TreeStore *st = new gtk::TreeStore(2, columns);
+        gtk::TreeStore *st = new gtk::TreeStore(make_vector(G_TYPE_STRING)(G_TYPE_STRING));
 
         for (int i = 0; i < 4; ++i) {
             std::ostringstream os1;

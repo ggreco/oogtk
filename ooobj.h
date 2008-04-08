@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <vector>
+#include "inline_containers.h"
 
 namespace gtk
 {

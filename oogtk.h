@@ -78,9 +78,12 @@ namespace gtk
             BUILD_EVENT(OnFocusOut, "focus-out-event");
             BUILD_EVENT(OnExpose,   "expose-event");
             BUILD_EVENTED_EVENT(OnExpose,   "expose-event");
+            BUILD_EVENTED_EVENT(OnConfigure,   "configure-event");
 
             BUILD_EVENTED_EVENT(OnButtonRelease, "button-release-event");
             BUILD_EVENTED_EVENT(OnButtonPress, "button-press-event");
+            BUILD_EVENTED_EVENT(OnKeyRelease, "key-release-event");
+            BUILD_EVENTED_EVENT(OnKeyPress, "key-press-event");
 
     };
 
