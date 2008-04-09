@@ -37,6 +37,14 @@ namespace gtk {
             }
             ~TreePath() { gtk_tree_path_free(obj_); }
 
+            TreePath &operator=(const TreePath &orig) {
+                gtk_tree_path_free(obj_);
+                obj_ = gtk_tree_path_copy(orig);
+            }
+            TreePath &operator=(const GtkTreePath &orig) {
+                gtk_tree_path_free(obj_);
+                obj_ = gtk_tree_path_copy(&orig);
+            }
             std::string str() const {
                 std::string ret;
                 if (gchar *c = gtk_tree_path_to_string (*this)) {
@@ -98,6 +106,8 @@ namespace gtk {
             void SelectRange(const TreePath &begin, const TreePath &end) {
                 gtk_tree_selection_select_range(*this, begin, end);
             }
+
+            BUILD_VOID_EVENT(OnChanged, "changed");
     };
 
     class TreeModel : public Object
@@ -123,6 +133,10 @@ namespace gtk {
                 ValidIter it;
                 it.valid = gtk_tree_model_iter_children(*this, it, &parent);
             }
+
+            virtual void Remove(const TreeIter &it) = 0;
+            virtual void Set(const TreeIter &it, ...) = 0;
+
             ValidIter Children() {
                 ValidIter it;
                 it.valid = gtk_tree_model_iter_children(*this, it, NULL);
@@ -212,8 +226,8 @@ namespace gtk {
                 gtk_list_store_insert(*this, &it, position);
                 return it;
             }            
-            void Remove(TreeIter &it) {
-                gtk_list_store_remove(*this, &it);
+            void Remove(const TreeIter &it) {
+                gtk_list_store_remove(*this, const_cast<TreeIter *>(&it));
             }
             void Swap(TreeIter &a, TreeIter &b) {
                 gtk_list_store_swap(*this, &a, &b);
@@ -322,8 +336,8 @@ namespace gtk {
                 gtk_tree_store_insert(*this, &it, const_cast<TreeIter *>(&parent), position);
                 return it;
             }
-            void Remove(TreeIter &it) {
-                gtk_tree_store_remove(*this, &it);
+            void Remove(const TreeIter &it) {
+                gtk_tree_store_remove(*this, const_cast<TreeIter *>(&it));
             }
             void Swap(TreeIter &a, TreeIter &b) {
                 gtk_tree_store_swap(*this, &a, &b);
@@ -343,6 +357,51 @@ namespace gtk {
                 gtk_tree_store_clear(*this);
             }
     };
+
+    class TreeRowReference
+    {
+        public:
+            operator  GtkTreeRowReference *() const { return obj_; }
+            TreeRowReference(const TreeModel &model, const TreePath &path) {
+                obj_ = gtk_tree_row_reference_new(model, path);
+            }
+            TreeModel &Model() const {
+                if (TreeModel *m = dynamic_cast<TreeModel *>(
+                            Object::Find((GObject *)gtk_tree_row_reference_get_model(obj_))))
+                    return *m;
+                else
+                    throw std::runtime_error("TreeRowReference without Model!!!");
+            }
+            TreeIter Iter() const {
+                if (GtkTreePath *p = gtk_tree_row_reference_get_path(obj_)) {
+                    TreeIter it;
+                    if (gtk_tree_model_get_iter(gtk_tree_row_reference_get_model(obj_), 
+                                                &it, p))
+                        return it;
+                }
+                throw std::runtime_error("Unable to get the Iter from the reference!");
+            }
+            TreePath Path() const {
+                return TreePath(gtk_tree_row_reference_get_path(obj_));
+            }
+            bool Valid() const {
+                return gtk_tree_row_reference_valid(obj_);
+            }
+            TreeRowReference &operator=(const TreeRowReference &right) {
+                gtk_tree_row_reference_free(obj_);
+                obj_ = gtk_tree_row_reference_copy(right);
+            }
+            TreeRowReference &operator=(const GtkTreeRowReference &right) {
+                gtk_tree_row_reference_free(obj_);
+                obj_ = gtk_tree_row_reference_copy(const_cast<GtkTreeRowReference *>(&right));
+            }
+            ~TreeRowReference() {
+                gtk_tree_row_reference_free(obj_);
+            }
+        private:
+            GtkTreeRowReference *obj_;
+    };
+
 
     class CellRenderer : public Object
     {
@@ -539,6 +598,16 @@ namespace gtk {
                 return dynamic_cast<TreeSelection&>(*(Object::Find((GObject *)s)));
             }
 
+            bool PathAt(TreePath &path, const Point &position) {
+                GtkTreePath *p;
+                if(gtk_tree_view_get_path_at_pos(*this, position.x, position.y,
+                            &p, NULL, NULL, NULL)) {
+                    path = *p;
+                    gtk_tree_path_free(p);
+                    return true;
+                }
+                return false;
+            }
     };
 
     inline gtk::TreeView &TreeSelection::
