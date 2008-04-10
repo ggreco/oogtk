@@ -27,6 +27,7 @@ namespace gtk {
     {
          public:
             operator  GtkTreePath *() const { return obj_; }
+            TreePath(const TreePath &o) { obj_ = gtk_tree_path_copy(o); }
             TreePath(GtkTreePath *o) { obj_ = o; }
 
             TreePath(const std::string &path) {
@@ -78,6 +79,10 @@ namespace gtk {
 
     class TreeView;
 
+    class TreeRowReference;
+
+    typedef std::list<TreeRowReference> RefVec;
+
     class TreeSelection : public Object
     {
          public:
@@ -107,6 +112,7 @@ namespace gtk {
                 gtk_tree_selection_select_range(*this, begin, end);
             }
 
+            RefVec SelectedRows();
             BUILD_VOID_EVENT(OnChanged, "changed");
     };
 
@@ -160,6 +166,12 @@ namespace gtk {
             }
             int Columns() const {
                 return gtk_tree_model_get_n_columns(*this);
+            }
+            TreePath Path(const TreeIter &it) {
+                return TreePath(gtk_tree_model_get_path(*this, const_cast<TreeIter *>(&it)));
+            }
+            bool Iter(TreeIter &iter, const TreePath &path) {
+                return gtk_tree_model_get_iter(*this, &iter, path);
             }
     };
 
@@ -360,10 +372,19 @@ namespace gtk {
 
     class TreeRowReference
     {
+            friend class TreeSelection;
+            // only for internal use
+            TreeRowReference(GtkTreeModel *model, GtkTreePath *path) {
+                obj_ = gtk_tree_row_reference_new(model, path);
+            }
         public:
             operator  GtkTreeRowReference *() const { return obj_; }
             TreeRowReference(const TreeModel &model, const TreePath &path) {
                 obj_ = gtk_tree_row_reference_new(model, path);
+            }
+            // copy constructor
+            TreeRowReference(const TreeRowReference &src) {
+                obj_ = gtk_tree_row_reference_copy(src);
             }
             TreeModel &Model() const {
                 if (TreeModel *m = dynamic_cast<TreeModel *>(
@@ -618,6 +639,28 @@ namespace gtk {
             throw std::runtime_error("TreeSelection without treeview!");
 
         return *t;
+    }
+
+    inline RefVec TreeSelection::
+    SelectedRows() {
+        RefVec result;
+
+        if (GtkTreeView *tv = gtk_tree_selection_get_tree_view(*this)) {
+            if (GtkTreeModel *model = gtk_tree_view_get_model(tv)) {
+                if (GList *list = gtk_tree_selection_get_selected_rows(*this,
+                            &model)) {
+                    GList *l = list;
+                    while (l) {
+                        result.push_back(TreeRowReference(model, (GtkTreePath *)l->data));
+                        l = l->next;
+                    }
+                    g_list_foreach (list, (void (*)(void *,void *))gtk_tree_path_free, NULL);
+                    g_list_free (list);
+                }
+            }
+        }
+
+        return result;
     }
 }
 

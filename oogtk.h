@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <list>
 #include <map>
 #include "oogdk.h"
@@ -263,6 +264,12 @@ namespace gtk
                 else
                     Init(gtk_entry_new());
                 Internal(true);
+            }
+            template <typename T>
+            void Set(const T &t) {
+                std::ostringstream os;
+                os << t;
+                gtk_entry_set_text(*this, os.str().c_str());
             }
             void Set(const std::string &name) { gtk_entry_set_text(*this, name.c_str()); }
             std::string Get() const { return gtk_entry_get_text(*this); }

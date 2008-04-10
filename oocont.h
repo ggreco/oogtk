@@ -658,6 +658,10 @@ namespace gtk {
 
             void Resize(int rows, int columns) { gtk_table_resize(*this, rows, columns); }
 
+            void Spacing(int space) {
+                RowSpacing(space);
+                ColSpacing(space);
+            }
             void RowSpacing(int space, int row = -1) {
                 if (row > -1)
                     gtk_table_set_row_spacing(*this, row, space);
@@ -671,14 +675,14 @@ namespace gtk {
                     return gtk_table_get_row_spacing(*this, row);
             }
 
-            void Attach(Widget &child, int left, int top, int right = -1, int bottom = -1,
+            void Attach(const Widget &child, int left, int top, int right = -1, int bottom = -1,
                         OneOf<GtkAttachOptions, AttachOptions> xoptions = (Expand|Fill),
                         OneOf<GtkAttachOptions, AttachOptions> yoptions = (Expand|Fill),
                         int xpadding = 0, int ypadding = 0
                         ) {
                 gtk_table_attach(*this, child, 
                         left, right != -1 ? right : left + 1,
-                        top, bottom != -1 ? bottom : bottom + 1,
+                        top, bottom != -1 ? bottom : top + 1,
                         xoptions, yoptions, xpadding, ypadding);
             }
 
