@@ -30,7 +30,7 @@ namespace gtk {
             TreePath(const TreePath &o) { obj_ = gtk_tree_path_copy(o); }
             TreePath(GtkTreePath *o) { obj_ = o; }
 
-            TreePath(const std::string &path) {
+            TreePath(const std::string &path = "") {
                 if (!path.empty())
                     obj_ = gtk_tree_path_new_from_string(path.c_str());
                 else
@@ -469,6 +469,12 @@ namespace gtk {
 
     typedef std::list<CellRenderer *> RendererList;
 
+    enum SortType
+    {
+        SortAscending  = GTK_SORT_ASCENDING,
+        SortDescending = GTK_SORT_DESCENDING
+    };
+
     class TreeViewColumn : public Object
     {
         public:
@@ -481,8 +487,6 @@ namespace gtk {
                 Internal(true);
             }
 
-            bool Visible() const { gtk_tree_view_column_get_visible(*this); }
-            void Visible(bool flag) { gtk_tree_view_column_set_visible(*this, flag); }
             void Title(const std::string &title) {
                 gtk_tree_view_column_set_widget(*this, Label(title).Ref());
             }
@@ -500,6 +504,57 @@ namespace gtk {
 
                 g_list_free(list);
             }
+
+            // get/set methods
+            bool Visible() const { return gtk_tree_view_column_get_visible(*this); }
+            void Visible(bool flag) { gtk_tree_view_column_set_visible(*this, flag); }
+
+            bool Clickable() const { return gtk_tree_view_column_get_clickable(*this); }
+            void Clickable(bool flag) { gtk_tree_view_column_set_clickable(*this, flag); }
+
+            bool Expand() const { return gtk_tree_view_column_get_expand(*this); }
+            void Expand(bool flag) { gtk_tree_view_column_set_expand(*this, flag); }
+
+            bool Resizable() const { return gtk_tree_view_column_get_resizable(*this); }
+            void Resizable(bool flag) { gtk_tree_view_column_set_resizable(*this, flag); }
+
+            int Spacing() const { return gtk_tree_view_column_get_spacing(*this); }
+            void Spacing(int pixels) { gtk_tree_view_column_set_spacing(*this, pixels); }
+
+            bool FixedWidth() const { return gtk_tree_view_column_get_fixed_width(*this); }
+            void FixedWidth(bool flag) { gtk_tree_view_column_set_fixed_width(*this, flag); }
+
+            int  Width() const { return gtk_tree_view_column_get_width(*this); }
+            //void Width(int pixels) { gtk_tree_view_column_set_width(*this, pixels); }
+
+#if 0
+            // at the moment we support only widget based column titles.
+            std::string Title() const { return gtk_tree_view_column_get_title(*this); }
+            void Title(const std::string &title) { gtk_tree_view_column_set_title(*this, title); }
+#endif
+            bool Reorderable() const { return gtk_tree_view_column_get_reorderable(*this); }
+            void Reorderable(bool flag) { gtk_tree_view_column_set_reorderable(*this, flag); }
+
+            int  MinWidth() const { return gtk_tree_view_column_get_min_width(*this); }
+            void MinWidth(int pixels) { gtk_tree_view_column_set_min_width(*this, pixels); }
+
+            int  MaxWidth() const { return gtk_tree_view_column_get_max_width(*this); }
+            void MaxWidth(int pixels) { gtk_tree_view_column_set_max_width(*this, pixels); }
+            
+            float Alignment() const { return gtk_tree_view_column_get_alignment(*this); }
+            void Alignment(float xalign) { gtk_tree_view_column_set_alignment(*this, xalign); }
+
+            // some sorting related methods
+            bool SortIndicator() const { return gtk_tree_view_column_get_sort_indicator(*this); }
+            void SortIndicator(bool flag) { gtk_tree_view_column_set_sort_indicator(*this, flag); }
+
+            OneOf<gtk::SortType, GtkSortType> SortType() const { return gtk_tree_view_column_get_sort_order(*this); }
+            void SortType(OneOf<gtk::SortType, GtkSortType> type) { gtk_tree_view_column_set_sort_order(*this, type); }
+            
+            int SortColumnId() const { return gtk_tree_view_column_get_sort_column_id(*this); }
+            void SortColumnId(int sort_col_id) { gtk_tree_view_column_set_sort_column_id(*this, sort_col_id); }
+
+            gtk::TreeView *TreeView() const;
     };
 
     typedef std::list<TreeViewColumn *> ColumnList;
@@ -536,6 +591,21 @@ namespace gtk {
 
                 return dynamic_cast<TreeViewColumn *>(Object::Find((GObject *)c));
             }
+
+            TreeViewColumn *AddSortableTextColumn(const std::string &title, int id)
+            { 
+                if (TreeViewColumn *column = AddTextColumn(title, id)) {
+                    column->Clickable(true);
+                    column->SortIndicator(true);
+                    column->SortColumnId(id);
+
+//   gtk_tree_sortable_set_sort_column_id(
+//            GTK_TREE_SORTABLE(m_model), id, GTK_SORT_ASCENDING);
+                    return column;
+                }
+                return NULL;
+            }
+
 
             TreeViewColumn *AddTextColumn(const std::string &title, int id) {
                 CellRenderer *r = new CellRendererText();
@@ -612,6 +682,18 @@ namespace gtk {
             void MoveAfter(TreeViewColumn &col, TreeViewColumn &ref) {
                 gtk_tree_view_move_column_after(*this, col, ref);
             }
+            void ExpanderColumn(TreeViewColumn &col) { gtk_tree_view_set_expander_column(*this, col); }
+            TreeViewColumn *ExpanderColumn() const {
+                return dynamic_cast<TreeViewColumn *>(Object::Find((GObject *)
+                            gtk_tree_view_get_expander_column(*this)));
+            }
+            void ExpandAll() { gtk_tree_view_expand_all(*this); }
+            void CollapseAll() { gtk_tree_view_collapse_all(*this); }
+            void ExpandRow(const TreePath &path, bool recursive = true) { gtk_tree_view_expand_row(*this, path, recursive); }
+            void CollapseRow(const TreePath &path) { gtk_tree_view_collapse_row(*this, path); }
+            void ScrollTo(int x, int y) { gtk_tree_view_scroll_to_point(*this, x, y); }
+            void ScrollTo(const Point &point) { ScrollTo(point.x, point.y); }
+
             TreeSelection &Selection() { // un treeview non puo' essere creato senza una TreeSelection
                 GtkTreeSelection *s = gtk_tree_view_get_selection(*this);
 
@@ -629,6 +711,31 @@ namespace gtk {
                 }
                 return false;
             }
+
+            // get/set methods
+            bool HeadersClickable() const { return gtk_tree_view_get_headers_clickable(*this); }
+            void HeadersClickable(bool flag) const { gtk_tree_view_set_headers_clickable(*this, flag); }
+            bool HeadersVisible() const { return gtk_tree_view_get_headers_visible(*this); }
+            void HeadersVisible(bool flag) const { gtk_tree_view_set_headers_visible(*this, flag); }
+            bool RulesHint() const { return gtk_tree_view_get_rules_hint(*this); }
+            void RulesHint(bool flag) { gtk_tree_view_set_rules_hint(*this, flag); }
+
+            int  LevelIndentation() const { return gtk_tree_view_get_level_indentation(*this); }
+            void LevelIndentation(int pixels) { gtk_tree_view_set_level_indentation(*this, pixels); }
+            bool ShowExpanders() const { return gtk_tree_view_get_show_expanders(*this); }
+            void ShowExpanders(bool flag) { gtk_tree_view_set_show_expanders(*this, flag); }
+            
+            bool Reorderable() const { return gtk_tree_view_get_reorderable(*this); }
+            void Reorderable(bool flag) { gtk_tree_view_set_reorderable(*this, flag); }
+
+            bool EnableSearch() const { return gtk_tree_view_get_enable_search(*this); }
+            void EnableSearch(bool flag) { gtk_tree_view_set_enable_search(*this, flag); }
+
+            int SearchColumn() const { return gtk_tree_view_get_search_column(*this); }
+            void SearchColumn(int col) { gtk_tree_view_set_search_column(*this, col); }
+
+            bool FixedHeightMode() const { return gtk_tree_view_get_fixed_height_mode(*this); }
+            void FixedHeightMode(bool flag) { gtk_tree_view_set_fixed_height_mode(*this, flag); }
     };
 
     inline gtk::TreeView &TreeSelection::
@@ -639,6 +746,13 @@ namespace gtk {
             throw std::runtime_error("TreeSelection without treeview!");
 
         return *t;
+    }
+
+    inline gtk::TreeView *TreeViewColumn::
+    TreeView() const
+    {
+        return dynamic_cast<gtk::TreeView *>(Object::Find((GObject *)
+                    gtk_tree_view_column_get_tree_view(*this)));
     }
 
     inline RefVec TreeSelection::
