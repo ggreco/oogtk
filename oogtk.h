@@ -274,6 +274,21 @@ namespace gtk
             void Set(const std::string &name) { gtk_entry_set_text(*this, name.c_str()); }
             std::string Get() const { return gtk_entry_get_text(*this); }
 
+            // some get/set methods
+            void Alignment(float xalign) { gtk_entry_set_alignment(*this, xalign); }
+            float Alignment() const { return gtk_entry_get_alignment(*this); }
+            void MaxLength(int chars) { gtk_entry_set_max_length(*this, chars); }
+            int MaxLength() const { return gtk_entry_get_max_length(*this); }
+            void Visibility(bool flag) { gtk_entry_set_visibility(*this, flag); }
+            bool Visibility() const { return gtk_entry_get_visibility(*this); }
+            uint32_t InvisibleChar() const { return gtk_entry_get_invisible_char(*this); } 
+            void InvisibleChar(uint32_t unicode_char) { gtk_entry_set_invisible_char(*this, unicode_char); }
+            void WidthChars(int chars) { gtk_entry_set_width_chars(*this, chars); }
+            int WidthChars() const { return gtk_entry_get_width_chars(*this); }
+            void Editable(bool flag) { gtk_editable_set_editable(GTK_EDITABLE(Obj()), flag); }
+            bool Editable() const { return gtk_editable_get_editable(GTK_EDITABLE(Obj())); }
+           
+            void ActivatesDefault(bool flag) { gtk_entry_set_activates_default(*this, flag); }
             // callbacks
             BUILD_EVENT(OnActivate, "activate");
     };

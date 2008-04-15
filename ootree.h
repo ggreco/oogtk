@@ -142,6 +142,7 @@ namespace gtk {
 
             virtual void Remove(const TreeIter &it) = 0;
             virtual void Set(const TreeIter &it, ...) = 0;
+            virtual bool IsValid(const TreeIter &it) const = 0;
 
             ValidIter Children() {
                 ValidIter it;
@@ -245,8 +246,8 @@ namespace gtk {
                 gtk_list_store_swap(*this, &a, &b);
             }
 
-            bool IsValid(TreeIter &it) const {
-                return gtk_list_store_iter_is_valid(*this, &it);
+            bool IsValid(const TreeIter &it) const {
+                return gtk_list_store_iter_is_valid(*this, const_cast<TreeIter *>(&it));
             }
             void Clear() {
                 gtk_list_store_clear(*this);
@@ -356,11 +357,11 @@ namespace gtk {
             }
 
             // query sull'albero
-            int Depth(TreeIter &it) const {
-                return gtk_tree_store_iter_depth(*this, &it);
+            int Depth(const TreeIter &it) const {
+                return gtk_tree_store_iter_depth(*this, const_cast<TreeIter *>(&it));
             }
-            bool IsValid(TreeIter &it) const {
-                return gtk_tree_store_iter_is_valid(*this, &it);
+            bool IsValid(const TreeIter &it) const {
+                return gtk_tree_store_iter_is_valid(*this, const_cast<TreeIter *>(&it));
             }
             bool IsAncestor(TreeIter &it, TreeIter &descendant) const {
                 return gtk_tree_store_is_ancestor(*this, &it, &descendant);
@@ -565,9 +566,10 @@ namespace gtk {
             operator  GtkTreeView *() const { return GTK_TREE_VIEW(Obj()); }
 
             TreeView(GObject *obj) { Init(obj); }
-            TreeView(TreeModel &model) {
-                model.Ref();
-                Init(gtk_tree_view_new_with_model(model));
+            TreeView(const TreeModel &model) {
+                TreeModel &m = const_cast<TreeModel &>(model);
+                m.Ref();
+                Init(gtk_tree_view_new_with_model(m));
                 Internal(true);
             }
             TreeView() {
@@ -776,6 +778,83 @@ namespace gtk {
 
         return result;
     }
+
+    class ComboBox : public Bin
+    {
+        public:
+            operator  GtkComboBox *() const { return GTK_COMBO_BOX(Obj()); }
+
+            ComboBox(const DerivedType &) {}
+            ComboBox(GObject *obj) { Init(obj); }
+
+            ComboBox() {
+                Init(gtk_combo_box_new());
+                Internal(true);
+            }
+            ComboBox(const TreeModel &model) {
+                Init(gtk_combo_box_new_with_model(model));
+                Internal(true);
+            }
+            void Model(const TreeModel &model) { gtk_combo_box_set_model(*this, model); }
+            TreeModel *Model() {
+                return dynamic_cast<TreeModel *>(Object::Find((GObject *)
+                        gtk_combo_box_get_model(*this)));
+            }
+            int Active() const { return gtk_combo_box_get_active(*this); }
+            void Active(int row) { gtk_combo_box_set_active(*this, row); }
+
+            void Popup() { gtk_combo_box_popup(*this); }
+            void Popdown() { gtk_combo_box_popdown(*this); }
+
+            bool FocusOnClick() const { return gtk_combo_box_get_focus_on_click(*this); }
+            void FocusOnClick(bool flag) { gtk_combo_box_set_focus_on_click(*this, flag); }
+
+            int WrapWidth() const { return gtk_combo_box_get_wrap_width(*this); }
+            void WrapWidth(int width) const { gtk_combo_box_set_wrap_width(*this, width); }
+
+            virtual void SetActiveIter(const TreeIter &it) { 
+                gtk_combo_box_set_active_iter(*this, const_cast<TreeIter *>(&it));
+            }
+            virtual bool GetActiveIter(TreeIter &it) {
+                return gtk_combo_box_get_active_iter(*this, &it);
+            }
+   };
+
+    class ComboBoxText : public ComboBox
+    {
+        public:
+            operator  GtkComboBox *() const { return GTK_COMBO_BOX(Obj()); }
+
+            ComboBoxText() : ComboBox(DerivedType()) {
+                Init(gtk_combo_box_new_text());
+                Internal(true);
+            }
+            void Append(const std::string &text) {
+                gtk_combo_box_append_text(*this, text.c_str());
+            }
+            void Prepend(const std::string &text) {
+                gtk_combo_box_prepend_text(*this, text.c_str());
+            }
+            void Insert(const std::string &text, int position) {
+                gtk_combo_box_insert_text(*this, position, text.c_str());
+            }
+            void Remove(int row) { gtk_combo_box_remove_text(*this, row); }
+
+            std::string ActiveText() { 
+                std::string res;
+                if (gchar *c = gtk_combo_box_get_active_text(*this)) {
+                    res = c; 
+                    g_free(c);
+                }
+                return res;
+            }
+            virtual void SetActiveIter(const TreeIter &it) { 
+                throw std::runtime_error("Iter not available on ComboBoxText items!");
+            }
+            virtual bool GetActiveIter(TreeIter &it) {
+                throw std::runtime_error("Iter not available on ComboBoxText items!");
+            }
+    };
 }
 
 #endif

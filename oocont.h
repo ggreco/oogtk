@@ -70,7 +70,12 @@ namespace gtk {
                 Internal(true);
             }
 
-            void Policy(PolicyTypes &policy) {
+            ScrolledWindow(const Widget &child) {
+                Init(gtk_scrolled_window_new(NULL, NULL));
+                Internal(true);
+                Child(child);
+            }
+            void Policy(const PolicyTypes &policy) {
                 gtk_scrolled_window_set_policy(*this, 
                         policy.first, policy.second);
             }
