@@ -495,10 +495,6 @@ namespace gtk {
                 return new HButtonBox(o);
             } else if (GTK_IS_IMAGE(o)) {
                 return new Image(o);
-            } else if (GTK_IS_VBOX(o)) {
-                return new VBox(o);
-            } else if (GTK_IS_HBOX(o)) {
-                return new HBox(o);
             } else if (GTK_IS_TEXT_MARK(o)) { // textview handing, from ootext.h
                 return new TextMark(o);
             } else if (GTK_IS_TEXT_TAG(o)) {
@@ -535,10 +531,16 @@ namespace gtk {
                 return new ToolItem(o);
             } else if (GTK_IS_TOOLBAR(o)) {
                 return new Toolbar(o);
+            } else if (GTK_IS_COMBO_BOX(o)) {
+                return new ComboBox(o);
             } else if (GTK_IS_ASPECT_FRAME(o)) {
                 return new AspectFrame(o);
             } else if (GTK_IS_FRAME(o)) {
                 return new Frame(o);
+            } else if (GTK_IS_VBOX(o)) {
+                return new VBox(o);
+            } else if (GTK_IS_HBOX(o)) {
+                return new HBox(o);
             } else if (GTK_IS_DRAWING_AREA(o)) {
                 return new DrawingArea(o);
             } else if (GTK_IS_TABLE(o)) {
