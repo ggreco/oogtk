@@ -564,7 +564,7 @@ namespace gtk {
                           OneOf<GtkButtonsType, ButtonsType> buttontype = ButtonsOk,
                           OneOf<GtkDialogFlags, DialogFlags> flags = DialogDestroyWithParent,
                           Window *parent = NULL) : Dialog(DerivedType()) {
-                Init(gtk_message_dialog_new_with_markup(*parent, flags, msgtype, buttontype,
+                Init(gtk_message_dialog_new_with_markup(parent ? GTK_WINDOW(parent->Obj()) : NULL, flags, msgtype, buttontype,
                             msg.c_str()));
                 Internal(true);
             }
@@ -787,6 +787,10 @@ namespace gtk {
             ToolItem(GObject *obj) { Init(obj); }
             ToolItem(const DerivedType &) {} // do nothing
             ToolItem() { Init(gtk_tool_item_new()); Internal(true); }
+            ToolItem(const Widget &child) { 
+                Init(gtk_tool_item_new()); Internal(true); 
+                Child(child);
+            }
 
             bool Expand() const { return gtk_tool_item_get_expand(*this); }
             void Expand(bool flag) { return gtk_tool_item_set_expand(*this, flag); }
@@ -938,6 +942,39 @@ namespace gtk {
 
             void ResizeGrip(bool flag) { gtk_statusbar_set_has_resize_grip(*this, flag); }
             bool ResizeGrip() const { return gtk_statusbar_get_has_resize_grip(*this); }
+    };
+
+    enum SizeGroupMode {
+        SizeGroupNone = GTK_SIZE_GROUP_NONE,
+        SizeGroupHorizontal = GTK_SIZE_GROUP_HORIZONTAL,
+        SizeGroupVertical = GTK_SIZE_GROUP_VERTICAL,
+        SizeGroupBoth = GTK_SIZE_GROUP_BOTH
+    };
+
+    class SizeGroup : public Object {
+        public:
+            operator  GtkSizeGroup *() const { return GTK_SIZE_GROUP(Obj()); }
+            SizeGroup(GObject *obj) { Init(obj); }
+            SizeGroup(OneOf<GtkSizeGroupMode, SizeGroupMode> mode = SizeGroupHorizontal) { 
+                Init(gtk_size_group_new(mode));
+                Internal(true);
+            }
+            void Mode(OneOf<GtkSizeGroupMode, SizeGroupMode> mode) { gtk_size_group_set_mode(*this, mode); }
+            OneOf<GtkSizeGroupMode, SizeGroupMode> Mode() const { return gtk_size_group_get_mode(*this); }
+
+            void IgnoreHidden(bool flag) { gtk_size_group_set_ignore_hidden(*this, flag); }
+            bool IgnoreHidden() const { return gtk_size_group_get_ignore_hidden(*this); }
+            void Add(Widget &w) { gtk_size_group_add_widget(*this, w); }
+            void Remove(Widget &w) { gtk_size_group_remove_widget(*this, w); }
+            void Widgets(WidgetList &list) {
+                GSList *l = gtk_size_group_get_widgets(*this);
+
+                while (l) {
+                    if (Widget *w = dynamic_cast<Widget *>(Object::Find((GObject *)l->data)))
+                        list.push_back(w);
+                    l = l->next;
+                }
+            }
     };
 }
 

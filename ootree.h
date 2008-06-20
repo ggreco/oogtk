@@ -284,39 +284,47 @@ namespace gtk {
                 gtk_tree_store_set_valist(*this, const_cast<TreeIter *>(&it), va);
                 va_end(va);
             }
-            void AddFront(const TreeIter &parent, ...) {
+            TreeIter AddFront(const TreeIter &parent, ...) {
                 TreeIter it;
                 gtk_tree_store_prepend(*this, &it, const_cast<TreeIter *>(&parent));
                 va_list va;
                 va_start(va, parent);
                 gtk_tree_store_set_valist(*this, &it, va);
                 va_end(va);
+
+                return it;
             }
 
-            void AddTail(const TreeIter &parent, ...) {
+            TreeIter AddTail(const TreeIter &parent, ...) {
                 TreeIter it;
                 gtk_tree_store_append(*this, &it, const_cast<TreeIter *>(&parent));
                 va_list va;
                 va_start(va, parent);
                 gtk_tree_store_set_valist(*this, &it, va);
                 va_end(va);
+
+                return it;
             }
-            void AddFront(...) {
+            TreeIter AddFront(...) {
                 TreeIter it;
                 gtk_tree_store_prepend(*this, &it, NULL);
                 va_list va;
                 va_start(va, this);
                 gtk_tree_store_set_valist(*this, &it, va);
                 va_end(va);
+
+                return it;
             }
 
-            void AddTail(...) {
+            TreeIter AddTail(...) {
                 TreeIter it;
                 gtk_tree_store_append(*this, &it, NULL);
                 va_list va;
                 va_start(va, this);
                 gtk_tree_store_set_valist(*this, &it, va);
                 va_end(va);
+
+                return it;
             }
 
             TreeIter Append() {
@@ -489,7 +497,9 @@ namespace gtk {
             }
 
             void Title(const std::string &title) {
-                gtk_tree_view_column_set_widget(*this, Label(title).Ref());
+                Label l(title);
+                gtk_tree_view_column_set_widget(*this, l);
+                l.Show();
             }
             void GetRenderers(RendererList &objs) {
                 GList *list = gtk_tree_view_column_get_cell_renderers(*this), *l;
@@ -556,6 +566,10 @@ namespace gtk {
             void SortColumnId(int sort_col_id) { gtk_tree_view_column_set_sort_column_id(*this, sort_col_id); }
 
             gtk::TreeView *TreeView() const;
+            void PackStart(const CellRenderer &cell, bool expand = true) { gtk_tree_view_column_pack_start(*this, cell, expand); }
+            void AddAttribute(const CellRenderer &cell, const char *name, int column) {
+                gtk_tree_view_column_add_attribute(*this, cell, name, column);
+            }
     };
 
     typedef std::list<TreeViewColumn *> ColumnList;
@@ -610,9 +624,9 @@ namespace gtk {
 
 
             TreeViewColumn *AddTextColumn(const std::string &title, int id) {
-                CellRenderer *r = new CellRendererText();
+                CellRendererText r;
                 int col = gtk_tree_view_insert_column_with_attributes(*this, -1,
-                        title.c_str(), *r, "markup", id,
+                        title.c_str(), r, "markup", id,
                         NULL);
 
                 return Get(col - 1);
@@ -621,37 +635,52 @@ namespace gtk {
                                              int inconsistent = -1, int visibility = -1)
             {
 
-                CellRenderer *r = new CellRendererToggle();
+                CellRendererToggle r;
                 gint col;
 
                 if (visibility != -1) {
                     if (inconsistent != -1) 
                         col = gtk_tree_view_insert_column_with_attributes (*this, -1, title.c_str(),
-                                *r, "active", id, "inconsistent", inconsistent, "visible", visibility,
+                                r, "active", id, "inconsistent", inconsistent, "visible", visibility,
                                 NULL);
                     else
                         col = gtk_tree_view_insert_column_with_attributes (*this, -1, title.c_str(),
-                                *r, "active", id, "visible", visibility,
+                                r, "active", id, "visible", visibility,
                                 NULL);
                 }
                 else if (inconsistent != -1)
                     col = gtk_tree_view_insert_column_with_attributes (*this, -1, title.c_str(),
-                            *r, "active", id, "inconsistent", inconsistent,
+                            r, "active", id, "inconsistent", inconsistent,
                             NULL);
                 else 
                     col = gtk_tree_view_insert_column_with_attributes (*this, -1, title.c_str(),
-                            *r, "active", id,
+                            r, "active", id,
                             NULL);
 
                 return Get(col -1);
             }
 
-            TreeViewColumn *AddPixColumn(const std::string &title, int id) {
-                CellRenderer *r = new CellRendererPixbuf();
-                int col = gtk_tree_view_insert_column_with_attributes(*this, -1,
-                        title.c_str(), *r, "pixbuf", id,
-                        NULL);
+            TreeViewColumn *AddPixTextColumn(const std::string &title, int textid, int pixid) {
+                CellRendererPixbuf r1;
+                CellRendererText r2;
 
+                TreeViewColumn *col = new TreeViewColumn();
+
+                col->Title(title);
+                col->PackStart(r1, false);
+                col->PackStart(r2);
+                col->AddAttribute(r1, "pixbuf", pixid);
+                col->AddAttribute(r2, "markup", textid);
+                Append(*col);
+
+                return col;
+            }
+            TreeViewColumn *AddPixColumn(const std::string &title, int id) {
+                CellRendererPixbuf r;
+                int col = gtk_tree_view_insert_column_with_attributes(*this, -1,
+                        title.c_str(), r, "pixbuf", id,
+                        NULL);
+            
                 return Get(col - 1);
             }
 
@@ -818,6 +847,8 @@ namespace gtk {
             virtual bool GetActiveIter(TreeIter &it) {
                 return gtk_combo_box_get_active_iter(*this, &it);
             }
+
+            BUILD_EVENT(OnChanged, "changed");
    };
 
     class ComboBoxText : public ComboBox

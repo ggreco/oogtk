@@ -24,8 +24,8 @@ class MyApp : public Application
             setup.OnClick(&MyApp::setup, this);
             // note that you can use the Application built in quit directly, both on button
             // and on the delete signal on the window
-            quit.OnClick(&Application::Quit, dynamic_cast<Application *>(this));
-            m_win.OnDelete(&Application::Quit, dynamic_cast<Application *>(this), true);
+            quit.OnClick(&Application::QuitLoop, dynamic_cast<Application *>(this));
+            m_win.OnDelete(&Application::QuitLoop, dynamic_cast<Application *>(this), true);
 
             // let's add a nice toolbar
             
@@ -43,7 +43,7 @@ class MyApp : public Application
             // now we can build our toolbar
             Toolbar toolbar(tnew, tclear, tprint, tquit, tsep, thelp);
             
-            tquit.OnClick(&Application::Quit, dynamic_cast<Application *>(this));
+            tquit.OnClick(&Application::QuitLoop, dynamic_cast<Application *>(this));
             tnew.OnClick(&MyApp::setup, this);
             tclear.OnClick(&MyApp::clear, this);
             tprint.OnClick(&MyApp::stuff, this);

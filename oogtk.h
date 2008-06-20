@@ -252,6 +252,27 @@ namespace gtk
 
     class Entry: public Editable
     {
+            static void
+            insert_filtered_handler(GtkEditable *editable, gchar *new_text, gint new_text_length, gint *position, std::string *user_data) {
+                int i;
+                std::string result;
+
+                for (i=0; i < new_text_length; i++) {
+                    if (user_data->find(new_text[i]) == std::string::npos)
+                        continue;
+                    result.push_back(new_text[i]);
+                }
+
+                if (!result.empty()) {
+                    gtk_signal_handler_block_by_func (GTK_OBJECT (editable),
+                            GTK_SIGNAL_FUNC (insert_filtered_handler), user_data);
+                    gtk_editable_insert_text (editable, result.c_str(), result.length(), position);
+                    gtk_signal_handler_unblock_by_func (GTK_OBJECT (editable),
+                            GTK_SIGNAL_FUNC (insert_filtered_handler), user_data);
+                }
+                gtk_signal_emit_stop_by_name (GTK_OBJECT (editable), "insert_text");
+            }
+            std::string m_filter;
         public:
             operator  GtkEntry *() const { return GTK_ENTRY(Obj()); }
 
@@ -287,10 +308,25 @@ namespace gtk
             int WidthChars() const { return gtk_entry_get_width_chars(*this); }
             void Editable(bool flag) { gtk_editable_set_editable(GTK_EDITABLE(Obj()), flag); }
             bool Editable() const { return gtk_editable_get_editable(GTK_EDITABLE(Obj())); }
-           
+          
+            void Accepts(const std::string &chars) {
+                if (chars.empty()) {
+                    if (!m_filter.empty())
+                        g_signal_handlers_disconnect_by_func(Obj(), (void*)insert_filtered_handler, &m_filter);
+
+                    return;
+                }
+
+                if (m_filter.empty())
+                    g_signal_connect(Obj(), "insert_text", GCallback(insert_filtered_handler), &m_filter);
+               
+                m_filter = chars;
+            }
+
             void ActivatesDefault(bool flag) { gtk_entry_set_activates_default(*this, flag); }
             // callbacks
             BUILD_EVENT(OnActivate, "activate");
+            BUILD_EVENT(OnChanged, "changed");
     };
 
     class DrawingArea : public Widget {
@@ -314,11 +350,12 @@ namespace gtk
             Application(int &a, char **&b) { gtk_init(&a,&b); }
 
             Application() { gtk_init(NULL, NULL); }
-            void Run() { gtk_main(); }
-            void Flush() { while (gtk_events_pending()) gtk_main_iteration(); }
-            void Quit() { gtk_main_quit(); }
+            static void Run() { gtk_main(); }
+            static void Flush() { while (gtk_events_pending()) gtk_main_iteration(); }
+            static void Quit() { gtk_main_quit(); }
 
             // helpers for signals that need a fixed answer.
+            void QuitLoop() { gtk_main_quit(); }
             bool True() { return true; }
             bool False() { return false; }
 
@@ -555,6 +592,8 @@ namespace gtk {
                 return new ActionGroup(o);
             } else if (GTK_IS_ACTION(o)) {
                 return new Action(o);
+            } else if (GTK_IS_SIZE_GROUP(o)) {
+                return new SizeGroup(o);
             } else
                 std::cerr << "Undefined type " << g_type_name(GTK_OBJECT_TYPE(o));
         }
