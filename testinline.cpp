@@ -35,11 +35,11 @@ class MyApp : public gtk::Application
             button.Tooltip("If you click on this button...\nThe label in the window will change... hurrah!");
 
             // you can use also object provided by the default classes as callbacks. 
-            quit.OnClick(&gtk::Application::Quit, dynamic_cast<gtk::Application *>(this));
+            quit.OnClick(&gtk::Application::QuitLoop, dynamic_cast<gtk::Application *>(this));
 
             // you can define a void function for ondelete (that require a return code), and
             // specify the return code on the method line
-            m_win.OnDelete(&gtk::Application::Quit, dynamic_cast<gtk::Application *>(this), false);
+            m_win.OnDelete(&gtk::Application::QuitLoop, dynamic_cast<gtk::Application *>(this), false);
 
             // you can create box in this way if you are ok with the default packing values..
             gtk::HBox buttonbox(button, quit);

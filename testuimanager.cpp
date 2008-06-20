@@ -43,7 +43,7 @@ class MyApp : public Application
             l.push_back(ActionEntry("Test", "_Test", &MyApp::test, this, 3, 
                     "A not stock element with user_data!", "<control>T"));
             l.push_back(ActionEntry("Quit", GTK_STOCK_QUIT, 
-                        &Application::Quit, dynamic_cast<Application *>(this)));
+                        &Application::QuitLoop, dynamic_cast<Application *>(this)));
             group.Add(l);
            
             m_manager.Insert(group);

@@ -51,7 +51,7 @@ class MyApplication : public Application
 
             // let's add a quit button
             StockButton q(GTK_STOCK_QUIT);
-            q.OnClick(&Application::Quit, dynamic_cast<Application *>(this));
+            q.OnClick(&Application::QuitLoop, dynamic_cast<Application *>(this));
 
             // place everything in a vertical container
             VBox box(false, 8);
@@ -66,7 +66,7 @@ class MyApplication : public Application
             b9.Active(true);
 
 
-            m_window.OnDelete(&Application::Quit,
+            m_window.OnDelete(&Application::QuitLoop,
                     dynamic_cast<Application *>(this), true); // true here is needed to avoid the window to autoclose
             m_window.Child(box);
             m_window.ShowAll();
