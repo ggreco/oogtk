@@ -83,6 +83,9 @@ namespace gtk {
             if (acc) accel = acc;
         }
 
+        void Label(const std::string &l) { label = l; }
+        void Icon(const std::string &icon) { stock_id = icon; }
+
         template <typename A, typename B>
         ActionEntry(const std::string &nam, const std::string &lab,
                     void (A::*callback)(B), A *base, B data,

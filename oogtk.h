@@ -329,6 +329,39 @@ namespace gtk
             BUILD_EVENT(OnChanged, "changed");
     };
 
+    enum ProgressBarOrientation
+    {
+      ProgressLeftToRight = GTK_PROGRESS_LEFT_TO_RIGHT,
+      ProgressRightToLeft = GTK_PROGRESS_RIGHT_TO_LEFT,
+      ProgressBottomToTop = GTK_PROGRESS_BOTTOM_TO_TOP,
+      ProgressTopToBottom = GTK_PROGRESS_TOP_TO_BOTTOM
+    };
+
+    class ProgressBar : public Widget {
+        public:
+            operator GtkProgressBar *() const { return GTK_PROGRESS_BAR(Obj()); }
+            ProgressBar(GObject *obj) { Init(obj); }
+            ProgressBar() {
+                Init(gtk_progress_bar_new());
+                Internal(true);
+            }
+            void Pulse() { gtk_progress_bar_pulse(*this); }
+
+            // get/set methods
+            void Text(const std::string &text) { gtk_progress_bar_set_text(*this, text.c_str()); }
+            void Fraction(double value) { gtk_progress_bar_set_fraction(*this, value); }
+            void PulseStep(double value) { gtk_progress_bar_set_pulse_step(*this, value); }
+            void Orientation(OneOf<ProgressBarOrientation, GtkProgressBarOrientation> mode) {
+                gtk_progress_bar_set_orientation(*this, mode);
+            }
+            std::string Text() const { return gtk_progress_bar_get_text(*this); }
+            double Fraction() const { return gtk_progress_bar_get_fraction(*this); }
+            double PulseStep() const { return gtk_progress_bar_get_pulse_step(*this); }
+            OneOf<ProgressBarOrientation, GtkProgressBarOrientation> Orientation() const {
+                return gtk_progress_bar_get_orientation(*this);
+            }
+    };
+
     class DrawingArea : public Widget {
         public:
             operator GtkDrawingArea *() const { return GTK_DRAWING_AREA(Obj()); }
