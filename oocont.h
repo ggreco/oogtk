@@ -548,12 +548,23 @@ namespace gtk {
                           OneOf<GtkMessageType, MessageType> msgtype,
                           OneOf<GtkButtonsType, ButtonsType> buttontype,
                           const char *msg_format, ...) : Dialog(DerivedType()) {
-                char msg[4096];
+                char msg[8192];
                 va_list va;
 
                 va_start(va, msg_format);
                 vsnprintf(msg, sizeof(msg), msg_format, va);
                 va_end(va);
+
+                Init(gtk_message_dialog_new_with_markup(*parent, flags, msgtype, buttontype,
+                        msg));
+                Internal(true);
+            }
+            MessageDialog(va_list va, Window *parent, OneOf<GtkDialogFlags, DialogFlags> flags,
+                          OneOf<GtkMessageType, MessageType> msgtype,
+                          OneOf<GtkButtonsType, ButtonsType> buttontype,
+                          const char *msg_format) : Dialog(DerivedType()) {
+                char msg[8192];
+                vsnprintf(msg, sizeof(msg), msg_format, va);
 
                 Init(gtk_message_dialog_new_with_markup(*parent, flags, msgtype, buttontype,
                         msg));
@@ -590,6 +601,7 @@ namespace gtk {
                 Init(gtk_notebook_new());
                 Internal(true);
             }
+
 
             int Current() const { return gtk_notebook_get_current_page(*this); }
             void Current(int page) { gtk_notebook_set_current_page(*this, page); }
@@ -638,6 +650,14 @@ namespace gtk {
                     throw std::runtime_error("Asked CurrentPage for a notebook without pages?");
             }
 
+
+            // get/set methods
+            void ShowTabs(bool flag) { gtk_notebook_set_show_tabs(*this, flag); }
+            void ShowBorder(bool flag) {gtk_notebook_set_show_border(*this, flag); } 
+            void Scrollable(bool flag) {gtk_notebook_set_scrollable(*this, flag); }
+            bool ShowTabs() const { return gtk_notebook_get_show_tabs(*this); }
+            bool ShowBorder() const { return gtk_notebook_get_show_border(*this); } 
+            bool Scrollable() const { return gtk_notebook_get_scrollable(*this); }
     };
 
     enum AttachOptions
