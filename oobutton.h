@@ -36,7 +36,7 @@ namespace gtk {
             }
 
             // Added gtk prefix to avoid name conflict between class and method
-            void Image(gtk::Image &img) { gtk_button_set_image(*this, img); }
+            void Image(const gtk::Image &img) { gtk_button_set_image(*this, img); }
             Widget *Image() const {
                 GtkWidget *w = gtk_button_get_image(*this);
                 return dynamic_cast<Widget *>(Object::Find((GObject *)w));

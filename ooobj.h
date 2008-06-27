@@ -143,6 +143,7 @@ namespace gtk
         public:
             PropertyBase(const std::string &key) : keyword_(key) {}
             virtual void Set(Object *) const = 0;
+            virtual ~PropertyBase() {}
         protected:
             std::string keyword_;
     };
@@ -383,6 +384,8 @@ namespace gtk
                 }
                 else
                     throw std::runtime_error("Callback asking for an event with event NULL!");
+            default:
+                    throw std::runtime_error("Callback asking for an event with unknown type!");
         }
     }
 

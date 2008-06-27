@@ -3,12 +3,14 @@
 #define OOGTK_H
 
 #include <gtk/gtk.h>
+#include <glib/gprintf.h>
 #include <assert.h>
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <list>
 #include <map>
+#include <iomanip>
 #include "oogdk.h"
 
 namespace gtk
@@ -174,9 +176,28 @@ namespace gtk
                 Internal(true);
             }
 
-
+            template<typename T>
+            Label &operator<<(const T &type) {
+                std::ostringstream os(Get(), std::ios_base::app);
+                os << type;
+                Set(os.str());
+                return *this;
+            }
             void Set(const std::string &label) { gtk_label_set_markup(*this, label.c_str()); }
-            std::string Get() const { return gtk_label_get_text(*this); }
+            std::string Get() const { return gtk_label_get_label(*this); }
+            
+            void SetF(const char *format, ...) {
+                char *buffer;
+                va_list va;
+                va_start(va, format);
+                g_vasprintf(&buffer, format, va);
+                va_end(va);
+                Set(buffer);
+                g_free(buffer);
+            }
+
+            void Text(const std::string &plaintext) const { gtk_label_set_text(*this, plaintext.c_str()); }
+            std::string Text() const { return gtk_label_get_text(*this); }
 
             void Selectable(bool flag) { gtk_label_set_selectable(*this, flag); }
             bool Selectable() const { return gtk_label_get_selectable(*this); }
@@ -250,6 +271,13 @@ namespace gtk
             }
     };
 
+    const std::string EntryNumeric = "0123456789";
+    const std::string EntryIpAddress = "0123456789.";
+    const std::string EntryUpperCase = "ABCDEFGHIJKLMNOPQRSTUVXYWZ";
+    const std::string EntryLowerCase = "abcdefghijklmnopqrstuvxywz";
+    const std::string EntryLetters = EntryUpperCase + EntryLowerCase;
+    const std::string EntryAlphaNumeric = EntryLetters + EntryNumeric;
+
     class Entry: public Editable
     {
             static void
@@ -292,7 +320,23 @@ namespace gtk
                 os << t;
                 gtk_entry_set_text(*this, os.str().c_str());
             }
+            template<typename T>
+            Entry &operator<<(const T &t) {
+                std::ostringstream os(Get(), std::ios_base::app);
+                os << t;
+                Set(os.str());
+                return *this;
+            }
             void Set(const std::string &name) { gtk_entry_set_text(*this, name.c_str()); }
+            void SetF(const char *format, ...) {
+                char *buffer;
+                va_list va;
+                va_start(va, format);
+                g_vasprintf(&buffer, format, va);
+                va_end(va);
+                gtk_entry_set_text(*this, buffer);
+                g_free(buffer);
+            }
             std::string Get() const { return gtk_entry_get_text(*this); }
 
             // some get/set methods
@@ -635,4 +679,14 @@ namespace gtk {
     }
 
 }
+// stream operations
+inline std::ostream& operator<<(std::ostream& os, const gtk::Label &label) {
+    os << label.Get();
+    return os;
+}
+inline std::ostream& operator<<(std::ostream& os, const gtk::Entry &entry) {
+    os << entry.Get();
+    return os;
+}
+
 #endif
