@@ -122,6 +122,23 @@ namespace gtk {
     {
         public:
             operator  GtkTreeModel *() const { return GTK_TREE_MODEL(obj_); }
+
+            void GetValue(const TreeIter &it, int idx, int &value) {
+                gtk_tree_model_get(*this, 
+                        const_cast<TreeIter *>(&it), idx, &value, -1);
+            }
+            void GetValue(const TreeIter &it, int idx, void *&value) {
+                gtk_tree_model_get(*this, 
+                        const_cast<TreeIter *>(&it), idx, &value, -1);
+            }
+            void GetValue(const TreeIter &it, int idx, std::string &value) {
+                gchar *field;
+                gtk_tree_model_get(*this, 
+                        const_cast<TreeIter *>(&it), idx, &field, -1);
+                value = field;
+                g_free(field);
+            }
+
             void Get(const TreeIter &it, ...) {
                 va_list va;
                 va_start(va, it);
@@ -146,6 +163,9 @@ namespace gtk {
             virtual void Remove(const TreeIter &it) = 0;
             virtual void Set(const TreeIter &it, ...) = 0;
             virtual bool IsValid(const TreeIter &it) const = 0;
+            virtual void SetValue(const TreeIter &it, int idx, int value) = 0;
+            virtual void SetValue(const TreeIter &it, int idx, const std::string &value) = 0;
+            virtual void SetValue(const TreeIter &it, int idx, void *value) = 0;
 
             ValidIter Children() {
                 ValidIter it;
@@ -214,6 +234,20 @@ namespace gtk {
                 gtk_list_store_set_valist(*this, const_cast<TreeIter *>(&it), va);
                 va_end(va);
             }
+
+            void SetValue(const TreeIter &it, int idx, int value) {
+                gtk_list_store_set(*this, 
+                        const_cast<TreeIter *>(&it), idx, &value, -1);
+            }
+            void SetValue(const TreeIter &it, int idx, void *value) {
+                gtk_list_store_set(*this, 
+                        const_cast<TreeIter *>(&it), idx, value, -1);
+            }
+            void SetValue(const TreeIter &it, int idx, const std::string &value) {
+                gtk_list_store_set(*this, 
+                        const_cast<TreeIter *>(&it), idx, value.c_str(), -1);
+            }
+            
             void AddTail(...) {
                 TreeIter it;
                 gtk_list_store_append(*this, &it);
@@ -290,6 +324,19 @@ namespace gtk {
                 gtk_tree_store_set_valist(*this, const_cast<TreeIter *>(&it), va);
                 va_end(va);
             }
+            void SetValue(const TreeIter &it, int idx, int value) {
+                gtk_tree_store_set(*this, 
+                        const_cast<TreeIter *>(&it), idx, &value, -1);
+            }
+            void SetValue(const TreeIter &it, int idx, void *value) {
+                gtk_tree_store_set(*this, 
+                        const_cast<TreeIter *>(&it), idx, value, -1);
+            }
+            void SetValue(const TreeIter &it, int idx, const std::string &value) {
+                gtk_tree_store_set(*this, 
+                        const_cast<TreeIter *>(&it), idx, value.c_str(), -1);
+            }
+            
             TreeIter AddFront(const TreeIter &parent, ...) {
                 TreeIter it;
                 gtk_tree_store_prepend(*this, &it, const_cast<TreeIter *>(&parent));

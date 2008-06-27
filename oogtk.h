@@ -61,9 +61,8 @@ namespace gtk
             void Hide() { gtk_widget_hide(*this); }
             void Show(bool flag = true) { if (flag) gtk_widget_show(*this); else gtk_widget_hide(*this); }
             void ShowAll() { gtk_widget_show_all(*this); }
-            void Sensitive() { gtk_widget_set_sensitive(*this, TRUE); }
             void Insensitive() { Sensitive(false); }
-            void Sensitive(bool flag) { gtk_widget_set_sensitive(*this, flag); }
+            void Sensitive(bool flag = true) { gtk_widget_set_sensitive(*this, flag); }
             void Tooltip(const std::string &tip) { gtk_widget_set_tooltip_markup(*this, tip.c_str()); }
 
             void SizeRequest(int width, int height) { gtk_widget_set_size_request(*this, width, height); }
@@ -353,7 +352,7 @@ namespace gtk
             void Editable(bool flag) { gtk_editable_set_editable(GTK_EDITABLE(Obj()), flag); }
             bool Editable() const { return gtk_editable_get_editable(GTK_EDITABLE(Obj())); }
           
-            void Accepts(const std::string &chars) {
+            void Accepts(const std::string &chars, int maxlength = -1) {
                 if (chars.empty()) {
                     if (!m_filter.empty())
                         g_signal_handlers_disconnect_by_func(Obj(), (void*)insert_filtered_handler, &m_filter);
@@ -364,6 +363,9 @@ namespace gtk
                 if (m_filter.empty())
                     g_signal_connect(Obj(), "insert_text", GCallback(insert_filtered_handler), &m_filter);
                
+                if (maxlength > 0)
+                    MaxLength(maxlength);
+
                 m_filter = chars;
             }
 
