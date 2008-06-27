@@ -41,10 +41,12 @@ namespace gtk {
             TreePath &operator=(const TreePath &orig) {
                 gtk_tree_path_free(obj_);
                 obj_ = gtk_tree_path_copy(orig);
+                return *this;
             }
             TreePath &operator=(const GtkTreePath &orig) {
                 gtk_tree_path_free(obj_);
                 obj_ = gtk_tree_path_copy(&orig);
+                return *this;
             }
             std::string str() const {
                 std::string ret;
@@ -138,6 +140,7 @@ namespace gtk {
             ValidIter Children(TreeIter &parent) {
                 ValidIter it;
                 it.valid = gtk_tree_model_iter_children(*this, it, &parent);
+                return it;
             }
 
             virtual void Remove(const TreeIter &it) = 0;
@@ -147,6 +150,7 @@ namespace gtk {
             ValidIter Children() {
                 ValidIter it;
                 it.valid = gtk_tree_model_iter_children(*this, it, NULL);
+                return it;
             }
             bool HasChildren(TreeIter &it) const {
                 return gtk_tree_model_iter_has_child(*this, &it);
@@ -160,10 +164,12 @@ namespace gtk {
             ValidIter GetNthChild(TreeIter &parent, int position) {
                 ValidIter it;
                 it.valid = gtk_tree_model_iter_nth_child (*this, it, &parent, position);
+                return it;
             }
             ValidIter Parent(TreeIter &child) {
                 ValidIter it;
                 it.valid = gtk_tree_model_iter_parent (*this, it, &child);
+                return it;
             }
             int Columns() const {
                 return gtk_tree_model_get_n_columns(*this);
@@ -420,10 +426,12 @@ namespace gtk {
             TreeRowReference &operator=(const TreeRowReference &right) {
                 gtk_tree_row_reference_free(obj_);
                 obj_ = gtk_tree_row_reference_copy(right);
+                return *this;
             }
             TreeRowReference &operator=(const GtkTreeRowReference &right) {
                 gtk_tree_row_reference_free(obj_);
                 obj_ = gtk_tree_row_reference_copy(const_cast<GtkTreeRowReference *>(&right));
+                return *this;
             }
             ~TreeRowReference() {
                 gtk_tree_row_reference_free(obj_);
@@ -473,7 +481,7 @@ namespace gtk {
             void Radio(bool flag) { gtk_cell_renderer_toggle_set_radio(*this, flag); }
             bool Radio() const { return gtk_cell_renderer_toggle_get_radio(*this); }
             void Active(bool flag) { gtk_cell_renderer_toggle_set_active(*this, flag); }
-            bool Active() const { gtk_cell_renderer_toggle_get_active(*this); }
+            bool Active() const { return gtk_cell_renderer_toggle_get_active(*this); }
     };
 
     typedef std::list<CellRenderer *> RendererList;
@@ -701,7 +709,7 @@ namespace gtk {
             }
             void GetColumns(ColumnList &cols) {
                 GList *list = gtk_tree_view_get_columns(*this), *l;
-
+                l = list;
                 while (l) {
                     if (TreeViewColumn *o = dynamic_cast<TreeViewColumn *>(
                                 Object::Find((GObject *)l->data)))
@@ -709,6 +717,7 @@ namespace gtk {
 
                     l = l->next;
                 }
+                g_list_free(list);
             }
             void MoveAfter(TreeViewColumn &col, TreeViewColumn &ref) {
                 gtk_tree_view_move_column_after(*this, col, ref);

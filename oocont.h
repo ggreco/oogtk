@@ -2,7 +2,6 @@
 #define OOCONT_H
 
 #include "oogtk.h"
-
 #include <string>
 #include <vector>
 
@@ -98,9 +97,9 @@ namespace gtk {
             }
 
             void Spacing(int space) { gtk_box_set_spacing(*this, space); }
-            int Spacing(void) const { gtk_box_get_spacing(*this); }
+            int Spacing(void) const { return gtk_box_get_spacing(*this); }
             void Homogeneous(bool flag) { gtk_box_set_homogeneous(*this, flag); }
-            bool Homogeneous(void) const { gtk_box_get_homogeneous(*this); }
+            bool Homogeneous(void) const { return gtk_box_get_homogeneous(*this); }
 
             void ReorderChild(Widget &child, int position = -1) {
                 gtk_box_reorder_child(*this, child, position);
@@ -327,9 +326,9 @@ namespace gtk {
             }
 
             void TransientFor(Window &parent) { gtk_window_set_transient_for(*this, parent); }
-            bool Active() const { gtk_window_is_active(*this); }
+            bool Active() const { return gtk_window_is_active(*this); }
 
-            // shortcut che GTK si aspetta
+            // shortcut GTK uses
             void Move(int x, int y) { Position(x, y); }
             void Resize(int width, int height) { Size(width, height); }
 
@@ -510,8 +509,8 @@ namespace gtk {
                               OneOf<GtkFileChooserAction, FileChooserAction> action =  FileChooserActionOpen,
                               const ButtonVec &buttons = ButtonVec()) : 
                 Dialog(DerivedType()) {
-                Init(gtk_file_chooser_dialog_new(title.c_str(), NULL,
-                                                 action, NULL));
+                Init(gtk_file_chooser_dialog_new(title.c_str(), NULL, action, 
+                                          NULL, NULL));
                 AddButtons(buttons);
                 Internal(true);
             } 
@@ -548,26 +547,28 @@ namespace gtk {
                           OneOf<GtkMessageType, MessageType> msgtype,
                           OneOf<GtkButtonsType, ButtonsType> buttontype,
                           const char *msg_format, ...) : Dialog(DerivedType()) {
-                char msg[8192];
+                char *msg;
                 va_list va;
 
                 va_start(va, msg_format);
-                vsnprintf(msg, sizeof(msg), msg_format, va);
+                g_vasprintf(&msg, msg_format, va);
                 va_end(va);
 
                 Init(gtk_message_dialog_new_with_markup(*parent, flags, msgtype, buttontype,
                         msg));
+                g_free(msg);
                 Internal(true);
             }
             MessageDialog(va_list va, Window *parent, OneOf<GtkDialogFlags, DialogFlags> flags,
                           OneOf<GtkMessageType, MessageType> msgtype,
                           OneOf<GtkButtonsType, ButtonsType> buttontype,
                           const char *msg_format) : Dialog(DerivedType()) {
-                char msg[8192];
-                vsnprintf(msg, sizeof(msg), msg_format, va);
+                char *msg;
+                g_vasprintf(&msg, msg_format, va);
 
                 Init(gtk_message_dialog_new_with_markup(*parent, flags, msgtype, buttontype,
                         msg));
+                g_free(msg);
                 Internal(true);
             }
             MessageDialog(const std::string &msg,
@@ -743,7 +744,7 @@ namespace gtk {
             Frame(const DerivedType &) {}
             Frame(GObject *obj) { Init(obj); }
 
-            Frame(const std::string &label) {
+            Frame(const std::string &label = "") {
                 Init(gtk_frame_new(label.empty() ? NULL : label.c_str()));
                 Internal(true);
             }
@@ -754,8 +755,8 @@ namespace gtk {
             }
 
             void Label(const std::string &label) { gtk_frame_set_label(*this, label.c_str()); }
-            void Label(Widget &widget) { LabelWidget(widget); }
-            void LabelWidget(Widget &label) { gtk_frame_set_label_widget(*this, label); }
+            void Label(const Widget &widget) { LabelWidget(widget); }
+            void LabelWidget(const Widget &label) { gtk_frame_set_label_widget(*this, label); }
             std::string Label() const { return gtk_frame_get_label(*this); }
             Widget *LabelWidget() const { 
                 return dynamic_cast<Widget *>(

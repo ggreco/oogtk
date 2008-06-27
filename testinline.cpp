@@ -55,8 +55,12 @@ class MyApp : public gtk::Application
         }
 
         void mycbk() {
+            static int clicked = 0;
+            clicked ++;
             // let's give a new content to our label if the user click the button!
-            m_label.Set("<big><b>Changed!</b></big>\n\nJust to show you a <b>callback</b> at work!");
+            m_label.Set("<big><b>Changed!</b></big>");
+            
+            m_label << "\n\nJust to show you a <b>callback</b> at work (and streamed labels)!\n\n(Clicked <b>" << clicked << "</b> times)";
         }
 };
 

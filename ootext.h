@@ -421,6 +421,7 @@ namespace gtk {
             TextIter AtLocation(int x, int y) {
                 TextIter it;
                 gtk_text_view_get_iter_at_location(*this, it, x, y);
+                return it;
             }
           
             // flags

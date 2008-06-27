@@ -22,7 +22,7 @@ namespace gtk
             x(leftedge), y(topedge), w(width), h(height) {}
         Point Size() const { return Point(w,h); }
         Point Position() const { return Point(x,y); }
-        Rect &operator=(const GdkRectangle &r) { x = r.x; y = r.y; w = r.width; h = r.height; }
+        Rect &operator=(const GdkRectangle &r) { x = r.x; y = r.y; w = r.width; h = r.height; return *this; }
         int x,y,w,h;
     };
 
