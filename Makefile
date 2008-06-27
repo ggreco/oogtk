@@ -7,7 +7,7 @@ MODULES = testinline testbuilder testtree testdialog testobjects \
 all: $(MODULES)
 
 clean:
-	rm $(MODULES) ooedit make.errs
+	rm -f $(MODULES) ooedit make.errs
 
 test%: test%.cpp *.h
 	g++ -o $@ $(CXXFLAGS) $@.cpp $(LDFLAGS)
