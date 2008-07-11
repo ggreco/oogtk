@@ -6,12 +6,44 @@
 #include <vector>
 
 namespace gtk {
+    /** Base class for widgets which contain other widgets
+A GTK+ user interface is constructed by nesting widgets inside widgets. Container widgets are the inner nodes in the resulting tree of widgets: they contain other widgets. So, for example, you might have a Window containing a Frame containing a Label. If you wanted an image instead of a textual label inside the frame, you might replace the Label widget with a Image widget.
+
+There are two major kinds of container widgets in GTK+. Both are subclasses of the abstract Container base class.
+
+The first type of container widget has a single child widget and derives from Bin. These containers are decorators, which add some kind of functionality to the child. For example, a Button makes its child into a clickable button; a Frame draws a frame around its child and a Window places its child widget inside a top-level window.
+
+The second type of container can have more than one child; its purpose is to manage layout. This means that these containers assign sizes and positions to their children. For example, a HBox arranges its children in a horizontal row, and a Table arranges the widgets it contains in a two-dimensional grid.
+
+To fulfill its task, a layout container must negotiate the size requirements with its parent and its children. This negotiation is carried out in two phases, size requisition and size allocation.
+
+!Size Requisition
+
+The size requisition of a widget is it's desired width and height. This is represented by a Requisition.
+
+How a widget determines its desired size depends on the widget. A Label, for example, requests enough space to display all its text. Container widgets generally base their size request on the requisitions of their children.
+
+The size requisition phase of the widget layout process operates top-down. It starts at a top-level widget, typically a Window. The top-level widget asks its child for its size requisition by calling Widget::SizeRequest(). To determine its requisition, the child asks its own children for their requisitions and so on. Finally, the top-level widget will get a requisition back from its child.
+
+!Size Allocation
+
+When the top-level widget has determined how much space its child would like to have, the second phase of the size negotiation, size allocation, begins. Depending on its configuration (Window::Resizable()), the top-level widget may be able to expand in order to satisfy the size request or it may have to ignore the size request and keep its fixed size. It then tells its child widget how much space it gets by calling Widget::SizeAllocate(). The child widget divides the space among its children and tells each child how much space it got, and so on. Under normal circumstances, a Window will always give its child the amount of space the child requested.
+
+A child's size allocation is represented by a Allocation. This struct contains not only a width and height, but also a position (i.e. X and Y coordinates), so that containers can tell their children not only how much space they have gotten, but also where they are positioned inside the space available to the container.
+
+Widgets are required to honor the size allocation they receive; a size request is only a request, and widgets must be able to cope with any size.
+     */
     class Container : public Widget
     {
         public:
+/// DOXYS_OFF
             operator  GtkContainer *() const { return GTK_CONTAINER(Obj()); }
+/// DOXYS_ON
 
-            void Children(WidgetList &list) {
+            /** Returns the container's non-internal children.
+This method will fill the list you pass with the pointers to all the widgets contained in the container.
+            */
+            void Children(WidgetList &list /**< An empty list of pointers to Widget to be populated by the call */) {
                 GList *lst, *l = gtk_container_get_children(*this);
                 lst = l;
 
@@ -24,107 +56,259 @@ namespace gtk {
 
                 g_list_free(lst);
             }
-            void Add(const Widget &w) { gtk_container_add(*this, w); }
-            void Border(int size) { gtk_container_set_border_width(*this, size); }
+            /** Adds widget to container. 
+Typically used for simple containers such as Window, Frame, or Button; for more complicated layout containers such as Box or Table, this function will pick default packing parameters that may not be correct. So consider functions such as Box::PackStart() and Table::Attach() as an alternative to Container::Add() in those cases. A widget may be added to only one container at a time; you can't place the same widget inside two different containers. 
+*/
+            void Add(const Widget &w /**< a widget to be placed inside container */) { gtk_container_add(*this, w); }
+            /** Sets the border width of the container.
+The border width of a container is the amount of space to leave around the outside of the container. The only exception to this is Window; because toplevel windows can't leave space outside, they leave the space inside. The border is added on all sides of the container. To add space to only one side, one approach is to create a Alignment widget, call Widget::SizeRequest() to give it a size, and place it on the side of the container as a spacer.
+*/
+            void Border(int size /**< the size in pixel of the border width for the container */) { 
+                gtk_container_set_border_width(*this, size); 
+            }
+            /** Retrieves the border width of the container.
+             \sa Container::Border(int)
+             \return the size in pixel of the border width of the container.
+             */
             int Border() const { return gtk_container_get_border_width(*this); }
     };
+/** A container with just one child
+The Bin widget is a container with just one child. It is not very useful itself, but it is useful for deriving subclasses, since it provides common code needed for handling a single child widget.
 
+Many GTK+ widgets are subclasses of Bin, including Window, Button, Frame, HandleBox, and ScrolledWindow. 
+*/
     class Bin : public Container // COMPLETE API
     {
         public:
+/// DOXYS_OFF
             operator  GtkBin *() const { return GTK_BIN(Obj()); }
-
+/// DOXYS_ON
+/** Gets the child of the Bin, or NULL if the bin contains no child widget.
+If an OOGTK wrapper for the widget doesn't exists it will be created on the fly, see also Bin::Child(const Widget &)
+to see an example of this mechanism.
+\return pointer to child of the Bin container
+*/
             Widget *Child() {
                 return dynamic_cast<Widget *>(Object::Find((GObject *)gtk_bin_get_child(*this))); 
             }
-            void Child(const Widget &w) { Add(w); }
+/** Set the child of the Bin container.
+A reference to the object will be created so you can also use a temporary wrapper for it, see the following example for details.
+\example
+#include "oogtk.h"
+
+class MyApp : public gtk::Application {
+    gtk::Window window_;
+public:
+    MyApp() : window_("Wrapper test!") { 
+        window_.Child(gtk::Label("My window body")); // label wrapper is local but the underlying GTK object survive since it's referenced.
+        window_.ShowAll();
+    }
+    gtk::Label &Label() {
+        if (gtk::Label *l = dynamic_cast<gtk::Label *>(window_.Child()))
+            return *l;
+        else
+            throw "AAAARGH, error!";
+    }
+};
+int main() {
+    MyApp app;
+    std::cerr << "Label text: " << app.Label() << "\n";
+}
+\endexample
+*/
+            void Child(const Widget &w ) { Add(w); }
     };
 
+/// Abstract base class for MenuItem.
     class Item : public Bin // COMPLETE API
     {
         public:
+/// DOXYS_OFF
             operator  GtkItem *() const { return GTK_ITEM(Obj()); }
+/// DOXYS_ON
+            /// Emits the "select" signal on the item.
             void Select() { gtk_item_select(*this); }
+            /// Emits the "deselect" signal on the item.
             void Deselect() { gtk_item_deselect(*this); }
+            /// Emits the "toggle" signal on the item.
             void Toggle() { gtk_item_toggle(*this); }
     };
 
+    /// Determines when a scroll bar will be visible.
     enum PolicyType
     {
-      PolicyAlways = GTK_POLICY_ALWAYS,
-      PolicyAutomatic = GTK_POLICY_AUTOMATIC,
-      PolicyNever =GTK_POLICY_NEVER
+      PolicyAlways = GTK_POLICY_ALWAYS /**< The scrollbar is always visible. */,
+      PolicyAutomatic = GTK_POLICY_AUTOMATIC /**< The scrollbar will appear and disappear as necessary. For example, when all of a TreeView can not be seen. */,
+      PolicyNever =GTK_POLICY_NEVER /**< The scrollbar will never appear. */
     };
+    /// A pair of PolicyType to represent both horizontal and vertical adjustments.
     typedef std::pair<OneOf<GtkPolicyType, PolicyType>, 
                       OneOf<GtkPolicyType, PolicyType> > PolicyTypes;
 
+/** Adds scrollbars to its child widget.
+ScrolledWindow is a Bin subclass: it's a container the accepts a single child widget. ScrolledWindow adds scrollbars to the child widget and optionally draws a beveled frame around the child widget.
+
+The scrolled window can work in two ways. Some widgets have native scrolling support; these widgets have "slots" for Adjustment objects. [5] Widgets with native scroll support include TreeView, TextView, and Layout.
+
+For widgets that lack native scrolling support, the Viewport widget acts as an adaptor class, implementing scrollability for child widgets that lack their own scrolling capabilities. Use Viewport to scroll child widgets such as Table, Box, and so on.
+
+If a widget has native scrolling abilities, it can be added to the ScrolledWindow with Container::Add(). If a widget does not, you must first add the widget to a Viewport, then add the Viewport to the scrolled window. 
+
+The position of the scrollbars is controlled by the scroll adjustments. See Adjustment for the fields in an adjustment - for Scrollbar, used by ScrolledWindow, the "value" field represents the position of the scrollbar, which must be between the "lower" field and "upper - page_size." The "page_size" field represents the size of the visible scrollable area. The "step_increment" and "page_increment" fields are used when the user asks to step down (using the small stepper arrows) or page down (using for example the PageDown key).
+
+If a ScrolledWindow doesn't behave quite as you would like, or doesn't have exactly the right layout, it's very possible to set up your own scrolling with Scrollbar and for example a Table.
+
+ */
     class ScrolledWindow : public Bin
     {
         public:
+/// DOXYS_OFF            
             operator GtkScrolledWindow *() const { return GTK_SCROLLED_WINDOW(Obj()); }
-
             ScrolledWindow(GObject *obj) { Init(obj); }
+/// DOXYS_ON
+
+            /** Create a new scrolled window object without children. */
             ScrolledWindow() {
                 Init(gtk_scrolled_window_new(NULL, NULL));
                 Internal(true);
             }
 
-            ScrolledWindow(const Widget &child) {
+            /** Create a new scrolled window object.
+The constructor argument is a child that will be added to the scrolled window. 
+*/
+            ScrolledWindow(const Widget &child /**< Child of the ScrolledWindow */) {
                 Init(gtk_scrolled_window_new(NULL, NULL));
                 Internal(true);
                 Child(child);
             }
-            void Policy(const PolicyTypes &policy) {
+            /** Sets the scrollbar policy for the horizontal and vertical scrollbars. 
+The policy determines when the scrollbar should appear; it is a pair of values from the PolicyType enumeration. If PolicyAlways, the scrollbar is always present; if PolicyNever, the scrollbar is never present; if PolicyAutomatic, the scrollbar is present only if needed (that is, if the slider part of the bar would be smaller than the trough - the display is larger than the page size).
+\example
+// Shows only and in any case the vertical scrollbar.
+   gtk::ScrolledWindow sw;
+   sw.Policy(PolicyTypes(gtk::PolicyNever, gtk::PolicyAlways));
+\endexample
+*/
+            void Policy(const PolicyTypes &policy /**< A locally defined policy object*/) {
                 gtk_scrolled_window_set_policy(*this, 
                         policy.first, policy.second);
             }
-            
+            /** Retrieves the current policy values for the horizontal and vertical scrollbars. 
+             \sa ScrolledWindow::Policy(const PolicyTypes &)
+             \return A PolicyTypes object containing both horizontal (retval.first) and vertical (retval.second) policy values.
+             */
             PolicyTypes Policy() const {
                 GtkPolicyType w, h;
                 gtk_scrolled_window_get_policy(*this, &w, &h);
                 return PolicyTypes(w, h);
             }
     };
+/** Base class for box containers
+Box is an abstract widget which encapsulates functionality for a particular kind of container, one that organizes a variable number of widgets into a rectangular area. Box currently has two derived classes, HBox and VBox.
 
+The rectangular area of a Box is organized into either a single row or a single column of child widgets depending upon whether the box is of type HBox or VBox, respectively. Thus, all children of a Box are allocated one dimension in common, which is the height of a row, or the width of a column.
+
+Box uses a notion of packing. Packing refers to adding widgets with reference to a particular position in a Container. For a Box, there are two reference positions: the start and the end of the box. For a VBox, the start is defined as the top of the box and the end is defined as the bottom. For a HBox the start is defined as the left side and the end is defined as the right side.
+
+Use repeated calls to Box::PackStart() to pack widgets into a Box from start to end. Use Box::PackEnd() to add widgets from end to start. You may intersperse these calls and add widgets from both ends of the same Box.
+
+Because Box is a Container, you may also use Container::Add() to insert widgets into the box, and they will be packed as if with Box::PackStart() without specifying optional arguments. Use Container::Remove() to remove widgets from the Box.
+
+Use Box::Homogeneous(bool) to specify whether or not all children of the Box are forced to get the same amount of space.
+
+Use Box::Spacing(int) to determine how much space will be minimally placed between all children in the Box.
+
+Use Box::ReorderChild() to move a Box child to a different place in the box.
+
+*/
     class Box : public Container { // COMPLETE API
         public:
+/// DOXYS_OFF
             operator GtkBox *() const { return GTK_BOX(Obj()); }
-            void PackStart(const Widget &w, bool expand = true, bool fill = true, int padding = 0) {  
-                gtk_box_pack_start(*this, w, expand, fill, padding); 
+/// DOXYS_ON
+            /** Adds child to box, packed with reference to the start of box. 
+The child is packed after any other child packed with reference to the start of box.
+*/
+            void PackStart(const Widget &child /**< the Widget to be added to box.*/, 
+                    bool expand = true /**<  flag that indicates whether extra space should be given to this child. Any extra space given to the parent Box is divided up among all children with this attribute set to true; set when packed, true by default. */, 
+                    bool fill = true /**<  flag that indicates whether any extra space given to this child due to its expand attribute being set is actually allocated to the child, rather than being used as padding around the widget; set when packed, true by default. */, 
+                    int padding = 0 /**< the number of extra pixels to put between this child and its neighbors, set when packed, zero by default. */) {  
+                gtk_box_pack_start(*this, child, expand, fill, padding); 
             }
-            void PackEnd(const Widget &w, bool expand = true, bool fill = true, int padding = 0) { 
+            /** Adds child to box, packed with reference to the end of box. 
+The child is packed after (away from end of) any other child packed with reference to the end of box.
+*/
+            void PackEnd(const Widget &w /**< the Widget to be added to box */, 
+                         bool expand = true /**< true if the new child is to be given extra space allocated to box. The extra space will be divided evenly between all children of box that use this option, defaults to true. */, 
+                         bool fill = true /**< true if space given to child by the expand option is actually allocated to child, rather than just padding it. This parameter has no effect if expand is set to false. A child is always allocated the full height of a HBox and the full width of a VBox. This option affects the other dimension, defaults to true. */, 
+                         int padding = 0 /**< extra space in pixels to put between this child and its neighbors, over and above the global amount specified by "spacing" property. If child is a widget at one of the reference ends of box, then padding pixels are also put between child and the reference edge of box, defaults to 0 */) { 
                 gtk_box_pack_end(*this, w, expand, fill, padding); 
             }
 
-            void Spacing(int space) { gtk_box_set_spacing(*this, space); }
+            /// Sets the "spacing" property of box, which is the number of pixels to place between children of box.
+            void Spacing(int space /**< the number of pixels to put between children */) { 
+                gtk_box_set_spacing(*this, space); 
+            }
+            /// Gets the value set by Box::Spacing(int).
+            /// \return spacing between children, in pixels.
             int Spacing(void) const { return gtk_box_get_spacing(*this); }
-            void Homogeneous(bool flag) { gtk_box_set_homogeneous(*this, flag); }
+
+            /// Sets the "homogeneous" property of box, controlling whether or not all children of box are given equal space in the box.
+            void Homogeneous(bool flag /**< a boolean value, true to create equal allotments, false for variable allotments */) { 
+                gtk_box_set_homogeneous(*this, flag); 
+            }
+            /// Returns whether the box is homogeneous (all children are the same size).
+            /// \return true if the box is homogeneous.
             bool Homogeneous(void) const { return gtk_box_get_homogeneous(*this); }
 
-            void ReorderChild(Widget &child, int position = -1) {
+            /** Moves child to a new position in the list of box children. 
+The list is the children field of Box, and contains both widgets packed PACK_START as well as widgets packed PACK_END, in the order that these widgets were added to box.
+
+A widget's position in the box children list determines where the widget is packed into box. A child widget at some position in the list will be packed just after all other widgets of the same packing type that appear earlier in the list.
+*/
+            void ReorderChild(Widget &child /**< the Widget to move */ , 
+                              int position = -1 /**< the new position for child in the list of children of box, starting from 0. If negative, indicates the end of the list, defaults to -1, so if you don't specify the parameter you'll move the child widget to the end of the list. */) {
                 gtk_box_reorder_child(*this, child, position);
             }
     };
+/** A vertical container box
+VBox is a container that organizes child widgets into a single column.
 
+Use the Box packing interface to determine the arrangement, spacing, height, and alignment of VBox children.
+
+All children are allocated the same width.
+
+*/
     class VBox : public Box { // COMPLETE API
         public:
+/// DOXYS_OFF
             VBox(GObject *obj) { Init(obj); }
-            VBox(bool homogenous = true, int spacing = 0) { Init(gtk_vbox_new(homogenous, spacing)); Internal(true); }
+/// DOXYS_ON
+            /** Creates a new VBox. */
+            VBox(bool homogenous = true /**< true if all children are to be given equal space allotments, defaults to true. */, 
+                 int spacing = 0 /**< the number of pixels to place by default between children, defaults to 0. */) { 
+                Init(gtk_vbox_new(homogenous, spacing)); Internal(true); 
+            }
+
+            /** Creates a new homogeneous VBox, with no spacing and one child. */
             VBox(const Widget &w1) {
                 Init(gtk_vbox_new(true, 0)); Internal(true);
                 PackStart(w1);
             }
+            /** Creates a new homogeneous VBox, with no spacing and two children. */
             VBox(const Widget &w1, const Widget &w2) {
                 Init(gtk_vbox_new(false, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
             }
+            /** Creates a new homogeneous VBox, with no spacing and three children. */
             VBox(const Widget &w1, const Widget &w2, const Widget &w3) {
                 Init(gtk_vbox_new(false, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
                 PackStart(w3);
             }
+            /** Creates a new homogeneous VBox, with no spacing and four children. */
             VBox(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4) {
                 Init(gtk_vbox_new(false, 0)); Internal(true);
                 PackStart(w1);
@@ -132,6 +316,7 @@ namespace gtk {
                 PackStart(w3);
                 PackStart(w4);
             }
+            /** Creates a new homogeneous VBox, with no spacing and five children. */
             VBox(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4, const Widget &w5) {
                 Init(gtk_vbox_new(false, 0)); Internal(true);
                 PackStart(w1);
@@ -141,28 +326,44 @@ namespace gtk {
                 PackStart(w5);
             }
     };
+/** A horizontal container box
+HBox is a container that organizes child widgets into a single row.
 
+Use the Box packing interface to determine the arrangement, spacing, width, and alignment of HBox children.
+
+All children are allocated the same height. 
+*/
     class HBox : public Box { // COMPLETE API
         public:
+/// DOXYS_OFF
             HBox(const DerivedType &) {} // do nothing
             HBox(GObject *obj) { Init(obj); }
-            HBox(bool homogenous = true, int spacing = 0) { Init(gtk_hbox_new(homogenous, spacing)); Internal(true); }
+/// DOXYS_ON
+            /** Creates a new VBox. */
+            HBox(bool homogenous = true /**< true if all children are to be given equal space allotments, defaults to true.  */, 
+                 int spacing = 0 /**< the number of pixels to place by default between children, defaults to 0. */) { 
+                Init(gtk_hbox_new(homogenous, spacing)); Internal(true); 
+            }
             
+            /** Creates a new homogeneous HBox, with no spacing and a single child. */
             HBox(const Widget &w1) {
                 Init(gtk_hbox_new(true, 0)); Internal(true);
                 PackStart(w1);
             }
+            /** Creates a new homogeneous HBox, with no spacing and two children. */
             HBox(const Widget &w1, const Widget &w2) {
                 Init(gtk_hbox_new(false, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
             }
+            /** Creates a new homogeneous HBox, with no spacing and three children. */
             HBox(const Widget &w1, const Widget &w2, const Widget &w3) {
                 Init(gtk_hbox_new(false, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
                 PackStart(w3);
             }
+            /** Creates a new homogeneous HBox, with no spacing and four children. */
             HBox(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4) {
                 Init(gtk_hbox_new(false, 0)); Internal(true);
                 PackStart(w1);
@@ -170,6 +371,7 @@ namespace gtk {
                 PackStart(w3);
                 PackStart(w4);
             }
+            /** Creates a new homogeneous HBox, with no spacing and five children. */
             HBox(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4, const Widget &w5) {
                 Init(gtk_hbox_new(false, 0)); Internal(true);
                 PackStart(w1);
@@ -180,52 +382,87 @@ namespace gtk {
             }
     };
 
+    /// Used to dictate the style that a ButtonBox uses to layout the buttons it contains. (See also: VButtonBox and HButtonBox).
     enum ButtonBoxStyle
     {
-        ButtonBoxDefaultStyle = GTK_BUTTONBOX_DEFAULT_STYLE,
-        ButtonBoxSpread = GTK_BUTTONBOX_SPREAD,
-        ButtonBoxEdge   = GTK_BUTTONBOX_EDGE,
-        ButtonBoxStart  = GTK_BUTTONBOX_START,
-        ButtonBoxEnd    = GTK_BUTTONBOX_END,
-        ButtonBoxCenter = GTK_BUTTONBOX_CENTER
+        ButtonBoxDefaultStyle = GTK_BUTTONBOX_DEFAULT_STYLE /**< Default packing. */,
+        ButtonBoxSpread = GTK_BUTTONBOX_SPREAD /**< Buttons are evenly spread across the box. */,
+        ButtonBoxEdge   = GTK_BUTTONBOX_EDGE /**< Buttons are placed at the edges of the box. */,
+        ButtonBoxStart  = GTK_BUTTONBOX_START /**< Buttons are grouped towards the start of the box, (on the left for a HBox, or the top for a VBox). */,
+        ButtonBoxEnd    = GTK_BUTTONBOX_END /**< Buttons are grouped towards the end of the box, (on the right for a HBox, or the bottom for a VBox). */,
+        ButtonBoxCenter = GTK_BUTTONBOX_CENTER /**< Buttons are centered in the box. Since 2.12 */
     };
 
+/** Base class for HButtonBox and VButtonBox.
+The primary purpose of this class is to keep track of the various properties of HButtonBox and VButtonBox widgets.
+
+ButtonBox::ChildSize() retrieves the minimum width and height for widgets in a given button box. ButtonBox::ChildSize(const Point &) allows those properties to be changed.
+
+The internal padding of buttons can be retrieved and changed per button box using ButtonBox::ChildPadding().
+
+ButtonBox::Spacing() retrieve and change default number of pixels between buttons, respectively.
+
+ButtonBox::Layout() retrieve and alter the method used to spread the buttons in a button box across the container, respectively.
+
+The main purpose of ButtonBox is to make sure the children have all the same size. Therefore it ignores the homogeneous property which it inherited from Box, and always behaves as if homogeneous was true.
+
+*/
     class ButtonBox : public Box { // COMPLETE API
         public:
+/// DOXYS_OFF
             operator GtkButtonBox *() const { return GTK_BUTTON_BOX(Obj()); }
+/// DOXYS_ON
+            /** Sets whether child should appear in a secondary group of children, typical use of a secondary child is the help button in a dialog.
 
-            void Secondary(Widget &child, bool flag) {
+This group appears after the other children if the style is ButtonBoxStart, ButtonBoxSpread or ButtonBoxEdge, and before the other children if the style is ButtonBoxEnd. For horizontal button boxes, the definition of before/after depends on direction of the widget (see Widget::Direction()). If the style is ButtonBoxStart or ButtonBoxEnd, then the secondary children are aligned at the other end of the button box from the main children. For the other styles, they appear immediately next to the main children.
+*/
+            void Secondary(Widget &child /**< a child of the ButtonBox */,
+                          bool flag /**< if true, the child appears in a secondary group of the button box.*/) {
                 gtk_button_box_set_child_secondary(*this, child, flag);
             }
-            bool Secondary(Widget &child) const {
+            /** Returns whether child should appear in a secondary group of children. */
+            bool Secondary(Widget &child /**< a child of the ButtonBox */) const {
                 return gtk_button_box_get_child_secondary(*this, child);
             }
 
-            void Layout(OneOf<GtkButtonBoxStyle, ButtonBoxStyle> style) {
+            //// Changes the way buttons are arranged in their container.
+            void Layout(OneOf<GtkButtonBoxStyle, ButtonBoxStyle> style /**< the new layout style. */) {
                 gtk_button_box_set_layout(*this, style);
             }
+            /// Retrieves the way buttons are arranged in their container.
+            /// \return the actual layout style
             OneOf<GtkButtonBoxStyle, ButtonBoxStyle> Layout() const {
                 return gtk_button_box_get_layout(*this);
             }
 
-            void ChildPadding(int x, int y) {
+            /// Changes the amount of internal padding used by all buttons in a given button box.
+            void ChildPadding(int x /**< the horizontal padding that should be used by each button in widget. */, 
+                              int y /**< 	the vertical padding that should be used by each button in widget. */ ) {
                 gtk_button_box_set_child_ipadding(*this, x, y);
             }
-            void ChildPadding(const Point &pad) {
+            /// Changes the amount of internal padding used by all buttons in a given button box.
+            void ChildPadding(const Point &pad /**< a Point containing the padding values.*/) {
                 gtk_button_box_set_child_ipadding(*this, pad.x, pad.y);
             }
+            /// Gets the default number of pixels that pad the buttons in a given button box.
+            /// \return a Point containing the x and y values of the padding.
             Point ChildPadding() const {
                 Point pad;
                 gtk_button_box_get_child_ipadding(*this, &pad.x, &pad.y);
                 return pad;
             }
 
-            void ChildSize(int min_width, int min_height) {
+            /// Sets a new default size for the children of a given button box.
+            void ChildSize(int min_width /**< a default width for buttons in widget. */, 
+                           int min_height /**< a default height for buttons in widget. */) {
                 gtk_button_box_set_child_size(*this, min_width, min_height);
             }
-            void ChildSize(const Point &minsize) {
+            /// Sets a new default size for the children of a given button box.
+            void ChildSize(const Point &minsize /**< a Point structure containing the width and height for the default child */) {
                 gtk_button_box_set_child_size(*this, minsize.x, minsize.y);
             }
+            /// Retrieves the current width and height of all child widgets in a button box.
+            /// \return a Point containing the width and the height of the default size.
             Point ChildSize() const {
                 Point minsize;
                 gtk_button_box_get_child_size(*this, &minsize.x, &minsize.y);
@@ -233,404 +470,113 @@ namespace gtk {
             }
     };
 
-    class HButtonBox : public ButtonBox { // COMPLETE API
+/** A container for arranging buttons horizontally
+A button box should be used to provide a consistent layout of buttons throughout your application. The layout/spacing can be altered by the programmer, or if desired, by the user to alter the 'feel' of a program to a small degree.
+
+Buttons are packed into a button box the same way widgets are added to any other container, using Container::Add(). You can also use Box::PackStart() or Box::PackEnd(), but for button boxes both these functions work just like Container::Add(), ie., they pack the button in a way that depends on the current layout style and on whether the button has had ButtonBox::Secondary() called on it.
+
+The spacing between buttons can be set with Box::Spacing(). The arrangement and layout of the buttons can be changed with Box::Layout(). 
+*/
+class HButtonBox : public ButtonBox { // COMPLETE API
         public:
+/// DOXYS_OFF
             HButtonBox(GObject *obj) { Init(obj); }
+/// DOXYS_ON
+
+/// Create a new HORIZONTAL button box.
             HButtonBox() { 
                 Init(gtk_hbutton_box_new());
                 Internal(true);
             }
     };
+
+/** A container for arranging buttons vertically
+	
+A button box should be used to provide a consistent layout of buttons throughout your application. The layout/spacing can be altered by the programmer, or if desired, by the user to alter the 'feel' of a program to a small degree.
+
+Buttons are packed into a button box the same way widgets are added to any other container, using Container::Add(). You can also use Box::PackStart() or Box::PackEnd(), but for button boxes both these functions work just like Container::Add(), ie., they pack the button in a way that depends on the current layout style and on whether the button has had ButtonBox::Secondary() called on it.
+
+The spacing between buttons can be set with Box::Spacing(). The arrangement and layout of the buttons can be changed with Box::Layout(). 
+*/
     class VButtonBox : public ButtonBox { // COMPLETE API
         public:
+/// DOXYS_OFF
             VButtonBox(GObject *obj) { Init(obj); }
+/// DOXYS_ON
+
+/// Create a new VERTICAL button box.
             VButtonBox() { 
                 Init(gtk_vbutton_box_new());
                 Internal(true);
             }
     };
-    
-    enum WindowType
-    {
-        WindowTopLevel = GTK_WINDOW_TOPLEVEL,
-        WindowPopup = GTK_WINDOW_POPUP
-    };
 
-    enum WindowPosition
-    {
-      PositionNone           = GTK_WIN_POS_NONE,
-      PositionCenter         = GTK_WIN_POS_CENTER,
-      PositionMouse          = GTK_WIN_POS_MOUSE,
-      PositionCenterAlways   = GTK_WIN_POS_CENTER_ALWAYS,
-      PositionCenterOnParent = GTK_WIN_POS_CENTER_ON_PARENT
-    };
+/** A tabbed notebook container
+The Notebook widget is a Container whose children are pages that can be switched between using tab labels along one edge.
 
-    class AccelGroup : public Object {
-        public:
-            operator  GtkAccelGroup *() const { return GTK_ACCEL_GROUP(obj_); }
-            AccelGroup(GObject *obj) { Init(obj); }
-    };
+There are many configuration options for Notebook. Among other things, you can choose on which edge the tabs appear (see Notebook::TabPos()), whether, if there are too many tabs to fit the noteobook should be made bigger or scrolling arrows added (see Notebook::Scrollable), and whether there will be a popup menu allowing the users to switch pages. (see Notebook::Popup())
 
-
-    class Window : public Bin
-    {
-        public:
-            operator  GtkWindow *() const { return GTK_WINDOW(Obj()); }
-            Window(const DerivedType &) {} // do nothing
-            Window(GObject *obj) { Init(obj); }
-            Window(const std::string &title, 
-                   OneOf<GtkWindowType, WindowType> type = WindowTopLevel) {
-                Init(gtk_window_new(type));
-
-                if (!title.empty())
-                    gtk_window_set_title(GTK_WINDOW(obj_), title.c_str());
-                Internal(true);
-            }
-
-            // windows are special objects and must be destroyed
-            virtual ~Window() { if (ObjType() == InternalObj) gtk_widget_destroy(GTK_WIDGET(Obj())); }
-            // window signals
-            BUILD_EVENT(OnDelete, "delete_event");
-
-            // accel group stuff
-            void Add(const AccelGroup &group) { gtk_window_add_accel_group(*this, group); }
-            void Remove(const AccelGroup &group) { gtk_window_remove_accel_group(*this, group); }
-
-            // flags get/set 
-            bool Resizable() const { return gtk_window_get_resizable(*this); }
-            void Resizable(bool flag) { gtk_window_set_resizable(*this, flag); }
-
-            bool Modal() const { return gtk_window_get_modal(*this); }
-            void Modal(bool flag) { gtk_window_set_modal(*this, flag); }
-
-            std::string Title() const { return std::string(gtk_window_get_title(*this)); }
-            void Title(const std::string &title) { gtk_window_set_title(*this, title.c_str()); }
-
-            Point Size() const { 
-                Point pos;
-                gtk_window_get_size(*this, &pos.x, &pos.y); 
-                return pos;
-            }
-            void Size(const Point &size) { Size(size.x, size.y); }
-            void Size(int width, int height) { gtk_window_resize(*this, width, height); }
-
-            Point Position() const { 
-                Point pos;
-                gtk_window_get_position(*this, &pos.x, &pos.y);
-                return pos;
-            }
-            void Position(int x, int y) { gtk_window_move(*this, x, y); }
-            void Position(const Point &origin) { Position(origin.x, origin.y); }
-            void Position(OneOf<GtkWindowPosition, WindowPosition> pos) { 
-                gtk_window_set_position(*this, pos); 
-            }
-
-            void TransientFor(Window &parent) { gtk_window_set_transient_for(*this, parent); }
-            bool Active() const { return gtk_window_is_active(*this); }
-
-            // shortcut GTK uses
-            void Move(int x, int y) { Position(x, y); }
-            void Resize(int width, int height) { Size(width, height); }
-
-    };
-
-    typedef std::pair<std::string, int> ButtonData;
-    typedef std::vector<ButtonData> ButtonVec;
-
-    enum DialogFlags
-    {
-        DialogModal = GTK_DIALOG_MODAL, /* call gtk_window_set_modal (win, TRUE) */
-        DialogDestroyWithParent = GTK_DIALOG_DESTROY_WITH_PARENT, /* call gtk_window_set_destroy_with_parent () */
-        DialogNoSeparator = GTK_DIALOG_NO_SEPARATOR
-    };
-
-    inline DialogFlags operator|(DialogFlags a, DialogFlags b) { return (DialogFlags)(((int)a)|((int)b)); }
-
-    enum ResponseType
-    {
-        /* GTK returns this if a response widget has no response_id,
-         * or if the dialog gets programmatically hidden or destroyed.
-         */
-        ResponseNone = GTK_RESPONSE_NONE,
-
-        /* GTK won't return these unless you pass them in
-         * as the response for an action widget. They are
-         * for your convenience.
-         */
-        ResponseReject = GTK_RESPONSE_REJECT,
-        ResponseAccept = GTK_RESPONSE_ACCEPT,
-
-        /* If the dialog is deleted. */
-        ResponseDeleteEvent = GTK_RESPONSE_DELETE_EVENT,
-
-        /* These are returned from GTK dialogs, and you can also use them
-         * yourself if you like.
-         */
-        ResponseOk = GTK_RESPONSE_OK,
-        ResponseCancel = GTK_RESPONSE_CANCEL,
-        ResponseClose = GTK_RESPONSE_CLOSE,
-        ResponseYes = GTK_RESPONSE_YES,
-        ResponseNo = GTK_RESPONSE_NO,
-        ResponseApply = GTK_RESPONSE_APPLY,
-        ResponseHelp = GTK_RESPONSE_HELP
-    };
-
-    class Dialog : public Window
-    {
-        public:
-            operator  GtkDialog *() const { return GTK_DIALOG(Obj()); }
-
-            Dialog(GObject *obj) : Window(DerivedType()) { Init(obj); }
-            Dialog(const DerivedType &d) : Window(d) {}
-
-            Dialog() : Window(DerivedType()) {
-                Init(gtk_dialog_new());
-                Internal(true);
-            }
-            Dialog(const std::string &title, const ButtonVec &buttons, 
-                   Window *parent = NULL) : Window(DerivedType()) {
-                Init(gtk_dialog_new());
-                AddButtons(buttons);
-                Title(title);
-                Internal(true);
-                if (parent) 
-                    Window::TransientFor(*parent);
-            }
-            void Body(Widget &widget) {
-                gtk_container_add(GTK_CONTAINER(GTK_DIALOG(Obj())->vbox), 
-                                  widget);
-            }
-            void AddButton(const std::string &label, int rc) {
-                gtk_dialog_add_button(*this, label.c_str(), rc);
-            }
-            void AddButton(const ButtonData &button) {
-                AddButton(button.first, button.second);
-            }
-            void AddButtons(const ButtonVec &buttons) {
-                for (ButtonVec::const_iterator it = buttons.begin(); 
-                                               it != buttons.end(); ++it)
-                    AddButton(*it);
-            }
-
-            int Run() { return gtk_dialog_run(*this); }
-            void Response(int response_id) { gtk_dialog_response(*this, response_id); }
-            void DefaultResponse(int id) { gtk_dialog_set_default_response(*this, id); }
-
-            void Separator(bool flag = false) { gtk_dialog_set_has_separator(*this, flag); }
-            bool Separator() { return gtk_dialog_get_has_separator(*this); }
-    };
-
-    enum FileChooserAction
-    {
-        FileChooserActionOpen = GTK_FILE_CHOOSER_ACTION_OPEN,
-        FileChooserActionSave = GTK_FILE_CHOOSER_ACTION_SAVE,
-        FileChooserActionSelectFolder = GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
-        FileChooserActionCreateFolder = GTK_FILE_CHOOSER_ACTION_CREATE_FOLDER
-    };
-
-    class FileChooser {
-        public:
-            virtual GtkFileChooser *getobj() const = 0; // this is needed to make it pure virtual
-            virtual ~FileChooser() {}
-
-            // get/set methods
-            std::string Filename() const {
-                std::string file;
-                if (gchar *name = gtk_file_chooser_get_filename(getobj())) {
-                    file = name;
-                    g_free(name);
-                }
-                return file;
-            }
-            bool Filename(const std::string &name) {
-                return gtk_file_chooser_set_filename(getobj(), name.c_str());
-            }
-
-            std::string CurrentFolder() const {
-                std::string result;
-                if (gchar *folder = gtk_file_chooser_get_current_folder(getobj())) {
-                    result = folder;
-                    g_free(folder);
-                }
-                return result;
-            }
-            bool CurrentFolder(const std::string &folder) {
-                 return gtk_file_chooser_set_current_folder(getobj(), folder.c_str());
-            }
-
-            bool LocalOnly() const { return gtk_file_chooser_get_local_only(getobj()); }
-            void LocalOnly(bool flag) { gtk_file_chooser_set_local_only(getobj(), flag); }
-            bool SelectMultiple() const { return gtk_file_chooser_get_select_multiple(getobj()); }
-            void SelectMultiple(bool flag) { gtk_file_chooser_set_select_multiple(getobj(), flag); }
-            bool ShowHidden() const { return gtk_file_chooser_get_show_hidden(getobj()); }
-            void ShowHidden(bool flag) { gtk_file_chooser_set_show_hidden(getobj(), flag); }
-
-            OneOf<GtkFileChooserAction, FileChooserAction> Action() const { 
-                return gtk_file_chooser_get_action(getobj()); 
-            }
-            void Action(OneOf<GtkFileChooserAction, FileChooserAction> action) { 
-                gtk_file_chooser_set_action(getobj(), action); 
-            }
-
-            bool OverwriteConfirmation() const { return gtk_file_chooser_get_do_overwrite_confirmation(getobj()); }
-            void OverwriteConfirmation(bool flag) { gtk_file_chooser_set_do_overwrite_confirmation(getobj(), flag); }
-
-            // selections
-            void SelectAll() { gtk_file_chooser_select_all(getobj()); }
-            void UnselectAll() { gtk_file_chooser_unselect_all(getobj()); }
-            bool SelectFilename(const std::string &name) {
-                return gtk_file_chooser_select_filename(getobj(), name.c_str());
-            }
-            void UnselectFilename(const std::string &name) {
-                gtk_file_chooser_unselect_filename(getobj(), name.c_str());
-            }
-
-            void Filenames(std::vector<std::string> &results) {
-                if (GSList *l = gtk_file_chooser_get_filenames(getobj())) {
-                    GSList *it = l;
-
-                    while (it) {
-                        results.push_back((char *)it->data);
-                        g_free(it->data);
-                        it = it->next;
-                    }
-                    g_slist_free(l);
-                }
-            }
-    };
-
-    class FileChooserDialog : public Dialog, public FileChooser {
-        public:
-            operator  GtkFileChooserDialog *() const { return GTK_FILE_CHOOSER_DIALOG(Obj()); }
-
-            FileChooserDialog(GObject *obj) : Dialog(DerivedType()) { Init(obj); }
-         
-            FileChooserDialog(const std::string &title = "", Window *parent_window = NULL,
-                              OneOf<GtkFileChooserAction, FileChooserAction> action =  FileChooserActionOpen,
-                              const ButtonVec &buttons = ButtonVec()) : 
-                Dialog(DerivedType()) {
-                Init(gtk_file_chooser_dialog_new(title.c_str(), NULL, action, 
-                                          NULL, NULL));
-                AddButtons(buttons);
-                Internal(true);
-            } 
-            virtual GtkFileChooser *getobj() const { return GTK_FILE_CHOOSER(Obj()); }
-    };
-
-    enum MessageType
-    {
-        MessageInfo = GTK_MESSAGE_INFO,
-        MessageWarning = GTK_MESSAGE_WARNING,
-        MessageQuestion = GTK_MESSAGE_QUESTION,
-        MessageError = GTK_MESSAGE_ERROR,
-        MessageOther = GTK_MESSAGE_OTHER
-    };
-
-    enum ButtonsType
-    {
-        ButtonsNone = GTK_BUTTONS_NONE,
-        ButtonsOk = GTK_BUTTONS_OK,
-        ButtonsClose = GTK_BUTTONS_CLOSE,
-        ButtonsCancel = GTK_BUTTONS_CANCEL,
-        ButtonsYesNo = GTK_BUTTONS_YES_NO,
-        ButtonsOkCancel = GTK_BUTTONS_OK_CANCEL
-    };
-
-    class MessageDialog : public Dialog
-    {
-        public:
-            operator  GtkMessageDialog *() const { return GTK_MESSAGE_DIALOG(Obj()); }
-
-            MessageDialog(GObject *obj) : Dialog(DerivedType()) { Init(obj); }
-
-            MessageDialog(Window *parent, OneOf<GtkDialogFlags, DialogFlags> flags,
-                          OneOf<GtkMessageType, MessageType> msgtype,
-                          OneOf<GtkButtonsType, ButtonsType> buttontype,
-                          const char *msg_format, ...) : Dialog(DerivedType()) {
-                char *msg;
-                va_list va;
-
-                va_start(va, msg_format);
-                g_vasprintf(&msg, msg_format, va);
-                va_end(va);
-
-                Init(gtk_message_dialog_new_with_markup(*parent, flags, msgtype, buttontype,
-                        msg));
-                g_free(msg);
-                Internal(true);
-            }
-            MessageDialog(va_list va, Window *parent, OneOf<GtkDialogFlags, DialogFlags> flags,
-                          OneOf<GtkMessageType, MessageType> msgtype,
-                          OneOf<GtkButtonsType, ButtonsType> buttontype,
-                          const char *msg_format) : Dialog(DerivedType()) {
-                char *msg;
-                g_vasprintf(&msg, msg_format, va);
-
-                Init(gtk_message_dialog_new_with_markup(*parent, flags, msgtype, buttontype,
-                        msg));
-                g_free(msg);
-                Internal(true);
-            }
-            MessageDialog(const std::string &msg,
-                          OneOf<GtkMessageType, MessageType> msgtype = MessageInfo,
-                          OneOf<GtkButtonsType, ButtonsType> buttontype = ButtonsOk,
-                          OneOf<GtkDialogFlags, DialogFlags> flags = DialogDestroyWithParent,
-                          Window *parent = NULL) : Dialog(DerivedType()) {
-                Init(gtk_message_dialog_new_with_markup(parent ? GTK_WINDOW(parent->Obj()) : NULL, flags, msgtype, buttontype,
-                            msg.c_str()));
-                Internal(true);
-            }
-            void Text(const std::string &text) {
-                gtk_message_dialog_set_markup(*this, text.c_str());
-            }
-            void Secondary(const std::string &text) {
-                gtk_message_dialog_format_secondary_markup(*this, text.c_str());
-            }
-            void Image(gtk::Image &image) {
-                 gtk_message_dialog_set_image(*this, image);
-            }
-    };
-
+*/
     class Notebook : public Container
     {
          public:
+/// DOXYS_OFF             
             operator  GtkNotebook *() const { return GTK_NOTEBOOK(Obj()); }
-
             Notebook(GObject *obj) { Init(obj); }
+/// DOXYS_ON
 
+/// Creates a new GtkNotebook widget with no pages.
             Notebook() {
                 Init(gtk_notebook_new());
                 Internal(true);
             }
 
 
+            /// Returns the page number of the current page.
+            /// \return the index (starting from 0) of the current page in the notebook. If the notebook has no pages, then -1 will be returned.
             int Current() const { return gtk_notebook_get_current_page(*this); }
+            ///
             void Current(int page) { gtk_notebook_set_current_page(*this, page); }
 
-            int Append(const Widget &contents, const Widget &label) {
+            /// Appends a page and a label to notebook.
+            int Append(const Widget &contents /**< the Widget to use as the contents of the page.*/, 
+                       const Widget &label /**< the Widget to use as the label of the page.*/) {
                 return gtk_notebook_append_page(*this, contents, label);
             }
-            int Append(const Widget &contents) {
+            /// Appends a page to notebook, use the default label.
+            int Append(const Widget &contents /**< the Widget to use as the contents of the page.*/) {
                 return gtk_notebook_append_page(*this, contents, NULL);
             }
-            int Prepend(const Widget &contents, const Widget &label) {
+            /// Prepends a page to notebook with a particular label.
+            int Prepend(const Widget &contents  /**< the Widget to use as the contents of the page.*/,
+                        const Widget &label /**< the Widget to use as the label of the page.*/) {
                 return gtk_notebook_prepend_page(*this, contents, label);
             }
-            int Prepend(const Widget &contents) {
+            /// Prepends a page to notebook, use the default label.
+            int Prepend(const Widget &contents  /**< the Widget to use as the contents of the page.*/) {
                 return gtk_notebook_prepend_page(*this, contents, NULL);
             }
-            int Insert(int position, const Widget &contents, const Widget &label) {
+            /// Insert a page into notebook at the given position, with a particular label.
+            int Insert(int position /**< the index (starting at 0) at which to insert the page, or -1 to append the page after all other pages. */, 
+                       const Widget &contents /**< the Widget to use as the contents of the page.*/, 
+                       const Widget &label /**< the Widget to use as the label of the page.*/) {
                 return gtk_notebook_insert_page(*this, contents, label, position);
             }                
-            int Insert(int position, const Widget &contents) {
+            /// Insert a page into notebook at the given position, with the default label.
+            int Insert(int position /**< the index (starting at 0) at which to insert the page, or -1 to append the page after all other pages. */, 
+                       const Widget &contents /**< the Widget to use as the contents of the page.*/) {
                     return gtk_notebook_insert_page(*this, contents, NULL, position);
             }
-            void Remove(int pos = -1) {
+            /// Removes a page from the notebook given its index in the notebook.
+            void Remove(int pos = -1 /**< he index of a notebook page, starting from 0. Defaults to -1, that means that the last page will be removed.*/) {
                 gtk_notebook_remove_page(*this, pos);
             }
+            /// Finds the index of the page which contains the given child widget. 
             int Page(const Widget &contents) const { return gtk_notebook_page_num(*this, contents); }
 
-            Widget *GetNth(int page) { 
+            /// Returns the child widget contained in page number page_num.
+            /// \return the child widget, or NULL if page_num is out of bounds, you can dynamic cast this value to the correct type of widget.
+            Widget *GetNth(int page /**< the index of a page in the notebook, or -1 to get the last page. */ ) { 
                 return dynamic_cast<Widget *>(
                         Object::Find((GObject *)gtk_notebook_get_nth_page(*this, page)));
             }
@@ -644,6 +590,10 @@ namespace gtk {
                  callback("switch-page", cbk, base, user_data);
             }
 
+            /** Return a reference to the current page widget.
+This member returns a reference to the Widget of the active page of the Notebook, if the notebook has no pages it throws a runtime exception.
+            \return Reference to the active page Widget, throws a std::runtime_error if the Notebook has no pages.
+            */
             Widget &CurrentPage() {
                 if (Widget *w = GetNth(Current()))
                     return *w;
@@ -653,12 +603,31 @@ namespace gtk {
 
 
             // get/set methods
+            /// Sets whether to show the tabs for the notebook or not.
             void ShowTabs(bool flag) { gtk_notebook_set_show_tabs(*this, flag); }
-            void ShowBorder(bool flag) {gtk_notebook_set_show_border(*this, flag); } 
+            /// Sets whether a bevel will be drawn around the notebook pages. This only has a visual effect when the tabs are not shown. See Notebook::ShowTabs().
+            void ShowBorder(bool flag) {gtk_notebook_set_show_border(*this, flag); }
+            /// Sets whether the tab label area will have arrows for scrolling if there are too many tabs to fit in the area.
             void Scrollable(bool flag) {gtk_notebook_set_scrollable(*this, flag); }
+            /// Returns whether the tabs of the notebook are shown.
+            /// \return true if the tabs are shown
+            /// \sa Notebook::ShowTabs(bool)
             bool ShowTabs() const { return gtk_notebook_get_show_tabs(*this); }
+            /// Returns whether a bevel will be drawn around the notebook pages.
+            /// \return true if the bevel is drawn
+            /// \sa Notebook::ShowBorder(bool)
             bool ShowBorder() const { return gtk_notebook_get_show_border(*this); } 
+            /// Returns whether the tab label area has arrows for scrolling. 
+            /// \return true if arrows for scrolling are present
             bool Scrollable() const { return gtk_notebook_get_scrollable(*this); }
+            
+            /// Enables/disable the popup menu: if the popup is enabled and the user clicks with the right mouse button on the bookmarks, a menu with all the pages will be popped up.
+            void Popup(bool enable /**< flag to enable/disable the popup menu of the Notebook. */) { 
+                if (enable) 
+                    gtk_notebook_popup_enable(*this); 
+                else
+                    gtk_notebook_popup_disable(*this); 
+            }
     };
 
     enum AttachOptions
@@ -794,12 +763,15 @@ namespace gtk {
             }
     };
 
+/** Used to customize the appearance of a Toolbar. 
+Note that setting the toolbar style overrides the user's preferences for the default toolbar style. Note that if the button has only a label set and ToolbarIcons is used, the label will be visible, and vice versa. 
+*/
     enum ToolbarStyle
     {
-        ToolbarIcons = GTK_TOOLBAR_ICONS,
-        ToolbarText = GTK_TOOLBAR_TEXT,
-        ToolbarBoth = GTK_TOOLBAR_BOTH,
-        ToolbarBothHoriz = GTK_TOOLBAR_BOTH_HORIZ
+        ToolbarIcons = GTK_TOOLBAR_ICONS /**< Buttons display only icons in the toolbar.  */,
+        ToolbarText = GTK_TOOLBAR_TEXT /**< Buttons display only text labels in the toolbar.  */,
+        ToolbarBoth = GTK_TOOLBAR_BOTH /**< 	Buttons display text and icons in the toolbar. */,
+        ToolbarBothHoriz = GTK_TOOLBAR_BOTH_HORIZ /**< Buttons display icons and text alongside each other, rather than vertically stacked  */
     };
 
     class ToolItem : public Bin {

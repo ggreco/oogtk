@@ -1,3 +1,8 @@
+/**
+ \mainpage "OOGtk - A modern GTK C++ lightweighted wrapper"
+ OOGtk is a GTK+ object oriented C++ wrapper. It's crossplatform, and it tries to give the user access to the complete API of GTK. The library is header only, so there are no architecture dependant downloads. At the moment the wrapper requires GTK 2.12, but with minor changes it can be made compatible with GTK 2.8+.
+
+ */
 #ifndef OOGTK_H
 
 #define OOGTK_H
@@ -18,15 +23,7 @@ namespace gtk
     class Widget;
 
     typedef std::list<Widget *> WidgetList;
-    
-    enum PositionType
-    {
-      PosLeft = GTK_POS_LEFT,
-      PosRight = GTK_POS_RIGHT,
-      PosTop = GTK_POS_TOP,
-      PosBottom = GTK_POS_BOTTOM
-    };
-
+   
 #define BUILD_EVENT(method, signal) \
             template <typename T, typename R> \
             void method(R (T::*cbk)(), T *base, bool rc = false ) { callback(signal, cbk, base, rc); } \
@@ -52,11 +49,34 @@ namespace gtk
             template <typename T, typename R, typename J> \
             void method(R (T::*cbk)(Event &, J), T *base, J data, bool rc = false) { callback(signal, cbk, base, data, rc); }
 
+    /// This type indicates the current state of a widget; the state determines how the widget is drawn. The GtkStateType enumeration is also used to identify different colors in a GtkStyle for drawing, so states can be used for subparts of a widget as well as entire widgets.
+    enum StateType {
+        StateNormal = GTK_STATE_NORMAL /**< State during normal operation. */,
+        StateActive = GTK_STATE_ACTIVE /**< State of a currently active widget, such as a depressed button. */,
+        StatePrelight = GTK_STATE_PRELIGHT /**<	State indicating that the mouse pointer is over the widget and the widget will respond to mouse clicks. */,
+        StateSelected = GTK_STATE_SELECTED /**<	State of a selected item, such the selected row in a list. */,
+        StateInsensitive = GTK_STATE_INSENSITIVE /**<	State indicating that the widget is unresponsive to user actions. */
+    };
+
+    /** The RcStyle class is used to represent a set of information about the appearance of a widget. This can later be composited together with other RcStyle structures to form a Style.
+    */
+    class RcStyle : public Object
+    {
+        public:
+/// DOXYS_OFF
+            operator GtkRcStyle *() const { return GTK_RC_STYLE(obj_); }
+            RcStyle(GObject *obj) { Init(obj); }
+            RcStyle(GtkRcStyle *obj) { Init((GObject *)obj); }
+/// DOXYS_ON
+    };
+
     class Widget : public Object
     {
         public:
+/// DOXYS_OFF
             operator  GtkWidget *() const { return GTK_WIDGET(obj_); }
             operator  GdkDrawable *() const { return GDK_DRAWABLE(GTK_WIDGET(obj_)->window); }
+/// DOXYS_ON
             Widget &Ref() { g_object_ref(obj_); return *this; }
             void Hide() { gtk_widget_hide(*this); }
             void Show(bool flag = true) { if (flag) gtk_widget_show(*this); else gtk_widget_hide(*this); }
@@ -66,13 +86,61 @@ namespace gtk
             void Tooltip(const std::string &tip) { gtk_widget_set_tooltip_markup(*this, tip.c_str()); }
 
             void SizeRequest(int width, int height) { gtk_widget_set_size_request(*this, width, height); }
-            void ModifyBase(Color &color, GtkStateType type = GTK_STATE_NORMAL) {
+
+            /** Modifies style values on the widget. 
+Modifications made using this technique take precedence over style values set via an RC file, however, they will be overriden if a style is explicitely set on the widget using Widget::SetStyle(). The RcStyle structure is designed so each field can either be set or unset, so it is possible, using this function, to modify some style values and leave the others unchanged.
+
+Note that modifications made with this function are not cumulative with previous calls to Widget::ModifyStyle() or with such functions as Widget::ModifyFg(). If you wish to retain previous values, you must first call Widget::ModifierStyle(), make your modifications to the returned style, then call Widget::ModifyStyle() with that style. On the other hand, if you first call Widget::ModifyStyle(), subsequent calls to such functions Widget::ModifyFg() will have a cumulative effect with the initial modifications.
+*/
+            void ModifyStyle(const RcStyle &style /**< the RcStyle holding the style modifications */) {
+                gtk_widget_modify_style(*this, style);
+            }
+
+            /** Returns the current modifier style for the widget (As set by Widget::ModifyStyle()). 
+If no style has previously set, a new GtkRcStyle will be created with all values unset, and set as the modifier style for the widget. If you make changes to this rc style, you must call Widget::ModifyStyle(), passing in the returned rc style, to make sure that your changes take effect.
+*/
+            RcStyle ModifierStyle() {
+                return RcStyle(gtk_widget_get_modifier_style(*this));
+            }
+
+            /** Sets the base color for a widget in a particular state.
+All other style values are left untouched. The base color is the background color used along with the text color (see Widget::ModifyText()) for widgets such as Entry and TextView. See also Widget::ModifyStyle().
+
+Note that "no window" widgets (which have the GTK_NO_WINDOW flag set) draw on their parent container's window and thus may not draw any background themselves. This is the case for e.g. Label. To modify the background of such widgets, you have to set the base color on their parent; if you want to set the background of a rectangular area around a label, try placing the label in a EventBox widget and setting the base color on that.
+*/
+            void ModifyBase(const Color &color, /**< the color to assign */
+                            OneOf<GtkStateType, StateType> type = StateNormal /**< 	 the state for which to set the text color */) {
                 gtk_widget_modify_base(*this, type, color);
             }
-            void ModifyText(Color &color, GtkStateType type = GTK_STATE_NORMAL) {
+            /** Sets the text color for a widget in a particular state.
+All other style values are left untouched. The text color is the foreground color used along with the base color (see Widget::ModifyBase()) for widgets such as Entry and TextView.
+\sa  See also Widget::ModifyStyle().
+             */
+            void ModifyText(const Color &color, /**< the color to assign */
+                            OneOf<GtkStateType, StateType> type = StateNormal /**< 	 the state for which to set the text color */) {
                  gtk_widget_modify_text(*this, type, color);
             }
-            void ModifyFont(FontDesc &font) { gtk_widget_modify_font(*this, font); }
+            /** Sets the font to use for a widget. All other style values are left untouched. */
+            void ModifyFont(const FontDesc &font /**< the font description to use */) { 
+                gtk_widget_modify_font(*this, font); 
+            }
+
+            /** Sets the foreground color for a widget in a particular state. All other style values are left untouched. */
+            void ModifyFg(const Color &color, /**< the color to assign */
+                          OneOf<GtkStateType, StateType> type = StateNormal /**< the state for which to set the text color */
+                    ) {
+                gtk_widget_modify_fg(*this, type, color);
+            }
+            /** Sets the background color for a widget in a particular state. 
+All other style values are left untouched. See also Widget::ModifyStyle().
+
+Note that "no window" widgets (which have the GTK_NO_WINDOW flag set) draw on their parent container's window and thus may not draw any background themselves. This is the case for e.g. Label. To modify the background of such widgets, you have to set the background color on their parent; if you want to set the background of a rectangular area around a label, try placing the label in a EventBox widget and setting the background color on that.
+*/
+            void ModifyBg(const Color &color, /**< the color to assign */
+                          OneOf<GtkStateType, StateType> type = StateNormal /**< the state for which to set the text color */
+                    ) {
+                gtk_widget_modify_bg(*this, type, color);
+            }
             void GrabFocus() { gtk_widget_grab_focus(*this); }
             void GrabDefault() { gtk_widget_grab_default(*this); }
 
@@ -152,21 +220,57 @@ namespace gtk
             void Set(Pixbuf &pixbuf) { gtk_image_set_from_pixbuf(*this, pixbuf); }
     };
 
+    /// Used for justifying the text inside a Label widget. (See also Alignment). 
     enum Justification
     {
-      JustifyLeft = GTK_JUSTIFY_LEFT,
-      JustifyRight = GTK_JUSTIFY_RIGHT,
-      JustifyCenter = GTK_JUSTIFY_CENTER,
-      JustifyFill = GTK_JUSTIFY_FILL
+      JustifyLeft = GTK_JUSTIFY_LEFT /**< The text is placed at the left edge of the label. */,
+      JustifyRight = GTK_JUSTIFY_RIGHT /**< The text is placed at the right edge of the label. */,
+      JustifyCenter = GTK_JUSTIFY_CENTER /**< The text is placed in the center of the label. */,
+      JustifyFill = GTK_JUSTIFY_FILL /**< The text is placed is distributed across the label. */
     };
 
+/** A widget that displays a small to medium amount of text.
+The Label widget displays a small amount of text. As the name implies, most labels are used to label another widget such as a Button, a MenuItem, or a OptionMenu. 
+
+!Markup (styled text)
+
+To make it easy to format text in a label (changing colors, fonts, etc.), label text can be provided in a simple markup format. Here's how to create a label with a small font:
+
+\example
+gtk::Label label("<small>Small text</small>");
+\endexample
+
+(See complete documentation of available tags in the Pango manual.)
+
+The markup passed to the Label must be valid; for example, literal </>/& characters must be escaped as &lt;, &gt;, and &amp;. If you pass text obtained from the user, file, or a network to a label, you'll want to escape it with g_markup_escape_text() or g_markup_printf_escaped().
+
+Markup strings are just a convenient way to set the PangoAttrList on a label; Label::Attributes() may be a simpler way to set attributes in some cases. Be careful though; PangoAttrList tends to cause internationalization problems, unless you're applying attributes to the entire string (i.e. unless you set the range of each attribute to [0, G_MAXINT)). The reason is that specifying the start_index and end_index for a PangoAttribute requires knowledge of the exact string being displayed, so translations will cause problems. 
+
+!Selectable labels
+
+Labels can be made selectable with Label::Selectable(bool). Selectable labels allow the user to copy the label contents to the clipboard. Only labels that contain useful-to-copy information — such as error messages — should be made selectable.
+
+!Text layout
+
+A label can contain any number of paragraphs, but will have performance problems if it contains more than a small number. Paragraphs are separated by newlines or other paragraph separators understood by Pango.
+
+Labels can automatically wrap text if you call Label::LineWrap(bool).
+
+Label::Justify() sets how the lines in a label align with one another. If you want to set how the label as a whole aligns in its available space, see Misc::Alignment().
+
+*/
     class Label : public Misc
     {
         public:
+/// DOXYS_OFF            
             operator  GtkLabel *() const { return GTK_LABEL(Obj()); }
-
             Label(GObject *obj) { Init(obj); }
-            Label(const std::string &label = "") {
+/// DOXYS_ON
+
+            /** Create a new label.
+If the optional string parameter is not specified the label is created without any associated text, you'll have to add the text yourself with Label::Set() or Label::operator<<() if you want a marked up label or Label::Text() if you want a plain text label.
+            */
+            Label(const std::string &label = "" /**< Optional markup for the Label */) {
                 Init(gtk_label_new(NULL));
 
                 if (!label.empty())
@@ -175,6 +279,7 @@ namespace gtk
                 Internal(true);
             }
 
+            /** Sets the markup of a Label from a standard STL stream. */
             template<typename T>
             Label &operator<<(const T &type) {
                 std::ostringstream os(Get(), std::ios_base::app);
@@ -182,9 +287,18 @@ namespace gtk
                 Set(os.str());
                 return *this;
             }
-            void Set(const std::string &label) { gtk_label_set_markup(*this, label.c_str()); }
+
+            /** Parses str which is marked up with the Pango text markup language, setting the label's text and attribute list based on the parse results. If the str is external data, you may need to escape it with g_markup_escape_text() or g_markup_printf_escaped().
+             */
+            void Set(const std::string &label /**< 	a markup string (see Pango markup format) */) { 
+                gtk_label_set_markup(*this, label.c_str()); 
+            }
+            /** Fetches the text from a label widget including any embedded underlines indicating mnemonics and Pango markup. If you want only the text you should use Label::Text() instead.
+            \return the text of the label widget with Pango markup if present.
+             */
             std::string Get() const { return gtk_label_get_label(*this); }
             
+            /** Sets the text of the label with markup with printf styled args. */
             void SetF(const char *format, ...) {
                 char *buffer;
                 va_list va;
@@ -195,24 +309,86 @@ namespace gtk
                 g_free(buffer);
             }
 
+            /** Sets the text within the Label widget, no markup allowed. 
+It overwrites any text that was there before.
+
+This will also clear any previously set mnemonic accelerators.
+
+If you need to add marked up text use Label::Set(const std::string &), Label::SetF() or the << operator.
+            */
             void Text(const std::string &plaintext) const { gtk_label_set_text(*this, plaintext.c_str()); }
+            /** Fetches the text from a label widget, as displayed on the screen.
+This does not include any embedded underlines indicating mnemonics or Pango markup. (See Label::Get() if you need also the markup)
+\return A string containing the text contained in the label.
+\sa Label::Text(const std::string &)
+            */
             std::string Text() const { return gtk_label_get_text(*this); }
 
-            void Selectable(bool flag) { gtk_label_set_selectable(*this, flag); }
+            /** Sets the Label to be selectable.
+Selectable labels allow the user to select text from the label, for copy-and-paste.
+*/
+            void Selectable(bool flag /**< true to allow selecting text in the label */) { gtk_label_set_selectable(*this, flag); }
+            /** Gets if the label is selectable for copy-n-paste or not 
+            \return true if the user can copy text from the label
+            */
             bool Selectable() const { return gtk_label_get_selectable(*this); }
 
-            void Ellipsize(PangoEllipsizeMode mode) { gtk_label_set_ellipsize(*this, mode); }
+            /** Sets the mode used to ellipsize (add an ellipsis: "...") to the text if there is not enough space to render the entire string. */
+            void Ellipsize(PangoEllipsizeMode mode /**< a PangoEllipsizeMode */) { 
+                gtk_label_set_ellipsize(*this, mode); 
+            }
+            /** Returns the ellipsizing position of the label. */
             PangoEllipsizeMode Ellipsize() const { return gtk_label_get_ellipsize(*this); }
 
+            /** Returns the justification of the label
+             \sa Label::Justify(OneOf<GtkJustification, Justification>)
+             \return a Justification or a GtkJustification valid enum value.
+             */
             OneOf<GtkJustification, Justification> Justify() const {
                 return gtk_label_get_justify(*this); 
             }
+            /** Sets the alignment of the lines in the text of the label relative to each other. 
+            JustifyLeft is the default value when the widget is first created with any constructor. If you instead want to set the alignment of the label as a whole, use Misc::Alignment() instead. Label::Justify() has no effect on labels containing only a single line.
+            */
             void Justify(OneOf<GtkJustification, Justification> mode) {
                 gtk_label_set_justify(*this, mode); 
             }
 
+            /** Returns whether lines in the label are automatically wrapped. 
+             \sa Label::LineWrap(bool)
+             \return true if the lines of the label are automatically wrapped. 
+             */
+            bool LineWrap() const { return gtk_label_get_line_wrap(*this); }
+
+            /** Toggles line wrapping within the Label widget.
+true makes it break lines if text exceeds the widget's size. false lets the text get cut off by the edge of the widget if it exceeds the widget size.
+
+Note that setting line wrapping to true does not make the label wrap at its parent container's width, because GTK+ widgets conceptually can't make their requisition depend on the parent container's size. For a label that wraps at a specific position, set the label's width using Widget::SizeRequest().
+            */
+            void LineWrap(bool flag /**< the setting */) { gtk_label_set_line_wrap(*this, flag); }
+
+            /** Retrieves the desired width of label, in characters.
+            \sa Label::WidthChars(int), Label::MaxWidthChars(int)
+            \return the width of the label in characters.
+            */
             int WidthChars() const { return gtk_label_get_width_chars(*this); }
-            void WidthChars(int length) { return gtk_label_set_width_chars(*this, length); }
+            /** Sets the desired width in characters of label to length characters. */
+            void WidthChars(int length /**< the new desired width, in characters.  */) { 
+                gtk_label_set_width_chars(*this, length); 
+            }
+
+            /** Sets the desired maximum width in characters of label to length.
+             */
+            void MaxWidthChars(int length /**< 	 the new desired maximum width, in characters. */) {
+                gtk_label_set_max_width_chars(*this, length);
+            }
+
+            /** Sets a PangoAttrList; the attributes in the list are applied to the label text.
+The attributes set with this function will be ignored if the "use-underline" or "use-markup" properties are set to true.
+*/
+            void Attributes(const PangoAttrList &attrs /* a PangoAttrList */) {
+                gtk_label_set_attributes(*this, const_cast<PangoAttrList *>(&attrs));
+            }
     };
 
     class Separator : public Widget
@@ -556,6 +732,7 @@ namespace gtk
 }
 
 #include "oocont.h"
+#include "oowin.h"
 #include "oobutton.h"
 #include "ootree.h"
 #include "ootext.h"
