@@ -7,8 +7,10 @@
 
 namespace gtk
 {
-    // questa classe serve x la conversione tra enum interscambiabili
-    // ad esempio GtkInterpType e InterpType
+    /** Convert GTK standard enums to oogtk ones and back. 
+This is an helper class to allow oogtk functions to accept both C style GTK+ enums and
+oogtk C++ enums.
+    */
     template <typename A, typename B>
     class OneOf
     {
@@ -21,11 +23,12 @@ namespace gtk
             A a;
     };
 
-    // empty class used for null constructor of intermediate, instantiable, classes.
+    /// Empty class used for null constructor of intermediate, instantiable, classes.
     class DerivedType
     {
     };
 
+/// DOXYS_OFF
     class AbstractCbk
     {
         public:
@@ -137,7 +140,9 @@ namespace gtk
     };
 
     class Object;
+/// DOXYS_ON
 
+    /// Base class for Object property handling.
     class PropertyBase 
     {
         public:
@@ -151,6 +156,7 @@ namespace gtk
     typedef std::vector<PropertyBase *> PropertyList;
     typedef PropertyList::const_iterator PropertyIt;
 
+    /// Base class for every type of GTK object.
     class Object
     {
         private:
@@ -159,7 +165,15 @@ namespace gtk
             typedef std::list<AbstractCbk *> CbkList;
 
             Object() : obj_(NULL), type_(ExternalObj), id_(-1) {}
+            /** Get the internal GObject pointer from any gtk::Object.
+             Constant variant.
+             \return a pointer to the GObject associated with this Object.
+             */
             const GObject *Obj() const { return obj_; }
+            /** Get the internal GObject pointer from any gtk::Object.
+             Not constant variant.
+             \return a pointer to the GObject associated with this Object.
+             */
             GObject *Obj() { return obj_; }
             void Init(void *obj);
             Object &Ref() { g_object_ref(obj_); return *this; }
@@ -189,7 +203,11 @@ namespace gtk
             static Object *Find(GObject *o);
             void Internal(bool val) { if (val) type_ = InternalObj; else type_ = ExternalObj; }
             ObjectType ObjType() const { return type_; }
-            void Connect(AbstractCbk *e, const char *signal) {
+            /** Connect a callback to a signal.
+                This call is used internally from most signal handling calls, you should usually
+                not need to call it directly.
+              */
+            void Connect(AbstractCbk *e /**< The callback */, const char *signal /**< the signal */) {
                 CbkList *events = (CbkList *) g_object_get_data(obj_, "events");
                 if (!events) {
                     events = new CbkList();
@@ -313,6 +331,10 @@ namespace gtk
             }
     };
 
+    /** Template class to handle arbitrary properties on Object instances.
+        You can pass a PropertyList to an object through 
+        Object::Set(const PropertyList &).
+       */
     template <typename T>
     class Property : public PropertyBase {
         public:

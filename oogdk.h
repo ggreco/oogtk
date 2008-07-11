@@ -32,6 +32,9 @@ namespace gtk
     {
         operator const GdkColor *() const { return dynamic_cast<const GdkColor *>(this); }
 
+        Color(const char *desc) {
+            gdk_color_parse(desc, this);
+        }
         Color(unsigned char r, unsigned char g, unsigned char b) {
             red = convert(r);
             green = convert(g);
@@ -161,7 +164,9 @@ namespace gtk
 
             void Scale(int width, int height, OneOf<GdkInterpType, InterpType> interpolation = InterpNearest)
             {
-                gdk_pixbuf_scale_simple(*this, width, height, interpolation);
+                GdkPixbuf *b = gdk_pixbuf_scale_simple(*this, width, height, interpolation);
+                g_object_unref(Obj());
+                obj_ = (GObject *)b;
             }
 
             void Scale(Pixbuf &dest, Rect &destarea, double scale_x, double scale_y, 
