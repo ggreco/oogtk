@@ -1,7 +1,4 @@
 /**
- \mainpage "OOGtk - A modern GTK C++ lightweighted wrapper"
- OOGtk is a GTK+ object oriented C++ wrapper. It's crossplatform, and it tries to give the user access to the complete API of GTK. The library is header only, so there are no architecture dependant downloads. At the moment the wrapper requires GTK 2.12, but with minor changes it can be made compatible with GTK 2.8+.
-
  */
 #ifndef OOGTK_H
 
@@ -22,6 +19,7 @@ namespace gtk
 {
     class Widget;
 
+    /// a list of pointer to Widget objects, used by various OOGtk APIs.
     typedef std::list<Widget *> WidgetList;
    
 #define BUILD_EVENT(method, signal) \
@@ -49,7 +47,7 @@ namespace gtk
             template <typename T, typename R, typename J> \
             void method(R (T::*cbk)(Event &, J), T *base, J data, bool rc = false) { callback(signal, cbk, base, data, rc); }
 
-    /// This type indicates the current state of a widget; the state determines how the widget is drawn. The GtkStateType enumeration is also used to identify different colors in a GtkStyle for drawing, so states can be used for subparts of a widget as well as entire widgets.
+    /// This type indicates the current state of a widget; the state determines how the widget is drawn. The StateType enumeration is also used to identify different colors in a GtkStyle for drawing, so states can be used for subparts of a widget as well as entire widgets.
     enum StateType {
         StateNormal = GTK_STATE_NORMAL /**< State during normal operation. */,
         StateActive = GTK_STATE_ACTIVE /**< State of a currently active widget, such as a depressed button. */,
@@ -70,6 +68,36 @@ namespace gtk
 /// DOXYS_ON
     };
 
+    
+  /// Tells about certain properties of the widget. 
+    enum WidgetFlags
+    {
+        TopLevel =  GTK_TOPLEVEL /**< widgets without a real parent, as there are Windows and Menus have this flag set throughout their lifetime. Toplevel widgets always contain their own GdkWindow. */,
+        NoWindow =  GTK_NO_WINDOW /**< indicative for a widget that does not provide its own GdkWindow. Visible action (e.g. drawing) is performed on the parent's GdkWindow.  */,
+        Realized =  GTK_REALIZED /**< Set by Widget::Realize(), unset by Widget::Unrealize(). A realized widget has an associated GdkWindow. */,
+        Mapped =  GTK_MAPPED /**< Set by Widget::Map(), unset by Widget::Unmap(). Only realized widgets can be mapped. It means that gdk_window_show() has been called on the widgets window(s). */,
+        Visible =  GTK_VISIBLE /**< Set by Widget:Show(), unset by Widget:Hide(). Implies that a widget will be mapped as soon as its parent is mapped. */,
+        WidgetSensitive =  GTK_SENSITIVE /**< Set and unset by Widget::Sensitive(bool). The sensitivity of a widget determines whether it will receive certain events (e.g. button or key presses). One premise for the widget's sensitivity is to have this flag set. */,
+        ParentSensitive =  GTK_PARENT_SENSITIVE /**< Set and unset by Widget::Sensitive(bool) operations on the parents of the widget. This is the second premise for the widget's sensitivity. Once it has Sensitive and ParentSensitive set, its state is effectively sensitive. This is expressed (and can be examined) by the Widget::IsSensitive() method. */,
+        CanFocus =  GTK_CAN_FOCUS /**< Determines whether a widget is able to handle focus grabs. */,
+        HasFocus =  GTK_HAS_FOCUS /**< Set by Widget::GrabFocus() for widgets that also have GTK_CAN_FOCUS set. The flag will be unset once another widget grabs the focus. */,
+        CanDefault =  GTK_CAN_DEFAULT /**<	 The widget is allowed to receive the default action via Widget::GrabDefault().  */,
+        HasDefault =  GTK_HAS_DEFAULT /**< 	 The widget currently is receiving the default action. */,
+        HasGrab =  GTK_HAS_GRAB /**< Set by gtk_grab_add(), unset by gtk_grab_remove(). It means that the widget is in the grab_widgets stack, and will be the preferred one for receiving events other than ones of cosmetic value. */,
+        WidgetRcStyle =  GTK_RC_STYLE /**< Indicates that the widget's style has been looked up through the rc mechanism. It does not imply that the widget actually had a style defined through the rc mechanism. */,
+        CompositeChild =  GTK_COMPOSITE_CHILD /**< Indicates that the widget is a composite child of its parent; see gtk_widget_push_composite_child(), gtk_widget_pop_composite_child(). */,
+        NoReparent =  GTK_NO_REPARENT /**< Unused since before GTK+ 1.2, will be removed in a future version. */,
+        AppPaintable = GTK_APP_PAINTABLE /**< Set and unset by Widget::AppPaintable(bool). Must be set on widgets whose window the application directly draws on, in order to keep GTK+ from overwriting the drawn stuff.  */,
+        ReceiveDefault =  GTK_RECEIVES_DEFAULT /**< The widget when focused will receive the default action and have GTK_HAS_DEFAULT set even if there is a different widget set as default. */,
+        DoubleBuffered =  GTK_DOUBLE_BUFFERED /**< Set and unset by Widget::DoubleBuffered(bool). Indicates that exposes done on the widget should be double-buffered. */,
+        NoShowAll =  GTK_NO_SHOW_ALL /**< */
+    };
+
+    
+/** Base class for all widgets.
+Widget introduces to the hiearchy style properties - these are basically object properties that are stored not on the object, but in the style object associated to the widget. Style properties are set in resource files. This mechanism is used for configuring such things as the location of the scrollbar arrows through the theme, giving theme authors more control over the look of applications without the need to write a theme engine in C.
+
+*/
     class Widget : public Object
     {
         public:
@@ -78,11 +106,31 @@ namespace gtk
             operator  GdkDrawable *() const { return GDK_DRAWABLE(GTK_WIDGET(obj_)->window); }
 /// DOXYS_ON
             Widget &Ref() { g_object_ref(obj_); return *this; }
+            /// Reverses the effects of Widget::Show(bool), causing the widget to be hidden (invisible to the user).
             void Hide() { gtk_widget_hide(*this); }
-            void Show(bool flag = true) { if (flag) gtk_widget_show(*this); else gtk_widget_hide(*this); }
+            /** Flags a widget to be displayed.
+Any widget that isn't shown will not appear on the screen. If you want to show all the widgets in a container, it's easier to call Widget::ShowAll() on the container, instead of individually showing the widgets.
+
+Remember that you have to show the containers containing a widget, in addition to the widget itself, before it will appear onscreen.
+
+When a toplevel container is shown, it is immediately realized and mapped; other shown widgets are realized and mapped when their toplevel container is realized and mapped.
+\sa Widget::ShowAll()
+*/
+            void Show(bool flag = true /**< if false it causes the widget to hide. */) {
+                if (flag) gtk_widget_show(*this); else gtk_widget_hide(*this); 
+            }
+            /// Recursively shows a widget, and any child widgets (if the widget is a container).
+            /// \sa Widget::Show(bool)
             void ShowAll() { gtk_widget_show_all(*this); }
+            /** Disable sensitivity of a widget. */
             void Insensitive() { Sensitive(false); }
-            void Sensitive(bool flag = true) { gtk_widget_set_sensitive(*this, flag); }
+            /** Sets the sensitivity of a widget. 
+ A widget is sensitive if the user can interact with it. Insensitive widgets are "grayed out" and the user can't interact with them. Insensitive widgets are known as "inactive", "disabled", or "ghosted" in some other toolkits.
+ */
+            void Sensitive(bool flag = true /**< true to make widget sensitive */) { gtk_widget_set_sensitive(*this, flag); }
+            /** Sets markup as the contents of the tooltip, which is marked up with the Pango text markup language.
+This function will take care of setting Widget property "has-tooltip" to true and of the default handler for the Widget "query-tooltip" signal.
+            */
             void Tooltip(const std::string &tip) { gtk_widget_set_tooltip_markup(*this, tip.c_str()); }
 
             void SizeRequest(int width, int height) { gtk_widget_set_size_request(*this, width, height); }
@@ -134,19 +182,107 @@ All other style values are left untouched. The text color is the foreground colo
             /** Sets the background color for a widget in a particular state. 
 All other style values are left untouched. See also Widget::ModifyStyle().
 
-Note that "no window" widgets (which have the GTK_NO_WINDOW flag set) draw on their parent container's window and thus may not draw any background themselves. This is the case for e.g. Label. To modify the background of such widgets, you have to set the background color on their parent; if you want to set the background of a rectangular area around a label, try placing the label in a EventBox widget and setting the background color on that.
+Note that "no window" widgets (which have the NoWindow flag set) draw on their parent container's window and thus may not draw any background themselves. This is the case for e.g. Label. To modify the background of such widgets, you have to set the background color on their parent; if you want to set the background of a rectangular area around a label, try placing the label in a EventBox widget and setting the background color on that.
 */
             void ModifyBg(const Color &color, /**< the color to assign */
                           OneOf<GtkStateType, StateType> type = StateNormal /**< the state for which to set the text color */
                     ) {
                 gtk_widget_modify_bg(*this, type, color);
             }
+            /** Causes widget to have the keyboard focus for the Window it's inside. 
+Widget must be a focusable widget, such as a Entry; something like Frame won't work. (More precisely, it must have the CanFocus flag set.)
+*/
             void GrabFocus() { gtk_widget_grab_focus(*this); }
+            /** Causes widget to become the default widget. 
+Widget must have theCanDefault flag set; typically you have to set this flag yourself by calling Widget::Flags(uint32_t). The default widget is activated when the user presses Enter in a window. Default widgets must be activatable, that is, Widget::Activate() should affect them.
+*/
             void GrabDefault() { gtk_widget_grab_default(*this); }
 
+            /** Creates the GDK (windowing system) resources associated with a widget. 
+The GdkWindow/GdkDrawable associated with the widget will be created when a widget is realized. Normally realization happens implicitly; if you show a widget and all its parent containers, then the widget will be realized and mapped automatically.
+
+Realizing a widget requires all the widget's parent widgets to be realized; calling Widget::Realize() realizes the widget's parents in addition to widget itself. If a widget is not yet inside a toplevel window when you realize it, bad things will happen.
+
+This function is primarily used in widget implementations, and isn't very useful otherwise. Many times when you think you might need it, a better approach is to connect to a signal that will be called after the widget is realized automatically, such as "expose-event". 
+             */
+            void Realize() { gtk_widget_realize(*this); }
+            /** Unrealize a widget destroying associated GDK resources.
+This function is only useful in widget implementations. Causes a widget to be unrealized (frees all GDK resources associated with the widget, such as the associated GdkWindow). */
+            void Unrealize() { gtk_widget_unrealize(*this); }
+            /** This function is only for use in widget implementations. Causes a widget to be mapped if it isn't already. */
+            void Map() { gtk_widget_map(*this); }
+            /** This function is only for use in widget implementations. Causes a widget to be unmapped if it's currently mapped. */
+            void Unmap() { gtk_widget_unmap(*this); }
+
+            /** Returns the sensitivity state of a widget 
+            \return true if the widget is sensitive.
+            */
+            bool IsSensitive() const { return GTK_WIDGET_IS_SENSITIVE(GTK_WIDGET(Obj())); }
+            /** Returns the widget focus.
+            \return true if the widget has focus
+            */
+            bool HasFocus() const { return GTK_WIDGET_HAS_FOCUS(GTK_WIDGET(Obj())); }
+
+            /** Returns the active WidgetFlags for the widget.
+            \return a bitmask of WidgetFlags 
+            */
+            uint32_t Flags() const { return GTK_OBJECT_FLAGS(Obj()); }
+            /// Sets one or more WidgetFlags for the widget.
+            void SetFlags(uint32_t flags /**< flags to be set */) const { GTK_WIDGET_SET_FLAGS(GTK_WIDGET(Obj()), flags); }
+            /// Unsets one or more WidgetFlags for the widget.
+            void UnsetFlags(uint32_t flags /**< flags to be unset */) const { GTK_WIDGET_SET_FLAGS(GTK_WIDGET(Obj()), flags); }
+            /** Activates a widget.
+For widgets that can be "activated" (buttons, menu items, etc.) this function activates them. 
+Activation is what happens when you press Enter on a widget during key navigation. If widget isn't activatable, the function returns false.
+\return false if the widget is not activable.
+            */
+            bool Activate() { return gtk_widget_activate(*this); }
+
+/** Sets the event mask (see GdkEventMask) for a widget. 
+
+The event mask determines which events a widget will receive. Keep in mind that different widgets have different default event masks, and by changing the event mask you may disrupt a widget's functionality, so be careful. This function must be called while a widget is unrealized. Consider Widget::AddEvents() for widgets that are already realized, or if you want to preserve the existing event mask. This function can't be used with NoWindow widgets; to get events on those widgets, place them inside a EventBox and receive events on the event box.
+*/
+            void SetEvents(guint events /**< an event mask, see EventMask */) {
+                gtk_widget_set_events(*this, events);
+            }
+
+/** Adds the events in the bitfield events to the event mask for widget. 
+\sa Widget::SetEvents()
+*/
+            void AddEvents(guint events /**< an event mask, see EventMask */) {
+                gtk_widget_add_events(*this, events);
+            }
+
+/** Invalidates the rectangular area of widget defined by the input Rect.
+The area is invalidated for the widget's window and all its child windows. Once the main loop becomes idle (after the current batch of events has been processed, roughly), the window will receive expose events for the union of all regions that have been invalidated.
+
+Normally you would only use this function in widget implementations. You might also use it, or gdk_window_invalidate_rect() directly, to schedule a redraw of a GtkDrawingArea or some portion thereof.
+
+The advantage of adding to the invalidated region compared to simply drawing immediately is efficiency; using an invalid region ensures that you only have to redraw one time.
+*/
+            void QueueDraw(const Rect &area = Rect() /**< The rectangle that has to be redrawn, if not specified queues the redraw of the entire widget */) {
+                if (!area.w && !area.h)
+                    gtk_widget_queue_draw(*this);
+                else
+                    gtk_widget_queue_draw_area(*this, area.x, area.y, area.w, area.h);
+            }
+
+/** Enable/disable double buffering for this object.
+
+Widgets are double buffered by default; you can use this function to turn off the buffering. "Double buffered" simply means that gdk_window_begin_paint_region() and gdk_window_end_paint() are called automatically around expose events sent to the widget. gdk_window_begin_paint() diverts all drawing to a widget's window to an offscreen buffer, and gdk_window_end_paint() draws the buffer to the screen. The result is that users see the window update in one smooth step, and don't see individual graphics primitives being rendered.
+
+In very simple terms, double buffered widgets don't flicker, so you would only use this function to turn off double buffering if you had special needs and really knew what you were doing.
+
+Note: if you turn off double-buffering, you have to handle expose events, since even the clearing to the background color or pixmap will not happen automatically (as it is done in gdk_window_begin_paint()).
+*/
+            void DoubleBuffered(bool flag /**< true to double-buffer a widget */ ) {
+                gtk_widget_set_double_buffered(*this, flag);
+            }
             BUILD_EVENT(OnFocusIn,  "focus-in-event");
             BUILD_EVENT(OnFocusOut, "focus-out-event");
             BUILD_EVENT(OnExpose,   "expose-event");
+            BUILD_EVENT(OnRealize, "realize");
+
             BUILD_EVENTED_EVENT(OnExpose,   "expose-event");
             BUILD_EVENTED_EVENT(OnConfigure,   "configure-event");
 
@@ -154,25 +290,48 @@ Note that "no window" widgets (which have the GTK_NO_WINDOW flag set) draw on th
             BUILD_EVENTED_EVENT(OnButtonPress, "button-press-event");
             BUILD_EVENTED_EVENT(OnKeyRelease, "key-release-event");
             BUILD_EVENTED_EVENT(OnKeyPress, "key-press-event");
-
     };
 
- 
+/** Base class for widgets with alignments and padding.
+The Misc widget is an abstract widget which is not useful itself, but is used to derive subclasses which have alignment and padding attributes.
+
+The horizontal and vertical padding attributes allows extra space to be added around the widget.
+
+The horizontal and vertical alignment attributes enable the widget to be positioned within its allocated area. Note that if the widget is added to a container in such a way that it expands automatically to fill its allocated area, the alignment settings will not alter the widgets position. 
+*/
     class Misc : public Widget
     {
         public:
+/// DOXYS_OFF            
             operator  GtkMisc *() const { return GTK_MISC(Obj()); }
-
-            void Padding(int xpad, int ypad = 0) { gtk_misc_set_padding(*this, xpad, ypad); }
-            void Padding(Point &coords) { Padding(coords.x, coords.y); }
+/// DOXYS_ON
+            /// Sets the amount of space to add around the widget. 
+            void Padding(int xpad /**< 	the amount of space to add on the left and right of the widget, in pixels. */,
+                         int ypad = 0 /**< 	the amount of space to add on the top and bottom of the widget, in pixels, defaults to 0. */) { 
+                gtk_misc_set_padding(*this, xpad, ypad); 
+            }
+            /// Sets the amount of space to add around the widget. 
+            void Padding(const Point &coords /**< A Point containing the padding values. */) { Padding(coords.x, coords.y); }
+            /// Gets the padding in the X and Y directions of the widget. 
+            /// \return a Point containing the padding value for X and Y coordinates.
             Point Padding() const {
                 Point c;
                 gtk_misc_get_padding(*this, &c.x, &c.y);
                 return c; 
             }
 
-            void Alignment(float xalign, float yalign = 0.5f) { gtk_misc_set_alignment(*this, xalign, yalign); }
-            void Alignment(Align &align) { Alignment(align.first, align.second); }
+            /// Sets the alignment of the widget. 
+            void Alignment(float xalign /**< the horizontal alignment, from 0 (left) to 1 (right). */, 
+                           float yalign = 0.5f /**< the vertical alignment, from 0 (top) to 1 (bottom). */) { 
+                gtk_misc_set_alignment(*this, xalign, yalign); 
+            }
+            /// Sets the alignment of the widget. 
+            void Alignment(Align &align /**< the horizontal and vertical alignment, from 0, 0 (top left) to 1, 1 (bottom right)
+                    */) { 
+                Alignment(align.first, align.second); 
+            }
+            /// Gets the X and Y alignment of the widget within its allocation. 
+            /// \return an Align containing X alignment in first and Y alignment in second (from 0 to 1).
             Align Alignment() const {
                 Align a;
                 gtk_misc_get_alignment(*this, &a.first, &a.second);
@@ -180,44 +339,153 @@ Note that "no window" widgets (which have the GTK_NO_WINDOW flag set) draw on th
             }
     };
 
+    /** Describes the image data representation used by a Image. If you want to get the image from the widget, you can only get the currently-stored representation. e.g. if the Image::StorageType() returns ImageBixbuf, then you can call Image::Pixbuf() but not Image::Stock(). For empty images, you can request any storage type (call any of the "get" methods), but they will all return NULL values. 
+    */
+    enum ImageType
+    {
+        ImageEmpty = GTK_IMAGE_EMPTY /**< there is no image displayed by the widget */,
+        ImagePixmap = GTK_IMAGE_PIXMAP /**< the widget contains a GdkPixmap */,
+        ImageImage = GTK_IMAGE_IMAGE /**< 	the widget contains a GdkImage */,
+        ImagePixbuf = GTK_IMAGE_PIXBUF /**< 	the widget contains a Pixbuf */,
+        ImageStock = GTK_IMAGE_STOCK /**< 	the widget contains a stock icon name */,
+        ImageIconSet = GTK_IMAGE_ICON_SET /**< 	the widget contains a GtkIconSet */,
+        ImageAnimation = GTK_IMAGE_ANIMATION /**< the widget contains a PixbufAnimation */,
+        ImageIconName = GTK_IMAGE_ICON_NAME /**< 	the widget contains a named icon. This image type was added in GTK+ 2.6 */
+    };
+
+   /// the size of the stock icon to request.
    enum IconSize
    {
         IconSizeInvalid = GTK_ICON_SIZE_INVALID,
-        IconSizeMenu = GTK_ICON_SIZE_MENU,
-        IconSizeSmallToolbar = GTK_ICON_SIZE_SMALL_TOOLBAR,
-        IconSizeLargeToolbar = GTK_ICON_SIZE_LARGE_TOOLBAR,
-        IconSizeButton = GTK_ICON_SIZE_BUTTON,
-        IconSizeDnD = GTK_ICON_SIZE_DND,
-        IconSizeDialog = GTK_ICON_SIZE_DIALOG
+        IconSizeMenu = GTK_ICON_SIZE_MENU /**< the smaller size, for menu items */,
+        IconSizeSmallToolbar = GTK_ICON_SIZE_SMALL_TOOLBAR /**< icon size suited for small toolbars */, 
+        IconSizeLargeToolbar = GTK_ICON_SIZE_LARGE_TOOLBAR /**< icon size suited for large toolbars*/,
+        IconSizeButton = GTK_ICON_SIZE_BUTTON /**< icon size suited for buttons */,
+        IconSizeDnD = GTK_ICON_SIZE_DND /**< icon size suited for drag and drop */,
+        IconSizeDialog = GTK_ICON_SIZE_DIALOG /**< the greatest size, used in dialogs */
     };
 
+    /** A widget displaying an image
+The Image widget displays an image. Various kinds of object can be displayed as an image; most typically, you would load a Pixbuf ("pixel buffer") from a file, and then display that. There's a convenience constructor to do this as follows:
+
+\code
+    gtk::Image image("myfile.png");
+\endcode
+
+If the file isn't loaded successfully, the image will contain a "broken image" icon similar to that used in many web browsers. If you want to handle errors in loading the file yourself, for example by displaying an error message, then load the image with Pixbuf methods, then create the Image with the Pixbuf constructor.
+
+The image file may contain an animation, if so the Image will display an animation (PixbufAnimation) instead of a static image.
+
+Image is a subclass of Misc, which implies that you can align it (center, left, right) and add padding to it, using Misc methods.
+
+Image is a "no window" widget (has no GdkWindow of its own), so by default does not receive events. If you want to receive events on the image, such as button clicks, place the image inside a EventBox, then connect to the event signals on the event box.
+
+!Handling button press events on a Image
+\example
+class MyWin : public gtk::Window
+{
+        bool onpress(gtk::Event &e) {
+            if (gtk::EventButton *b = e)
+                g_print("Event box clicked at coords: %f, %f\n");
+        }
+    public:
+        MyWin() : gtk::Window("EventBox button test") {
+            gtk::Image img("myfile.png");
+            gtk::EventBox eb(img);
+            eb.OnButtonPress();
+            Child(eb);
+            ShowAll(); 
+        }
+};
+\endexample
+
+When handling events on the event box, keep in mind that coordinates in the image may be different from event box coordinates due to the alignment and padding settings on the image (see GMisc). The simplest way to solve this is to set the alignment to 0.0 (left/top), and set the padding to zero. Then the origin of the image will be the same as the origin of the event box.
+
+Sometimes an application will want to avoid depending on external data files, such as image files. GTK+ comes with a program to avoid this, called gdk-pixbuf-csource. This program allows you to convert an image into a C variable declaration, which can then be loaded into a Pixbuf. 
+
+*/
     class Image : public Misc
     {
         public:
+/// DOXYS_OFF            
             operator  GtkImage *() const { return GTK_IMAGE(Obj()); }
 
             Image(GObject *obj) { Init(obj); }
+/// DOXYS_ON
+/** Creates a new Image displaying the file filename. 
+If the file isn't found or can't be loaded, the resulting Image will display a "broken image" icon. The constructor never fail or throw exceptions, it always returns a valid Image widget.
 
-            Image(const std::string &name) {
+If the file contains an animation, the image will contain an animation.
+
+If you need to detect failures to load the file, use Pixbuf API to load the file yourself, then create the Image from the pixbuf.
+
+The storage type (Image::StorageType()) of the returned image is not defined, it will be whatever is appropriate for displaying the file.
+*/
+            Image(const std::string &name /**< a filename */) {
                 Init(gtk_image_new_from_file(name.c_str()));
                 Internal(true);
             }
-            Image(Pixbuf &pixbuf) {
+            /** Creates a new Image displaying pixbuf. 
+The Image does not assume a reference to the pixbuf; you still need to unref it if you own references. Image will add its own reference rather than adopting yours.
+
+\example
+// valid code since Image keeps a reference to the Pixbuf
+gtk::Image *create_image(const std::string &name) {
+    try {
+        gtk::Pixbuf pix(name);
+
+        return new Image(pix);
+    }
+    catch (std::runtime_error &e) {
+        return NULL;
+    }
+}
+\endexample
+
+Note that this function just creates an Image from the pixbuf. The Image created will not react to state changes.
+*/
+            Image(const Pixbuf &pixbuf) {
                 Init(gtk_image_new_from_pixbuf(pixbuf));
                 Internal(true);
             }
+/** Creates a Image displaying a stock icon. 
+Sample stock icon names are GTK_STOCK_OPEN, GTK_STOCK_QUIT. Sample stock sizes are IconSizeMenu, IconSizeSmallToolbar. If the stock icon name isn't known, the image will be empty. You can register your own stock icon names, see gtk_icon_factory_add_default() and gtk_icon_factory_add().
+*/
             Image(IconSize size, const char *stockid) {
                 Init(gtk_image_new_from_stock(stockid, (GtkIconSize)size));
                 Internal(true);
             }
+/** Creates an empty Image, you can set its contents with Image::Set() family.
+ */
             Image() {
                 Init(gtk_image_new());
                 Internal(true);
             }
 
-            void Set(const std::string &name) { gtk_image_set_from_file(*this, name.c_str()); }
-            void Set(IconSize size, const char *stockid) { gtk_image_set_from_stock(*this, stockid, (GtkIconSize)size); }
-            void Set(Pixbuf &pixbuf) { gtk_image_set_from_pixbuf(*this, pixbuf); }
+           
+            /** Gets the type of representation being used by the Image to store image data. 
+If the Image has no image data, the return value will be ImageEmpty.
+\return a ImageType value specific for the object.
+*/
+            OneOf<ImageType,GtkImageType> StorageType() const { return gtk_image_get_storage_type(*this); }
+/** Sets the Image with the image pointed by the file name.
+Existing contents are unrefrenced and freed, if you don't own other references to them.
+\sa Image::Image(const std::string &)
+*/
+            void Set(const std::string &name /**< a filename */) { gtk_image_set_from_file(*this, name.c_str()); }
+/** Sets the Image with a stock item of a particular size.
+Existing contents are unrefrenced and freed, if you don't own other references to them.
+\sa Image::Image(IconSize, const char*)
+*/
+            void Set(IconSize size /* a valid IconSize value */, 
+                     const char *stockid /**< A valid stock icon name */) { 
+                gtk_image_set_from_stock(*this, stockid, (GtkIconSize)size); 
+            }
+            /** Set the Image contents with a Pixbuf.
+Existing contents are unrefrenced and freed, if you don't own other references to them.
+\sa 
+*/
+            void Set(Pixbuf &pixbuf /**< A pixbuf */) { gtk_image_set_from_pixbuf(*this, pixbuf); }
     };
 
     /// Used for justifying the text inside a Label widget. (See also Alignment). 
@@ -391,70 +659,172 @@ The attributes set with this function will be ignored if the "use-underline" or 
             }
     };
 
+    /** Base class for HSeparator and VSeparator
+The Separator widget is an abstract class, used only for deriving the subclasses HSeparator and VSeparator. 
+*/
     class Separator : public Widget
     {
     };
+/** A horizontal separator.
+The HSeparator widget is a horizontal separator, used to group the widgets within a window. It displays a horizontal line with a shadow to make it appear sunken into the interface. 
 
+!Note
+The HSeparator widget is not used as a separator within menus. To create a separator in a menu create an empty SeparatorMenuItem widget and add it to the menu with MenuShell::Append(). 
+\sa VSeparator widget.
+*/
     class HSeparator : public Separator
     {
         public:
+/// DOXYS_OFF            
             HSeparator(GObject *obj) { Init(obj); }
+/// DOXYS_ON
+            /// Creates a new HSeparator. 
             HSeparator() {
                 Init(gtk_hseparator_new());
                 Internal(true);
             }
     };
-
+/** A vertical separator.
+The VSeparator widget is a vertical separator, used to group the widgets within a window. It displays a vertical line with a shadow to make it appear sunken into the interface. 
+*/
     class VSeparator : public Separator
     {
         public:
+/// DOXYS_OFF            
             VSeparator(GObject *obj) { Init(obj); }
-
+/// DOXYS_ON
+            /// Creates a new VSeparator. 
             VSeparator() {
                 Init(gtk_vseparator_new());
                 Internal(true);
             }
     };
-
+/** Interface for text-editing widgets.
+The Editable interface is an interface which should be implemented by text editing widgets, such as Entry. It contains functions for generically manipulating an editable widget, a large number of action signals used for key bindings, and several signals that an application can connect to to modify the behavior of a widget.
+*/
     class Editable : public Widget
     {
+/// DOXYS_OFF        
+            static void insert_text_handler (GtkEditable *editable, 
+                    const gchar *text, gint length, gint *position, gpointer data)
+            {
+                gchar *result = NULL;
+                
+                switch(GPOINTER_TO_INT(data)) {
+                    case 1:
+                        result = g_utf8_strup (text, length);
+                        break;
+                    case 2:
+                        result = g_utf8_strdown (text, length);
+                        break;
+                }
+                if (!result) return;
+
+                g_signal_handlers_block_by_func (editable, (gpointer) insert_text_handler, data);
+                gtk_editable_insert_text (editable, result, length, position);
+                g_signal_handlers_unblock_by_func (editable, (gpointer) insert_text_handler, data);
+                g_signal_stop_emission_by_name (editable, "insert_text"); 
+
+                g_free (result);
+            }
+/// DOXYS_ON
         public:
-            int InsertText(const std::string &text, int position) {
+            /** Inserts text at a given position. 
+            \return the position after the newly inserted text. 
+             */
+            int InsertText(const std::string &text /**< the text to insert. */, 
+                           int position /**< The position where to insert the text */) {
                 gtk_editable_insert_text(GTK_EDITABLE(Obj()), text.c_str(), text.length(), &position);
                 return position;
             }
-            void DeleteText(int start, int end = -1) {
-                gtk_editable_delete_text(GTK_EDITABLE(Obj()), start, end);
+
+            /** Deletes a sequence of characters. 
+The characters that are deleted are those characters at positions from start_pos up to, but not including end_pos. If end_pos is negative or if it's not specified, then the the characters deleted will be those characters from start_pos to the end of the text.
+*/
+            void DeleteText(int start_pos /**< 	the starting position. */, 
+                            int end_pos = -1 /**< the optional end position. */) {
+                gtk_editable_delete_text(GTK_EDITABLE(Obj()), start_pos, end_pos);
             }
 
-            std::string GetChars(int start, int end = -1) const {
+            /** Retrieves a sequence of characters. 
+The characters that are retrieved are those characters at positions from start_pos up to, but not including end_pos. If end_pos is negative or if it's not specified, then the the characters retrieved will be those characters from start_pos to the end of the text. 
+*/
+            std::string GetChars(int start_pos    /**< the starting position. */,
+                                 int end_pos = -1 /**< the optional end position. */) const {
                 std::string res;
                 
-                if (char *result = gtk_editable_get_chars(GTK_EDITABLE(Obj()), start, end)) {
+                if (char *result = gtk_editable_get_chars(GTK_EDITABLE(Obj()), start_pos, end_pos)) {
                     res = result;
                     g_free(result);
                 }
 
                 return res;
             }
-
+/** Retrieves the current cursor position. 
+\return the position of the cursor. The cursor is displayed before the character with the given (base 0) index in the widget. The value will be less than or equal to the number of characters in the widget. Note that this position is in characters, not in bytes. 
+*/
             int Position() const {
                 return gtk_editable_get_position(GTK_EDITABLE(Obj()));
             }
-            void Position(int pos = - 1) {
+            /** Sets the cursor position. */
+            void Position(int pos = - 1 /**< the position of the cursor. The cursor is displayed before the character with the given (base 0) index in the widget. The value must be less than or equal to the number of characters in the widget. A value of -1 or no value indicates that the position should be set after the last character in the entry. Note that this position is in characters, not in bytes. */
+                    ) {
                 return gtk_editable_set_position(GTK_EDITABLE(Obj()), pos);
             }
+
+            /** Filter Editable text input so that every character typed is uppercase */
+            void ForceUppercase() {
+                RemoveForce();
+                g_signal_connect(Obj(), "insert_text", GCallback(insert_text_handler), GINT_TO_POINTER(1));
+            }
+            /** Filter Editable text input so that every character typed is lowercase */
+            void ForceLowercase() {
+                RemoveForce();
+                g_signal_connect(Obj(), "insert_text", GCallback(insert_text_handler), GINT_TO_POINTER(2));
+            }
+            /** Remove filters. */
+            void RemoveForce() {
+                g_signal_handlers_disconnect_by_func(Obj(), (void*)insert_text_handler, GINT_TO_POINTER(1));
+                g_signal_handlers_disconnect_by_func(Obj(), (void*)insert_text_handler, GINT_TO_POINTER(2));
+            }
+            /** Selects a region of text. 
+The characters that are selected are those characters at positions from start_pos up to, but not including end_pos. If end_pos is negative or if you don't specify it, then the the characters selected will be those characters from start_pos to the end of the text. 
+*/
+            void Select(int start_pos /**< 	the starting position. */, 
+                        int end_pos = -1 /**< the end position, if not specified or negative selects till the end of text. */
+                    ) { 
+                gtk_editable_select_region(GTK_EDITABLE(Obj()), start_pos, end_pos); 
+            }
+            /** Gets the current selection bounds, if there is a selection. 
+             \return true if there is a selection and the argument has been filled.
+             */
+            bool SelectionBounds(Point &bounds /**< Input parameters where to store the bounds of the selection */ ) {
+                return gtk_editable_get_selection_bounds(GTK_EDITABLE(Obj()), &bounds.x, &bounds.y);
+            }
+            /// Indicates that the user has changed the contents of the widget. 
+            BUILD_EVENT(OnChanged, "changed");
     };
 
+    /// Accepts only numbers
     const std::string EntryNumeric = "0123456789";
+    /// Accepts numbers and dots, useful for IP addresses.
     const std::string EntryIpAddress = "0123456789.";
+    /// Accepts only uppercase letters.
     const std::string EntryUpperCase = "ABCDEFGHIJKLMNOPQRSTUVXYWZ";
+    /// Accepts only lowercase letters.
     const std::string EntryLowerCase = "abcdefghijklmnopqrstuvxywz";
+    /// Accepts only letters.
     const std::string EntryLetters = EntryUpperCase + EntryLowerCase;
+    /// Accepts only letters and numbers.
     const std::string EntryAlphaNumeric = EntryLetters + EntryNumeric;
 
+    /** A single line text entry field. 
+The Entry widget is a single line text entry widget. A fairly large set of key bindings are supported by default. If the entered text is longer than the allocation of the widget, the widget will scroll so that the cursor position is visible. 
+
+    */
     class Entry: public Editable
     {
+/// DOXYS_OFF
             static void
             insert_filtered_handler(GtkEditable *editable, gchar *new_text, gint new_text_length, gint *position, std::string *user_data) {
                 int i;
@@ -480,7 +850,9 @@ The attributes set with this function will be ignored if the "use-underline" or 
             operator  GtkEntry *() const { return GTK_ENTRY(Obj()); }
 
             Entry(GObject *obj) { Init(obj); }
-
+/// DOXYS_ON
+        public:
+            /// Creates a new entry with an optional max length in characters.
             Entry(int maxlen = -1) {
                 if (maxlen != -1) {
                     Init(gtk_entry_new_with_max_length(maxlen));
@@ -489,12 +861,16 @@ The attributes set with this function will be ignored if the "use-underline" or 
                     Init(gtk_entry_new());
                 Internal(true);
             }
+            /** Sets the text in the widget to the given value, every streamable type is accepted.
+            The new value will replace the current contents.
+            */
             template <typename T>
             void Set(const T &t) {
                 std::ostringstream os;
                 os << t;
                 gtk_entry_set_text(*this, os.str().c_str());
             }
+            /// Push an object inside the widget, concatenating it with the current contents.
             template<typename T>
             Entry &operator<<(const T &t) {
                 std::ostringstream os(Get(), std::ios_base::app);
@@ -502,7 +878,10 @@ The attributes set with this function will be ignored if the "use-underline" or 
                 Set(os.str());
                 return *this;
             }
+            /// Sets the text in the widget to the given string, replacing the current contents.
             void Set(const std::string &name) { gtk_entry_set_text(*this, name.c_str()); }
+
+            /// Sets the text in the widget using printf like syntax, replacing the current contents.
             void SetF(const char *format, ...) {
                 char *buffer;
                 va_list va;
@@ -512,23 +891,80 @@ The attributes set with this function will be ignored if the "use-underline" or 
                 gtk_entry_set_text(*this, buffer);
                 g_free(buffer);
             }
+            /** Retrieves the contents of the entry widget.
+            \return a string with the widget contents.
+            \sa Editable::GetChars
+            */
             std::string Get() const { return gtk_entry_get_text(*this); }
 
             // some get/set methods
-            void Alignment(float xalign) { gtk_entry_set_alignment(*this, xalign); }
+            /** Sets the alignment for the contents of the entry. 
+This controls the horizontal positioning of the contents when the displayed text is shorter than the width of the entry. */
+            void Alignment(float xalign /**< The horizontal alignment, from 0 (left) to 1 (right). Reversed for RTL layouts */) { 
+                gtk_entry_set_alignment(*this, xalign); 
+            }
+/** Gets the value set by Entry::Alignment(float).
+\return the alignment (from 0 to 1).
+\sa Entry::Alignment(float)
+*/
             float Alignment() const { return gtk_entry_get_alignment(*this); }
-            void MaxLength(int chars) { gtk_entry_set_max_length(*this, chars); }
+            /** Sets the maximum allowed length of the contents of the widget. 
+If the current contents are longer than the given length, then they will be truncated to fit.
+             */
+            void MaxLength(int chars /**< the maximum length of the entry, or 0 for no maximum. (other than the maximum length of entries.) The value passed in will be clamped to the range 0-65536. */
+                    ) { 
+                gtk_entry_set_max_length(*this, chars); 
+            }
+            /** Retrieves the maximum allowed length of the text in entry.
+            \sa Entry::MaxLength(int)
+            \return the maximum allowed number of characters in Entry, or 0 if there is no maximum. 
+            */
             int MaxLength() const { return gtk_entry_get_max_length(*this); }
-            void Visibility(bool flag) { gtk_entry_set_visibility(*this, flag); }
+            /** Sets whether the contents of the entry are visible or not. 
+When visibility is set to false, characters are displayed as the invisible char, and will also appear that way when the text in the entry widget is copied elsewhere.
+
+The default invisible char is the asterisk '*', but it can be changed with Entry::InvisibleChar(uint32_t).
+*/
+            void Visibility(bool flag /**< true if the contents of the entry are displayed as plaintext */) { 
+                gtk_entry_set_visibility(*this, flag); 
+            }
+            /** Retrieves whether the text in entry is visible. 
+            \sa Entry::Visibility(bool)
+            \return true if the text is currently visible.
+            */
             bool Visibility() const { return gtk_entry_get_visibility(*this); }
+            /** Retrieves the character displayed in place of the real characters for entries with visibility set to false. 
+            \sa Entry::InvisibleChar(uint32_t).
+            \return the current invisible char, or 0, if the entry does not show invisible text at all. 
+            */
             uint32_t InvisibleChar() const { return gtk_entry_get_invisible_char(*this); } 
-            void InvisibleChar(uint32_t unicode_char) { gtk_entry_set_invisible_char(*this, unicode_char); }
-            void WidthChars(int chars) { gtk_entry_set_width_chars(*this, chars); }
+            /** Sets the character to use in place of the actual text when Entry::Visibility(bool) has been called to set text visibility to false. i.e. this is the character used in "password mode" to show the user how many characters have been typed. The default invisible char is an asterisk ('*'). If you set the invisible char to 0, then the user will get no feedback at all; there will be no text on the screen as they type.
+             */
+            void InvisibleChar(uint32_t unicode_char /**< a Unicode character */) { gtk_entry_set_invisible_char(*this, unicode_char); }
+            /** Changes the size request of the entry to be about the right size for n_chars characters. 
+Note that it changes the size request, the size can still be affected by how you pack the widget into containers. If n_chars is -1, the size reverts to the default entry size. */
+            void WidthChars(int chars /**< width in chars */) { gtk_entry_set_width_chars(*this, chars); }
+            /** Gets the value set by Entry::WidthChars(int)
+            \return number of chars to request space for, or negative if unset 
+            */
             int WidthChars() const { return gtk_entry_get_width_chars(*this); }
-            void Editable(bool flag) { gtk_editable_set_editable(GTK_EDITABLE(Obj()), flag); }
-            bool Editable() const { return gtk_editable_get_editable(GTK_EDITABLE(Obj())); }
-          
-            void Accepts(const std::string &chars, int maxlength = -1) {
+         
+            /** Filter Entry input to accept only a certain range of characters.
+This function is a facility of oogtk to accept only a certain range of characters in a Entry widget.
+There are a few presets you can use: 
+            
+||Preset||Effect
+|EntryNumeric|Accepts only numbers
+|EntryIPAddress|Accepts numbers and dots, useful for IP addresses.
+|EntryUpperCase|Accepts only uppercase letters.
+|EntryLowerCase|Accepts only lowercase letters.
+|EntryLetters|Accepts only letters.
+|EntryAlphaNumeric|Accepts only letters and numbers.
+
+If you want to disable the filter simply call Entry::Accepts without arguments.
+            */
+            void Accepts(const std::string &chars = "" /**< a string containing characters that can be accepted by the Entry */, 
+                        int maxlength = -1 /**< Optional maximum length of the Entry */ ) {
                 if (chars.empty()) {
                     if (!m_filter.empty())
                         g_signal_handlers_disconnect_by_func(Obj(), (void*)insert_filtered_handler, &m_filter);
@@ -545,10 +981,28 @@ The attributes set with this function will be ignored if the "use-underline" or 
                 m_filter = chars;
             }
 
-            void ActivatesDefault(bool flag) { gtk_entry_set_activates_default(*this, flag); }
+            /** Activate the default widget if this entry is activated.
+If setting is true, pressing Enter in the entry will activate the default widget for the window containing the entry. This usually means that the dialog box containing the entry will be closed, since the default widget is usually one of the dialog buttons.
+
+(For experts: if setting is true, the entry calls Window::ActivateDefault() on the window containing the entry, in the default handler for the "activate" signal.)
+             */
+            void ActivatesDefault(bool flag /**< true to activate window's default widget on Enter keypress */) { 
+                gtk_entry_set_activates_default(*this, flag); 
+            }
+            /** Retrieves the value set by Entry::ActivatesDefault(bool)
+            \return true if the entry will activate the default widget of this window.
+             */
+            bool ActivatesDefault() const { return gtk_entry_get_activates_default(*this); }
             // callbacks
             BUILD_EVENT(OnActivate, "activate");
-            BUILD_EVENT(OnChanged, "changed");
+// not in editable because conflicts with constructor!
+            /** Determines if the user can edit the text in the editable widget or not. */
+            void Editable(bool flag /**< true if the user is allowed to edit the text in the widget. */ ) { gtk_editable_set_editable(GTK_EDITABLE(Obj()), flag); }
+            /** Retrieves whether editable is editable. 
+            \return true if the Editable is editable.
+            */
+            bool Editable() const { return gtk_editable_get_editable(GTK_EDITABLE(Obj())); }
+
     };
 
     enum ProgressBarOrientation
@@ -584,10 +1038,31 @@ The attributes set with this function will be ignored if the "use-underline" or 
             }
     };
 
+/** A widget for custom user interface elements.
+
+The DrawingArea widget is used for creating custom user interface elements. It's essentially a blank widget; you can draw on its GdkDrawable. After creating a drawing area, the application may want to connect to:
+
+- Mouse and button press signals to respond to input from the user. (Use Widget::AddEvents() to enable events you wish to receive.)
+
+- The "realize" signal to take any necessary actions when the widget is instantiated on a particular display. (Create GDK resources in response to this signal.)
+
+- The "configure_event" signal to take any necessary actions when the widget changes size.
+
+- The "expose_event" signal to handle redrawing the contents of the widget.
+
+Note that GDK automatically clears the exposed area to the background color before sending the expose event, and that drawing is implicitly clipped to the exposed area. 
+
+To receive mouse events on a drawing area, you will need to enable them with Widget::AddEvents(). To receive keyboard events, you will need to set the CanFocus flag on the drawing area, and should probably draw some user-visible indication that the drawing area is focused. Use the Widget::HasFocus() call in your expose event handler to decide whether to draw the focus indicator. See gtk_paint_focus() for one way to draw focus. 
+
+\sa Sometimes Image is a useful alternative to a drawing area. You can put a GdkPixmap in the Image and draw to the GdkPixmap, calling Widget::QueueDraw() on the Image when you want to refresh to the screen. 
+*/
     class DrawingArea : public Widget {
         public:
+/// DOXYS_OFF            
             operator GtkDrawingArea *() const { return GTK_DRAWING_AREA(Obj()); }
             DrawingArea(GObject *obj) { Init(obj); }
+/// DOXYS_ON
+            /// Creates a new drawing area. 
             DrawingArea() {
                 Init(gtk_drawing_area_new());
                 Internal(true);
@@ -739,7 +1214,7 @@ The attributes set with this function will be ignored if the "use-underline" or 
 #include "ooui.h"
 #include "oomenu.h"
 
-// questo va incluso alla fine per problemi di forward declarations
+// this must be defined here for forward declaration issues
 
 namespace gtk {
     inline Object *Object::
@@ -840,6 +1315,8 @@ namespace gtk {
                 return new Table(o);
             } else if (GTK_IS_LABEL(o)) {
                 return new Label(o);
+            } else if (GTK_IS_FILE_FILTER(o)) { // file filter for FileChooser widget
+                return new FileFilter(o);
             } else if (GTK_IS_UI_MANAGER(o)) { // UI Manager stuff
                 return new UIManager(o);
             } else if (GTK_IS_ACCEL_GROUP(o)) {

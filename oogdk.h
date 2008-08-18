@@ -16,6 +16,7 @@ namespace gtk
 
     struct Rect
     {
+        Rect() : w(0), h(0) {}
         Rect(const GdkRectangle *r) : x(r->x), y(r->y), w(r->width), h(r->height) {}
         Rect(const GdkRectangle &r) : x(r.x), y(r.y), w(r.width), h(r.height) {}
         Rect(int leftedge, int topedge, int width, int height) :
@@ -26,6 +27,12 @@ namespace gtk
         int x,y,w,h;
     };
 
+    /** A pair of floats to specify X and Y alignments.
+Align values goes from 0 to 1, where 0 is left, and 1 is right (and 0.5 is center, what a suprise!).
+
+- Align.first is the X alignment.
+- Align.second is the Y alignment.
+*/
     typedef std::pair<float,float> Align;
 
     struct Color : public GdkColor
@@ -62,6 +69,37 @@ namespace gtk
 
         private:
             PangoFontDescription *desc_;
+    };
+
+    /** A set of bit-flags to indicate which events a window is to receive. 
+
+Most of these masks map onto one or more of the EventType event types above.
+
+PointerMotionHintMask is a special mask which is used to reduce the number of MotionNotify events received. Normally a MotionNotify event is received each time the mouse moves. However, if the application spends a lot of time processing the event (updating the display, for example), it can lag behind the position of the mouse. When using PointerMotionHintMask, fewer MotionNotify events will be sent, some of which are marked as a hint (the is_hint member is true). To receive more motion events after a motion hint event, the application needs to asks for more, by calling gdk_event_request_motions(). 
+*/
+    enum EventMask {
+        ExposureMask = GDK_EXPOSURE_MASK /**<	receive expose events */,
+        PointerMotionMask = GDK_POINTER_MOTION_MASK /**<	receive all pointer motion events */,
+        PointerMotionHintMask = GDK_POINTER_MOTION_HINT_MASK /**<	see the explanation above */,
+        ButtonMotionMask = GDK_BUTTON_MOTION_MASK /**<	receive pointer motion events while any button is pressed */,
+        Button1MotionMask = GDK_BUTTON1_MOTION_MASK /**<	receive pointer motion events while 1 button is pressed */,
+        Button2MotionMask = GDK_BUTTON2_MOTION_MASK /**<	receive pointer motion events while 2 button is pressed */,
+        Button3MotionMask = GDK_BUTTON3_MOTION_MASK /**<	receive pointer motion events while 3 button is pressed */,
+        ButtonPressMask = GDK_BUTTON_PRESS_MASK /**<	receive button press events */,
+        ButtonReleaseMask = GDK_BUTTON_RELEASE_MASK /**<	receive button release events */,
+        KeyPressMask = GDK_KEY_PRESS_MASK /**<	receive key press events */,
+        KeyReleaseMask = GDK_KEY_RELEASE_MASK /**<	receive key release events */,
+        EnterNotifyMask = GDK_ENTER_NOTIFY_MASK /**<	receive window enter events */,
+        LeaveNotifyMask = GDK_LEAVE_NOTIFY_MASK /**<	receive window leave events */,
+        FocusChangeMask = GDK_FOCUS_CHANGE_MASK /**<	receive focus change events */,
+        StructureMask = GDK_STRUCTURE_MASK /**<	receive events about window configuration change */,
+        PropertyChangeMask = GDK_PROPERTY_CHANGE_MASK /**<	receive property change events */,
+        VisibilityNotifyMask = GDK_VISIBILITY_NOTIFY_MASK /**<	receive visibility change events */,
+        ProximityInMask = GDK_PROXIMITY_IN_MASK /**<	receive proximity in events */,
+        ProximityOutMask = GDK_PROXIMITY_OUT_MASK /**<	receive proximity out events */,
+        SubstructureMask = GDK_SUBSTRUCTURE_MASK /**<	receive events about window configuration changes of child windows */,
+        ScrollMask = GDK_SCROLL_MASK /**<	receive scroll events */,
+        AllEventsMask = GDK_ALL_EVENTS_MASK /**<	the combination of all the above event masks. */
     };
 
     enum InterpType {
@@ -137,9 +175,10 @@ namespace gtk
     class Pixbuf : public Object
     {
         public:
+/// DOXYS_OFF            
             operator  GdkPixbuf *() const { return GDK_PIXBUF(Obj()); }
-
             Pixbuf(GObject *obj) { Init(obj); }
+/// DOXYS_ON
             Pixbuf(const std::string &name) {
                 if (GdkPixbuf *b = gdk_pixbuf_new_from_file(name.c_str(), NULL))
                     Init(b);

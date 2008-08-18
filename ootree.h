@@ -84,15 +84,33 @@ namespace gtk {
     class TreeRowReference;
 
     typedef std::list<TreeRowReference> RefVec;
+/** The selection object for TreeView.
+The TreeSelection object is a helper object to manage the selection for a TreeView widget. The TreeSelection object is automatically created when a new TreeView widget is created, and cannot exist independentally of this widget. The primary reason the TreeSelection objects exists is for cleanliness of code and API. That is, there is no conceptual reason all these functions could not be methods on the TreeView widget instead of a separate function.
 
+The TreeSelection object is gotten from a TreeView by calling TreeView::Selection(). It can be manipulated to check the selection status of the tree, as well as select and deselect individual rows. Selection is done completely view side. As a result, multiple views of the same model can have completely different selections. Additionally, you cannot change the selection of a row on the model that is not currently displayed by the view without expanding its parents first.
+
+One of the important things to remember when monitoring the selection of a view is that the "changed" signal is mostly a hint. That is, it may only emit one signal when a range of rows is selected. Additionally, it may on occasion emit a ::changed signal when nothing has happened (mostly as a result of programmers calling select_row on an already selected row). 
+*/
     class TreeSelection : public Object
     {
          public:
+/// DOXYS_OFF             
             operator  GtkTreeSelection *() const { return GTK_TREE_SELECTION(obj_); }
             TreeSelection(GObject *o) { Init(o); }
-
+/// DOXYS_ON
+            /** Gets the selection mode for selection.
+\sa TreeSelection::Mode(OneOf<SelectionMode,GtkSelectionMode>)
+\return the current selection mode 
+            */
             OneOf<SelectionMode,GtkSelectionMode> Mode() const { return gtk_tree_selection_get_mode(*this); }
-            void Mode(OneOf<SelectionMode,GtkSelectionMode> mode) { gtk_tree_selection_set_mode(*this, mode); }
+            /** Sets the selection mode of the selection. 
+If the previous type was SelectionMultiple, then the anchor is kept selected, if it was previously selected.
+            */
+            void Mode(OneOf<SelectionMode,GtkSelectionMode> mode /**< a SelectionMode valid value or a GtkSelectionMode value */) { gtk_tree_selection_set_mode(*this, mode); }
+
+            /** Get a reference to the TreeView this TreeSelection is associated to. 
+            \return a reference to the TreeView object paired with this TreeSelection.
+            */
             gtk::TreeView &TreeView();
 
             int Count() const {
@@ -118,6 +136,26 @@ namespace gtk {
             BUILD_VOID_EVENT(OnChanged, "changed");
     };
 
+    /** The tree interface used by TreeView.
+
+The TreeModel interface defines a generic tree interface for use by the TreeView widget. It is an abstract interface, and is designed to be usable with any appropriate data structure. The programmer just has to implement this interface on their own data type for it to be viewable by a TreeView widget.
+
+The model is represented as a hierarchical tree of strongly-typed, columned data. In other words, the model can be seen as a tree where every node has different values depending on which column is being queried. The type of data found in a column is determined by using the GType system (ie. G_TYPE_INT, GTK_TYPE_BUTTON, G_TYPE_POINTER, etc.). The types are homogeneous per column across all nodes. It is important to note that this interface only provides a way of examining a model and observing changes. The implementation of each individual model decides how and if changes are made.
+
+In order to make life simpler for programmers who do not need to write their own specialized model, two generic models are provided — the TreeStore and the ListStore. To use these, the developer simply pushes data into these models as necessary. These models provide the data structure as well as all appropriate tree interfaces. As a result, implementing drag and drop, sorting, and storing data is trivial. For the vast majority of trees and lists, these two models are sufficient.
+
+Models are accessed on a node/column level of granularity. One can query for the value of a model at a certain node and a certain column on that node. There are two structures used to reference a particular node in a model. They are the TreePath and the TreeIte. Most of the interface consists of operations on a TreeIter.
+
+A path is essentially a potential node. It is a location on a model that may or may not actually correspond to a node on a specific model. The TreePath struct can be converted into either an array of unsigned integers or a string. The string form is a list of numbers separated by a colon. Each number refers to the offset at that level. Thus, the path “0” refers to the root node and the path “2:4” refers to the fifth child of the third node.
+
+By contrast, a TreeIter is a reference to a specific node on a specific model. It is a generic struct with an integer and three generic pointers. These are filled in by the model in a model-specific way. One can convert a path to an iterator by calling TreeModel::Get(TreeIter &, const TreePath &). These iterators are the primary way of accessing a model and are similar to the iterators used by TextBuffer. They are generally statically allocated on the stack and only used for a short time. The model interface defines a set of operations using them for navigating the model.
+
+It is expected that models fill in the iterator with private data. For example, the GtkListStore model, which is internally a simple linked list, stores a list node in one of the pointers. The GtkTreeModelSort stores an array and an offset in two of the pointers. Additionally, there is an integer field. This field is generally filled with a unique stamp per model. This stamp is for catching errors resulting from using invalid iterators with a model.
+
+The lifecycle of an iterator can be a little confusing at first. Iterators are expected to always be valid for as long as the model is unchanged (and doesn't emit a signal). The model is considered to own all outstanding iterators and nothing needs to be done to free them from the user's point of view. Additionally, some models guarantee that an iterator is valid for as long as the node it refers to is valid (most notably the TreeStore and ListStore). Although generally uninteresting, as one always has to allow for the case where iterators do not persist beyond a signal, some very important performance enhancements were made in the sort model. As a result, the GTK_TREE_MODEL_ITERS_PERSIST flag was added to indicate this behavior.
+
+To help show some common operation of a model, some examples are provided. The first example shows three ways of getting the iter at the location “3:2:5”. While the first method shown is easier, the second is much more common, as you often get paths from callbacks. 
+*/
     class TreeModel : public Object
     {
         public:
@@ -145,6 +183,15 @@ namespace gtk {
                 gtk_tree_model_get_valist(*this, const_cast<TreeIter *>(&it), va);
                 va_end(va);
             }
+            /** Sets iter to a valid iterator pointing to path_string, if it exists. 
+Otherwise, iter is left invalid and false is returned.
+\return true if there is a valid TreeIter associated with the specified path, false otherwise.
+*/
+            bool Get(TreeIter &iter /**< A TreeIter to be set */, 
+                     const std::string &path /**< A TreePath string, ie: "0:0:1" */) {
+                return gtk_tree_model_get_iter_from_string(*this, &iter, path.c_str());
+            }
+
             TreeIter Root() { return First(); }
             TreeIter First() {
                 GtkTreeIter it;
@@ -191,13 +238,28 @@ namespace gtk {
                 it.valid = gtk_tree_model_iter_parent (*this, it, &child);
                 return it;
             }
+            /** Returns the type of the column.
+            \return The type of the column. 
+             */
+            GType ColumnType(int index /**< The column index. */) const {
+                return gtk_tree_model_get_column_type(*this, index);
+            }
+            /// Returns the number of columns supported by this TreeModel.
+            /// \return The number of columns. 
             int Columns() const {
                 return gtk_tree_model_get_n_columns(*this);
             }
-            TreePath Path(const TreeIter &it) {
+            /** Returns a TreePath referenced by iter.
+            \return a TreePath.
+            */
+            TreePath Path(const TreeIter &it /**< a valid iterator for this TreeModel */) {
                 return TreePath(gtk_tree_model_get_path(*this, const_cast<TreeIter *>(&it)));
             }
-            bool Iter(TreeIter &iter, const TreePath &path) {
+            /** Sets iter to a valid iterator pointing to path. 
+            \return true if there is a valid TreeIter in this TreeModel for the specified path, false otherwise.
+            */
+            bool Iter(TreeIter &iter /**< An uninitialized TreeIter */, 
+                      const TreePath &path /**< A TreePath */) {
                 return gtk_tree_model_get_iter(*this, &iter, path);
             }
     };
@@ -315,7 +377,7 @@ namespace gtk {
                 while (size--)
                     types.push_back(va_arg(va, GType));
                 va_end(va);
-                Init(gtk_list_store_newv(types.size(), (GType *)&types[0]));
+                Init(gtk_tree_store_newv(types.size(), (GType *)&types[0]));
                 Internal(true);
             }
             void Set(const TreeIter &it, ...) {
@@ -496,11 +558,40 @@ namespace gtk {
 
     class CellRendererText : public CellRenderer
     {
+            class AbstractEdited {
+                    Object &obj_;
+                    int id_;
+                    static void real_cbk(GtkCellRendererText *cell, gchar *path_string, 
+                                         gchar *new_text, AbstractEdited *base) {
+                        if (base) base->notify(path_string, new_text);
+                    }
+                public:
+                    AbstractEdited(Object &obj) : obj_(obj) { id_ = g_signal_connect(obj_.Obj(), "edited", GCallback(real_cbk), this); }
+                    virtual ~AbstractEdited() { g_signal_handler_disconnect(obj_.Obj(), id_); }
+                    virtual void notify(const char *, const char *) const  = 0;
+            };
+            template <typename T>
+            class EditedCbk : public AbstractEdited {
+                    T*myObj;
+                    void (T::*myFnc)(const std::string &, const std::string &);
+                public:
+                    EditedCbk(Object &w, T*obj, void (T::*fnc)(const std::string &, const std::string &)) :
+                        AbstractEdited(w), myObj(obj), myFnc(fnc) {}
+                    void notify(const char *a, const char *b) const { (myObj->*myFnc)(a, b); }
+            };
+
+            AbstractEdited *edited_;
         public:
-            CellRendererText(GObject *obj) { Init(obj); }
-            CellRendererText() { 
+            CellRendererText(GObject *obj) : edited_(NULL) { Init(obj); }
+            CellRendererText() : edited_(NULL) { 
                 Init(gtk_cell_renderer_text_new()); 
                 Internal(true);
+            }
+            ~CellRendererText() { if (edited_) delete edited_; }
+            template <typename T>
+            void OnEdited(void (T::*cbk)(const std::string &, const std::string &), T* base) {
+                if (edited_) delete edited_;
+                edited_ = new EditedCbk<T>(*this, base, cbk);
             }
     };
 
@@ -531,6 +622,7 @@ namespace gtk {
             bool Active() const { return gtk_cell_renderer_toggle_get_active(*this); }
     };
 
+    /// A list of CellRendererer, used by TreeViewColumn::GetRenderers, may be empty.
     typedef std::list<CellRenderer *> RendererList;
 
     enum SortType
@@ -627,14 +719,32 @@ namespace gtk {
             }
     };
 
+
+    /// A list of pointer to TreeViewColumn objects, returned by a some TreeView functions.
     typedef std::list<TreeViewColumn *> ColumnList;
 
+    /** A widget for displaying both trees and lists
+Widget that displays any object that implements the TreeModel interface.
+
+Please refer to the tree widget conceptual overview for an overview of all the objects and data types related to the tree widget and how they work together.
+
+Several different coordinate systems are exposed in the TreeView API. These are: 
+
+\image docpics/tree-view-coordinates.png "TreeView coordinate systems."
+#Widget coordinates# -- coordinates relative to the widget (usually widget->window.
+#Bin window coordinates# -- coordinates relative to the window that GtkTreeView renders to.
+#Tree coordinates# -- coordinates relative to the entire scrollable area of GtkTreeView. These coordinates start at (0, 0) for row 0 of the tree.
+
+Several functions are available for converting between the different coordinate systems. The most common translations are between widget and bin window coordinates and between bin window and tree coordinates. For the former you can use gtk_tree_view_convert_widget_to_bin_window_coords() (and vice versa), for the latter gtk_tree_view_convert_bin_window_to_tree_coords() (and vice versa). 
+     */
     class TreeView : public Container
     {
         public:
+/// DOXYS_OFF            
             operator  GtkTreeView *() const { return GTK_TREE_VIEW(Obj()); }
 
             TreeView(GObject *obj) { Init(obj); }
+/// DOXYS_ON
             TreeView(const TreeModel &model) {
                 TreeModel &m = const_cast<TreeModel &>(model);
                 m.Ref();
@@ -677,6 +787,32 @@ namespace gtk {
                 return NULL;
             }
 
+            /** Add a new, editable, text column to the TreeView.
+
+This API appends a new TreeViewColumn to the TreeView, the column is in text format with Pango markup enabled and can be made editable on cell bases specifying an edit_id boolean column of the associated TreeModel to select if a cell is editable or not or, if you don't specify edit_id, all the cells of this column will be editable.
+\return a pointer to the newly created TreeViewColumn or NULL if some problem occurred.
+*/
+            TreeViewColumn *AddEditableColumn(const std::string &title /**< Title for the column */, 
+                                              int id /**< The ID of the column where to retrieve this column text in the associated TreeModel */, 
+                                              int edit_id = -1 /**< The optional ID of the column in the TreeModel associated to this TreeView that defines if the text is editable or not on cell basis, if not specified defaults to -1 that means that every cell of this column is editable. */) {
+                CellRendererText r;
+                int col;
+
+                if (edit_id != -1) {
+                    col = gtk_tree_view_insert_column_with_attributes(*this, -1,
+                            title.c_str(), r, "markup", id,
+                            "editable", edit_id,
+                            NULL);
+                }
+                else {
+                    col = gtk_tree_view_insert_column_with_attributes(*this, -1,
+                            title.c_str(), r, "markup", id,
+                            NULL);
+                    r.Set("editable", true);
+                }
+
+                return Get(col - 1);
+            }
 
             TreeViewColumn *AddTextColumn(const std::string &title, int id) {
                 CellRendererText r;
@@ -774,14 +910,26 @@ namespace gtk {
                 return dynamic_cast<TreeViewColumn *>(Object::Find((GObject *)
                             gtk_tree_view_get_expander_column(*this)));
             }
+            /// Expands the row at path. This will also expand all parent rows of path as necessary.
+            void Expand(const TreePath &path /**< path to a row. */) { gtk_tree_view_expand_to_path(*this, path); }
+            /// Recursively expands all nodes in the TreeView.
             void ExpandAll() { gtk_tree_view_expand_all(*this); }
+            /// Recursively collapses all visible, expanded nodes in tree_view.
             void CollapseAll() { gtk_tree_view_collapse_all(*this); }
-            void ExpandRow(const TreePath &path, bool recursive = true) { gtk_tree_view_expand_row(*this, path, recursive); }
+            /// Opens the row so its children are visible.
+            void ExpandRow(const TreePath &path /**< path to a row */, 
+                           bool recursive = true /**< whether to recursively expand, or just expand immediate children, defaults to expand recursively. */) { gtk_tree_view_expand_row(*this, path, recursive); }
             void CollapseRow(const TreePath &path) { gtk_tree_view_collapse_row(*this, path); }
             void ScrollTo(int x, int y) { gtk_tree_view_scroll_to_point(*this, x, y); }
             void ScrollTo(const Point &point) { ScrollTo(point.x, point.y); }
 
-            TreeSelection &Selection() { // un treeview non puo' essere creato senza una TreeSelection
+            /** Returns the selection associated with this TreeView.
+            A TreeSelection is a convenient wrapper around a subset of TreeView methods
+            related to selection handling, every TreeView has one TreeSelection, so this
+            function returns a reference to it.
+            \return A reference to this TreeView TreeSelection.
+            */
+            TreeSelection &Selection() { // a treeview always has his TreeSelection
                 GtkTreeSelection *s = gtk_tree_view_get_selection(*this);
 
                 if (!s) throw std::runtime_error("TreeView without TreeSelection!");
@@ -823,6 +971,61 @@ namespace gtk {
 
             bool FixedHeightMode() const { return gtk_tree_view_get_fixed_height_mode(*this); }
             void FixedHeightMode(bool flag) { gtk_tree_view_set_fixed_height_mode(*this, flag); }
+
+            /// Converts widget coordinates to coordinates for the bin_window
+            /// \return a Point containing X,Y Bin widget coordinates.
+            Point WidgetToBin(const Point &widget_coords /**< X,Y coordinates relative to widget */
+                    ) {
+                Point dest;
+                gtk_tree_view_convert_widget_to_bin_window_coords(*this, widget_coords.x, widget_coords.y,
+                                                           &dest.x, &dest.y);
+                return dest;
+            }
+            /// Converts widget coordinates to coordinates for the tree (the full scrollable area of the tree).
+            /// \return a Point containing X,Y tree coordinates.
+            Point WidgetToTree(const Point &widget_coords /**< X,Y coordinates relative to widget */
+                    ) {
+                Point dest;
+                gtk_tree_view_convert_widget_to_tree_coords(*this, widget_coords.x, widget_coords.y,
+                                                           &dest.x, &dest.y);
+                return dest;
+            }
+            /// Converts tree coordinates (coordinates in full scrollable area of the tree) to widget coordinates.
+            /// \return a Point containing X,Y widget coordinates.
+            Point TreeToWidget(const Point &tree_coords /**< X,Y coordinates relative to tree */
+                    ) {
+                Point dest;
+                gtk_tree_view_convert_tree_to_widget_coords(*this, tree_coords.x, tree_coords.y,
+                                                           &dest.x, &dest.y);
+                return dest;
+            }
+            /// Converts tree coordinates (coordinates in full scrollable area of the tree) to bin_window coordinates.
+            /// \return a Point containing X,Y bin widget coordinates.
+            Point TreeToBin(const Point &tree_coords /**< X,Y coordinates relative to tree */
+                    ) {
+                Point dest;
+                gtk_tree_view_convert_tree_to_bin_window_coords(*this, tree_coords.x, tree_coords.y,
+                                                           &dest.x, &dest.y);
+                return dest;
+            }
+            /// Converts bin_window coordinates to widget relative coordinates.
+            /// \return a Point containing X,Y widget coordinates.
+            Point BinToWidget(const Point &bin_coords /**< X,Y coordinates relative to bin widget */
+                    ) {
+                Point dest;
+                gtk_tree_view_convert_bin_window_to_widget_coords(*this, bin_coords.x, bin_coords.y,
+                                                           &dest.x, &dest.y);
+                return dest;
+            }
+            /// Converts bin_window coordinates for the tree (the full scrollable area of the tree).
+            /// \return a Point containing X,Y tree coordinates.
+            Point BinToTree(const Point &bin_coords /**< X,Y coordinates relative to bin widget */
+                    ) {
+                Point dest;
+                gtk_tree_view_convert_bin_window_to_tree_coords(*this, bin_coords.x, bin_coords.y,
+                                                           &dest.x, &dest.y);
+                return dest;
+            }            
     };
 
     inline gtk::TreeView &TreeSelection::
