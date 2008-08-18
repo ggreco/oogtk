@@ -134,6 +134,73 @@ int main() {
             void Toggle() { gtk_item_toggle(*this); }
     };
 
+/** A widget used to catch events for widgets which do not have their own window.
+The EventBox widget is a subclass of Bin which also has its own window. It is useful since it allows you to catch events for widgets which do not have their own window. You can use it also to change properties like background colors for the child NoWindow widget.
+*/
+    class EventBox : public Bin // COMPLETE API
+    {
+        public:
+/// DOXYS_OFF
+            operator  GtkEventBox *() const { return GTK_EVENT_BOX(Obj()); }
+/// DOXYS_ON
+/// Creates a new event box without child widget.
+            EventBox() {
+                Init(gtk_event_box_new());
+                Internal(true);
+            }
+/// Creates a new event box with a child widget.
+            EventBox(const Widget &w) {
+                Init(gtk_event_box_new());
+                Child(w);
+                Internal(true);
+            }
+            /** Set whether the event box window is positioned above the windows of its child, as opposed to below it. 
+
+If the window is above, all events inside the event box will go to the event box. If the window is below, events in windows of child widgets will first got to that widget, and then to its parents.
+
+The default is to keep the window below the child.
+            */
+            void AboveChild(bool flag /**< true if the event box window is above the windows of its child */) { 
+                gtk_event_box_set_above_child(*this, flag); 
+            }
+            /** Returns whether the event box window is above or below the windows of its child.
+\sa EventBox::AboveChild(bool) for details.
+\return true if the event box window is above the window of its child. 
+*/
+            bool AboveChild() const { 
+                return gtk_event_box_get_above_child(*this);
+            }
+/** Set whether the event box uses a visible or invisible child window. 
+
+The default is to use visible windows.
+
+In an invisible window event box, the window that the event box creates is a GDK_INPUT_ONLY window, which means that it is invisible and only serves to receive events.
+
+A visible window event box creates a visible (GDK_INPUT_OUTPUT) window that acts as the parent window for all the widgets contained in the event box.
+
+You should generally make your event box invisible if you just want to trap events. Creating a visible window may cause artifacts that are visible to the user, especially if the user is using a theme with gradients or pixmaps.
+
+The main reason to create a non input-only event box is if you want to set the background to a different color or draw on it.
+
+!Note
+
+There is one unexpected issue for an invisible event box that has its window below the child. (See EventBox::AboveChild(bool).) Since the input-only window is not an ancestor window of any windows that descendent widgets of the event box create, events on these windows aren't propagated up by the windowing system, but only by GTK+. The practical effect of this is if an event isn't in the event mask for the descendant window (see gtk_widget_add_events()), it won't be received by the event box.
+
+This problem doesn't occur for visible event boxes, because in that case, the event box window is actually the ancestor of the descendant windows, not just at the same place on the screen.
+
+*/
+            void VisibleWindow(bool flag /**< select if the EventBox is visible or not*/) {
+                gtk_event_box_set_visible_window(*this, flag);
+            }
+/** Returns whether the event box has a visible window.
+\sa EventBox::VisibleWindow(bool) for details.
+\return true if the event box window is visible.
+ */
+            bool VisibleWindow() const {
+                return gtk_event_box_get_visible_window(*this);
+            }
+    };
+
     /// Determines when a scroll bar will be visible.
     enum PolicyType
     {

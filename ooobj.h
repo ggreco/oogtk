@@ -281,6 +281,13 @@ oogtk C++ enums.
 
             void Dispose();
             
+            void Set(const char *property, gfloat value) {
+                g_object_set(obj_, property, value, NULL);
+            }
+            void Set(const char *property, double value) {
+                gfloat temp = value;
+                g_object_set(obj_, property, temp, NULL);
+            }
             void Set(const char *property, int value) {
                 g_object_set(obj_, property, value, NULL);
             }
@@ -301,6 +308,14 @@ oogtk C++ enums.
                 g_object_get(obj_, property, &value, NULL);
             }
             void Get(const char *property, int &value) {
+                g_object_get(obj_, property, &value, NULL);
+            }
+            void Get(const char *property, double &value) {
+                gfloat temp;
+                g_object_get(obj_, property, &temp, NULL);
+                value = temp;
+            }
+            void Get(const char *property, gfloat &value) {
                 g_object_get(obj_, property, &value, NULL);
             }
             void Set(const PropertyList &props) {
