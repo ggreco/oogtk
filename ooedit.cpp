@@ -171,7 +171,7 @@ class OoEdit : public Application
                 // Create a new dialog with the buttons defined above, specify "save"
                 // as action type, this will change the browser.
                 FileChooserDialog dialog("Select a name for the file...", &m_window, 
-                        FileChooserActionSave, 
+                        FileChooser::ActionSave, 
                         make_vector(ButtonData(GTK_STOCK_OK, ResponseOk))
                                    (ButtonData(GTK_STOCK_CANCEL, ResponseCancel)) );
 
