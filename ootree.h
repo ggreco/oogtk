@@ -299,7 +299,7 @@ Otherwise, iter is left invalid and false is returned.
 
             void SetValue(const TreeIter &it, int idx, int value) {
                 gtk_list_store_set(*this, 
-                        const_cast<TreeIter *>(&it), idx, &value, -1);
+                        const_cast<TreeIter *>(&it), idx, value, -1);
             }
             void SetValue(const TreeIter &it, int idx, void *value) {
                 gtk_list_store_set(*this, 

@@ -697,28 +697,55 @@ This member returns a reference to the Widget of the active page of the Notebook
             }
     };
 
+    /// Denotes the expansion properties that a widget will have when it (or its parent) is resized. 
     enum AttachOptions
     {
-        Expand = GTK_EXPAND,
-        Shrink = GTK_SHRINK,
-        Fill   = GTK_FILL
+        Expand = GTK_EXPAND /**< the widget should expand to take up any extra space in its container that has been allocated. */,
+        Shrink = GTK_SHRINK /**< the widget should shrink as and when possible. */,
+        Fill   = GTK_FILL /**< 	the widget should fill the space allocated to it. */
     };
 
     inline AttachOptions operator|(const AttachOptions &a, const AttachOptions &b) {
         return (AttachOptions)(((int)a)|((int)b));
     }
 
+/** The Table object allow the programmer to arrange widgets in rows and columns, making it easy to align many widgets next to each other, horizontally and vertically.
+
+The size of a table can later be changed with Table::Resize().
+
+Widgets can be added to a table using Table::Attach().
+
+To alter the space next to a specific row, use Table::RowSpacing(int, int), and for a column, Table::ColSpacing(int, int).
+
+The gaps between all rows or columns can be changed by calling Table::RowSpacing(int, int) or Table::ColSpacing(int, int) respectively without specifying the row parameter, you can also change row and columns spacing at once with a call to Table::Spacing(int).
+
+Table::Homogeneous(bool), can be used to set whether all cells in the table will resize themselves to the size of the largest widget in the table.
+*/
     class Table : public Container { // COMPLETE API
         public:
+/// DOXYS_OFF             
             operator  GtkTable *() const { return GTK_TABLE(Obj()); }
 
             Table(GObject *obj) { Init(obj); }
-            Table(int rows, int columns, bool homogeneous = false) {
+/// DOXYS_ON
+/** Create a new table widget. 
+
+An initial size must be given by specifying how many rows and columns the table should have, although this can be changed later with Table::Resize(). rows and columns must both be in the range 0 .. 65535.  
+*/
+            Table(int rows /**< The number of rows the new table should have. */,
+                  int columns /**< The number of columns the new table should have. */,
+                  bool homogeneous = false /**< If set to TRUE, all table cells are resized to the size of the cell containing the largest widget, defaults to false. */) {
                 Init(gtk_table_new(rows, columns, homogeneous));
                 Internal(true);
             }
 
-            void Resize(int rows, int columns) { gtk_table_resize(*this, rows, columns); }
+/** Change the size of a Table.
+
+If you need to change a table's size after it has been created, this method allows you to do so. 
+*/
+            void Resize(int rows /**< The new number of rows. */, 
+                        int columns /**< The new number of columns. */
+                        ) { gtk_table_resize(*this, rows, columns); }
 
             void Spacing(int space) {
                 RowSpacing(space);
@@ -736,11 +763,19 @@ This member returns a reference to the Widget of the active page of the Notebook
                 else
                     return gtk_table_get_row_spacing(*this, row);
             }
+/** Adds a widget to a table. 
 
-            void Attach(const Widget &child, int left, int top, int right = -1, int bottom = -1,
-                        OneOf<GtkAttachOptions, AttachOptions> xoptions = (Expand|Fill),
-                        OneOf<GtkAttachOptions, AttachOptions> yoptions = (Expand|Fill),
-                        int xpadding = 0, int ypadding = 0
+The number of 'cells' that a widget will occupy is specified by left_attach, right_attach, top_attach and bottom_attach. These each represent the leftmost, rightmost, uppermost and lowest column and row numbers of the table. (Columns and rows are indexed from zero). 
+*/
+            void Attach(const Widget &child /**< The widget to add. */, 
+                        int left /**< the column number to attach the left side of a child widget to.  */, 
+                        int top /**< the row number to attach the top of a child widget to. */, 
+                        int right = -1 /**< the column number to attach the right side of a child widget to, if not specified or -1 defaults to left + 1. */, 
+                        int bottom = -1 /**< 	the row number to attach the bottom of a child widget to, if not specified or -1 defaults to top + 1 */,
+                        OneOf<GtkAttachOptions, AttachOptions> xoptions = (Expand|Fill) /**< Used to specify the properties of the child widget when the table is resized, defaults to AttachOptions::Expand and AttachOptions::Fill. */,
+                        OneOf<GtkAttachOptions, AttachOptions> yoptions = (Expand|Fill) /**< The same as xoptions, except this field determines behaviour of vertical resizing, defaults to AttachOptions::Expand and AttachOptions::Fill.*/,
+                        int xpadding = 0 /**< An integer value specifying the padding on the left and right of the widget being added to the table. */, 
+                        int ypadding = 0 /**< The amount of padding above and below the child widget. */
                         ) {
                 gtk_table_attach(*this, child, 
                         left, right != -1 ? right : left + 1,
@@ -761,7 +796,12 @@ This member returns a reference to the Widget of the active page of the Notebook
                     return gtk_table_get_col_spacing(*this, column);
             }
 
-            void Homogeneous(bool flag) { gtk_table_set_homogeneous(*this, flag); }
+            /// Changes the homogenous property of table cells, ie. whether all cells are an equal size or not. 
+            void Homogeneous(bool flag /**< Set to true to ensure all table cells are the same size. Set to false if this is not your desired behaviour. */
+                    ) { gtk_table_set_homogeneous(*this, flag); }
+            /// Returns whether the table cells are all constrained to the same width and height.
+            /// \sa Table::Homogeneous(bool)
+            /// \return true if the cells are all constrained to the same size 
             bool Homogeneous() const { return gtk_table_get_homogeneous(*this); }
     };
 
@@ -776,9 +816,11 @@ This member returns a reference to the Widget of the active page of the Notebook
 
     class Frame : public Bin { // COMPLETE API
         public:
+/// DOXYS_OFF             
             operator  GtkFrame *() const { return GTK_FRAME(Obj()); }
             Frame(const DerivedType &) {}
             Frame(GObject *obj) { Init(obj); }
+/// DOXYS_ON
 
             Frame(const std::string &label = "") {
                 Init(gtk_frame_new(label.empty() ? NULL : label.c_str()));
@@ -812,8 +854,10 @@ This member returns a reference to the Widget of the active page of the Notebook
 
     class AspectFrame : public Frame {  // COMPLETE API
         public:
+/// DOXYS_OFF                         
             operator  GtkAspectFrame *() const { return GTK_ASPECT_FRAME(Obj()); }
             AspectFrame(GObject *obj) : Frame(DerivedType()) { Init(obj); }
+/// DOXYS_ON
 
             AspectFrame(float ratio, const std::string &label = "",
                         const Align &align = Align(0.5, 0.5), 
@@ -843,8 +887,10 @@ Note that setting the toolbar style overrides the user's preferences for the def
 
     class ToolItem : public Bin {
         public:
+/// DOXYS_OFF             
             operator  GtkToolItem *() const { return GTK_TOOL_ITEM(Obj()); }
             ToolItem(GObject *obj) { Init(obj); }
+/// DOXYS_ON             
             ToolItem(const DerivedType &) {} // do nothing
             ToolItem() { Init(gtk_tool_item_new()); Internal(true); }
             ToolItem(const Widget &child) { 
@@ -859,8 +905,10 @@ Note that setting the toolbar style overrides the user's preferences for the def
     class ToolButton : public ToolItem // COMPLETE API
     {
         public:
+/// DOXYS_OFF             
             operator  GtkToolButton *() const { return GTK_TOOL_BUTTON(Obj()); }
             ToolButton(GObject *obj) : ToolItem(DerivedType()) { Init(obj); }
+/// DOXYS_ON
 
             ToolButton() :
                 ToolItem(DerivedType()) {

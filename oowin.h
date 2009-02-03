@@ -61,18 +61,26 @@ If you simply want an undecorated window (no window borders), use Window::Decora
             BUILD_EVENT(OnDelete, "delete_event");
 
             // accel group stuff
+            /** Associate accel_group with window */
             void Add(const AccelGroup &group) { gtk_window_add_accel_group(*this, group); }
+            /** Remove the accelgroup from the window */
             void Remove(const AccelGroup &group) { gtk_window_remove_accel_group(*this, group); }
 
-            // flags get/set 
+            /** Find if the window is resizable or not */
             bool Resizable() const { return gtk_window_get_resizable(*this); }
+            /** Set if the window is resizable or not */
             void Resizable(bool flag) { gtk_window_set_resizable(*this, flag); }
 
+            /** Find if the window is modal or not */
             bool Modal() const { return gtk_window_get_modal(*this); }
-            void Modal(bool flag) { gtk_window_set_modal(*this, flag); }
+            /** Set/reset a window as modal.
+Modal windows prevent interaction with other windows in the same application. To keep modal dialogs on top of main application windows, use Window::TransientFor() to make the dialog transient for the parent; most window managers will then disallow lowering the dialog below the parent.
+            */
+            void Modal(bool flag /**< true to make the window modal, false otherwise */ ) { gtk_window_set_modal(*this, flag); }
 
+            /** Gets the title of the Window. */
             std::string Title() const { return std::string(gtk_window_get_title(*this)); }
-            /** Sets the title of the GtkWindow. 
+            /** Sets the title of the Window. 
 The title of a window will be displayed in its title bar; on the X Window System, the title bar is rendered by the window manager, so exactly how the title appears to users may vary according to a user's exact configuration. The title should help a user distinguish this window from other windows they may have open. A good title might include the application name and current document filename, for example.
                */
             void Title(const std::string &title /**< title of the window */) { 
@@ -87,18 +95,56 @@ The title of a window will be displayed in its title bar; on the X Window System
             void Size(const Point &size) { Size(size.x, size.y); }
             void Size(int width, int height) { gtk_window_resize(*this, width, height); }
 
+/** Obtain the position of a window.
+
+This function returns the position you need to pass to Window::Position(const Point &) or Window::Position(int, int) to keep window in its current position. This means that the meaning of the returned value varies with window gravity. Window::Position(const Point &) for more details.
+
+If you haven't changed the window gravity, its gravity will be GDK_GRAVITY_NORTH_WEST. This means that Window::Position() gets the position of the top-left corner of the window manager frame for the window. Window::Position(const Point &) sets the position of this same top-left corner.
+
+Window::Position() is not 100% reliable because the X Window System does not specify a way to obtain the geometry of the decorations placed on a window by the window manager. Thus GTK+ is using a "best guess" that works with most window managers.
+
+Moreover, nearly all window managers are historically broken with respect to their handling of window gravity. So moving a window to its current position as returned by Window::Position() tends to result in moving the window slightly. Window managers are slowly getting better over time.
+
+\return a Point containing the top-left coordinates of the window.
+*/
             Point Position() const { 
                 Point pos;
                 gtk_window_get_position(*this, &pos.x, &pos.y);
                 return pos;
             }
-            void Position(int x, int y) { gtk_window_move(*this, x, y); }
-            void Position(const Point &origin) { Position(origin.x, origin.y); }
-            void Position(OneOf<GtkWindowPosition, WindowPosition> pos) { 
+            /** Move a window to (X,Y).
+\sa Window::Position(const Point &)
+*/
+            void Position(int x /**< X coordinate of the top-left edge */, 
+                          int y /**< Y coordinate of the top-left edge */) { gtk_window_move(*this, x, y); }
+/** Asks the window manager to move window to the given position. 
+
+Window managers are free to ignore this; most window managers ignore requests for initial window positions (instead using a user-defined placement algorithm) and honor requests after the window has already been shown.
+
+Note: the position is the position of the gravity-determined reference point for the window. The gravity determines two things: first, the location of the reference point in root window coordinates; and second, which point on the window is positioned at the reference point.
+
+By default the gravity is GDK_GRAVITY_NORTH_WEST, so the reference point is simply the x, y supplied to Window::Position(const Point &) or Window::Position(int, int). The top-left corner of the window decorations (aka window frame or border) will be placed at the x, y specified by the Point or directly in the function call. Therefore, to position a window at the top left of the screen, you want to use the default gravity (which is GDK_GRAVITY_NORTH_WEST) and move the window to 0,0.
+
+To position a window at the bottom right corner of the screen, you would set GDK_GRAVITY_SOUTH_EAST, which means that the reference point is at x + the window width and y + the window height, and the bottom-right corner of the window border will be placed at that reference point. So, to place a window in the bottom right corner you would first set gravity to south east, then write: window->Position(gdk_screen_width() - window_width, gdk_screen_height() - window_height) (note that this example does not take multi-head scenarios into account).
+
+The Extended Window Manager Hints specification at http://www.freedesktop.org/Standards/wm-spec has a nice table of gravities in the "implementation notes" section.           
+*/
+            void Position(const Point &origin /**< Top left corner window coordinates */) { Position(origin.x, origin.y); }
+
+            /** Sets a position constraint for this window. 
+If the old or new constraint is PositionCenterAlways, this will also cause the window to be repositioned to satisfy the new constraint.
+*/            void Position(OneOf<GtkWindowPosition, WindowPosition> pos) { 
                 gtk_window_set_position(*this, pos); 
             }
+/** Set a window as "transient" for a parent one.
 
-            void TransientFor(Window &parent) { gtk_window_set_transient_for(*this, parent); }
+Dialog windows should be set transient for the main application window they were spawned from. 
+
+This allows window managers to e.g. keep the dialog on top of the main window, or center the dialog over the main window. Dialog::Dialog() and other convenience functions in GTK+ will sometimes call Window::TransientFor() on your behalf.
+
+On Windows, this function puts the child window on top of the parent, much as the window manager would have done on X.
+*/
+            void TransientFor(Window &parent /**< parent window */ ) { gtk_window_set_transient_for(*this, parent); }
             bool Active() const { return gtk_window_is_active(*this); }
 
             // shortcut GTK uses
@@ -138,6 +184,24 @@ On Windows, this function always works, since there's no window manager policy i
             void Deletable(bool flag /**< true to enable the close widget for the window */) {
                 gtk_window_set_deletable(*this, flag);
             }
+            /** Create a new Pixbuf object with the window contents.
+This is an utility method that can be used to create a Pixbuf object from a window to dump
+it to disk with Pixbuf::Save or to do some other stuff to the pixel data.
+
+\retval a pointer to a newly allocated Pixbuf object, NULL if something went wrong.
+*/
+            gtk::Pixbuf *Pixbuf() {
+                Application::Flush();
+                int w, h;
+                gdk_drawable_get_size(*this, &w, &h);
+                if (GdkPixbuf *buf = gdk_pixbuf_get_from_drawable(NULL,
+                                    *this, 
+                                    gdk_colormap_get_system(),
+                                    0, 0, 0, 0, w, h)) 
+                    return new gtk::Pixbuf((GObject *)buf);
+                else
+                    return NULL;
+            }
     };
 
     typedef std::pair<std::string, int> ButtonData;
@@ -145,56 +209,97 @@ On Windows, this function always works, since there's no window manager policy i
 
     enum DialogFlags
     {
-        DialogModal = GTK_DIALOG_MODAL, /* call gtk_window_set_modal (win, TRUE) */
-        DialogDestroyWithParent = GTK_DIALOG_DESTROY_WITH_PARENT, /* call gtk_window_set_destroy_with_parent () */
-        DialogNoSeparator = GTK_DIALOG_NO_SEPARATOR
+        DialogModal = GTK_DIALOG_MODAL /**< Make the constructed dialog modal, like calling Window::Modal(true) */,
+        DialogDestroyWithParent = GTK_DIALOG_DESTROY_WITH_PARENT /**< Destroy the dialog when its parent is destroyed. */,
+        DialogNoSeparator = GTK_DIALOG_NO_SEPARATOR /**< Don't put a separator between the action area and the dialog content. */
     };
 
     inline DialogFlags operator|(DialogFlags a, DialogFlags b) { return (DialogFlags)(((int)a)|((int)b)); }
 
     enum ResponseType
     {
-        /* GTK returns this if a response widget has no response_id,
-         * or if the dialog gets programmatically hidden or destroyed.
-         */
-        ResponseNone = GTK_RESPONSE_NONE,
+        ResponseNone = GTK_RESPONSE_NONE /**< GTK returns this if a response widget has no response_id, or if the dialog gets programmatically hidden or destroyed. */,
 
         /* GTK won't return these unless you pass them in
          * as the response for an action widget. They are
          * for your convenience.
          */
-        ResponseReject = GTK_RESPONSE_REJECT,
-        ResponseAccept = GTK_RESPONSE_ACCEPT,
+        ResponseReject = GTK_RESPONSE_REJECT /**< Generic response ID, not used by gtk dialogs. */,
+        ResponseAccept = GTK_RESPONSE_ACCEPT /**< Generic response ID, not used by gtk dialogs. */,
 
         /* If the dialog is deleted. */
-        ResponseDeleteEvent = GTK_RESPONSE_DELETE_EVENT,
+        ResponseDeleteEvent = GTK_RESPONSE_DELETE_EVENT /**< Returned if dialog is deleted */,
 
         /* These are returned from GTK dialogs, and you can also use them
          * yourself if you like.
          */
-        ResponseOk = GTK_RESPONSE_OK,
-        ResponseCancel = GTK_RESPONSE_CANCEL,
-        ResponseClose = GTK_RESPONSE_CLOSE,
-        ResponseYes = GTK_RESPONSE_YES,
-        ResponseNo = GTK_RESPONSE_NO,
-        ResponseApply = GTK_RESPONSE_APPLY,
+        ResponseOk = GTK_RESPONSE_OK /**< Returned by OK buttons in GTK+ dialogs */,
+        ResponseCancel = GTK_RESPONSE_CANCEL /**< Returned by Cancel buttons in GTK+ dialogs */,
+        ResponseClose = GTK_RESPONSE_CLOSE /**< Returned by Close buttons in GTK+ dialogs */,
+        ResponseYes = GTK_RESPONSE_YES /**< Returned by Yes buttons in GTK+ dialogs */,
+        ResponseNo = GTK_RESPONSE_NO /**< Returned by No buttons in GTK+ dialogs */,
+        ResponseApply = GTK_RESPONSE_APPLY /**< Returned by Apply buttons in GTK+ dialogs */,
         ResponseHelp = GTK_RESPONSE_HELP
     };
 
+/** Create popup windows
+
+Dialog boxes are a convenient way to prompt the user for a small amount of input, e.g. to display a message, ask a question, or anything else that does not require extensive effort on the user's part.
+
+GTK+ treats a dialog as a window split vertically. The top section is a VBox, and is where widgets such as a Label or a Entry should be packed. The bottom area is known as the action_area. This is generally used for packing buttons into the dialog which may perform functions such as cancel, ok, or apply. The two areas are separated by a HSeparator.
+
+Dialog boxes are created with a the relevant constructors, the constructor will allows you to set the dialog title, some convenient flags, and add simple buttons.
+
+A 'modal' dialog (that is, one which freezes the rest of the application from user input), can be created by calling Window::Modal() on the dialog. When creating a dialog you can also pass the DialogModal flag to make a dialog modal.
+
+If you add buttons to Dialog through the constructor, using Dialog::AddButton(), or Dialog::AddButtons() clicking the button will emit a signal called "response" with a response ID that you specified. GTK+ will never assign a meaning to positive response IDs; these are entirely user-defined. But for convenience, you can use the response IDs in the ResponseType enumeration (these all have values less than zero). If a dialog receives a delete event, the "response" signal will be emitted with a response ID of ResponseDeleteEvent.
+
+If you want to block waiting for a dialog to return before returning control flow to your code, you can call Dialog::Run(). This function enters a recursive main loop and waits for the user to respond to the dialog, returning the response ID corresponding to the button the user clicked.
+
+For the simple dialog in the following example, in reality you'd probably use GMessageDialog to save yourself some effort. But you'd need to create the dialog contents manually if you had more than a simple message in the dialog. 
+
+\example
+// Function to open a dialog box displaying the message provided. 
+
+void quick_message (const char *message) {
+   gtk::ButtonVec b;
+   b.push_back(gtk::ButtonData(GTK_STOCK_OK, ResponseOk);
+
+   gtk::Dialog dialog("Message", b);
+
+   dialog.Body(gtk::Label(message));
+
+   dialog.ShowAll();
+
+   dialog.Run();
+}
+
+\endexample
+*/
     class Dialog : public Window
     {
         public:
+/// DOXYS_OFF
             operator  GtkDialog *() const { return GTK_DIALOG(Obj()); }
 
             Dialog(GObject *obj) : Window(DerivedType()) { Init(obj); }
             Dialog(const DerivedType &d) : Window(d) {}
+/// DOXYS_ON
 
+            /** Create a new dialog.
+This constructor creates a new dialog without title or any special attribute, use Window::Title(const std::string &), Window::TransientFor(), Dialog::AddButton(), Window::Modal(bool)... to configure the dialog after you created it.
+*/
             Dialog() : Window(DerivedType()) {
                 Init(gtk_dialog_new());
                 Internal(true);
             }
-            Dialog(const std::string &title, const ButtonVec &buttons, 
-                   Window *parent = NULL) : Window(DerivedType()) {
+            /** Create a new dialog.
+This constructor creates a new dialog with a title, an array of Button and an optional parent window, you can use Window::Title(const std::string &), Window::TransientFor(), Dialog::AddButton(), Window::Modal(bool)... to change dialog behaviour.
+             */
+            Dialog(const std::string &title /**< Title of the window */, 
+                  const ButtonVec &buttons /**< A vector of ButtonData */, 
+                   Window *parent = NULL /**< Optional parent window to be transient for (see also Window::TransientFor() ) */
+                   ) : Window(DerivedType()) {
                 Init(gtk_dialog_new());
                 AddButtons(buttons);
                 Title(title);
@@ -202,11 +307,20 @@ On Windows, this function always works, since there's no window manager policy i
                 if (parent) 
                     Window::TransientFor(*parent);
             }
-            void Body(Widget &widget) {
+/** Add a widget inside the dialog.
+
+This function let you set the contents of the dialog body. A dialog is composed by a body, an horizontal separator and a button row, you can add buttons with Dialog::AddButton() or Dialog::AddButtons().
+*/            
+            void Body(const Widget &widget) {
                 gtk_container_add(GTK_CONTAINER(GTK_DIALOG(Obj())->vbox), 
                                   widget);
             }
-            void AddButton(const std::string &label, int rc) {
+/** Adds a button to the dialog.
+
+Add a button with the given text (or a stock button, if button_text is a stock ID) and sets things up so that clicking the button will emit the "response" signal with the given response_id. The button is appended to the end of the dialog's action area. 
+*/
+            void AddButton(const std::string &label /**< Label of the button or a valid stock ID */,
+                           int rc /**< A ResponseType value or a custom value to be returned in Dialog::Run() if the user click this button */ ) {
                 gtk_dialog_add_button(*this, label.c_str(), rc);
             }
             void AddButton(const ButtonData &button) {
@@ -217,9 +331,42 @@ On Windows, this function always works, since there's no window manager policy i
                                                it != buttons.end(); ++it)
                     AddButton(*it);
             }
+/** Blocks in a recursive main loop until the dialog either emits the "response" signal, or is destroyed.
 
+If the dialog is destroyed during the call to Dialog::Run(), the function returns ResponseNone. Otherwise, it returns the response ID from the ::response signal emission.
+
+Before entering the recursive main loop, Dialog::Run() calls Window::Show() on the dialog for you. Note that you still need to show any children of the dialog yourself.
+
+During Dialog::Run(), the default behavior of "delete-event" is disabled; if the dialog receives ::delete_event, it will not be destroyed as windows usually are, and Dialog::Run() will return GTK_RESPONSE_DELETE_EVENT. Also, during Dialog::Run() the dialog will be modal. You can force Dialog::Run() to return at any time by calling Dialog::Response() to emit the ::response signal. Destroying the dialog during Dialog::Run() is a very bad idea, because your post-run code won't know whether the dialog was destroyed or not.
+
+After Dialog::Run() returns, you are responsible for hiding or destroying the dialog if you wish to do so.
+
+Typical usage of this function might be:
+
+\example
+  gint result = dialog.Run();
+  switch (result) {
+    case gtk::ResponseAccept:
+         do_application_specific_something ();
+         break;
+    default:
+         do_nothing_since_dialog_was_cancelled ();
+         break;
+  }
+\endexample
+
+Note that even though the recursive main loop gives the effect of a modal dialog (it prevents the user from interacting with other windows in the same window group while the dialog is run), callbacks such as timeouts, IO channel watches, DND drops, etc, will be triggered during a Dialog::Run() call.
+
+\return one of the predefined ResponseType values or an user defined one associated with a button (see Dialog::AddButton() )
+*/
             int Run() { return gtk_dialog_run(*this); }
-            void Response(int response_id) { gtk_dialog_response(*this, response_id); }
+
+/** Emits the "response" signal with the given response ID.
+
+Used to indicate that the user has responded to the dialog in some way; typically either you or Dialog::Run() will be monitoring the ::response signal and take appropriate action.            
+*/
+            void Response(int response_id /**< One of the ResponseType predefined value or an integer value of your choice, it will be the return value of Dialog::Run() */ ) { gtk_dialog_response(*this, response_id); }
+
             void DefaultResponse(int id) { gtk_dialog_set_default_response(*this, id); }
 
             void Separator(bool flag = false) { gtk_dialog_set_has_separator(*this, flag); }
@@ -665,16 +812,41 @@ If the user-selectable list of filters is non-empty, then the filter should be o
                             gtk_file_chooser_get_filter(getobj())));
             }
     };
+/** A file chooser dialog, suitable for "File/Open" or "File/Save" commands.
 
+FileChooserDialog is a dialog box suitable for use with "File/Open" or "File/Save as" commands. This widget works by putting a FileChooserWidget inside a Dialog. It exposes the FileChooser interface, so you can use all of the FileChooser functions on the file chooser dialog as well as those for Dialog.
+
+Note that FileChooserDialog does not have any methods of its own. Instead, you should use the functions that work on a FileChooser.
+
+In the simplest of cases, you can the following code to use GtkFileChooserDialog to select a file for opening.
+
+\example
+
+std::string open() {
+    gtk::FileChooserDialog dlg("Open a file...");
+    dlg.AddButton(GTK_STOCK_OK, ResponseOk);
+    dlg.AddButton(GTK_STOCK_CANCEL, ResponseCancel);
+
+    if (dlg.Run() == gtk::ResponseOk)
+        return dlg.Filename();
+    
+    return std::string();
+}
+\endexample
+*/
     class FileChooserDialog : public Dialog, public FileChooser {
         public:
+/// DOXYS_OFF
             operator  GtkFileChooserDialog *() const { return GTK_FILE_CHOOSER_DIALOG(Obj()); }
 
             FileChooserDialog(GObject *obj) : Dialog(DerivedType()) { Init(obj); }
-         
-            FileChooserDialog(const std::string &title = "", Window *parent_window = NULL,
-                              OneOf<GtkFileChooserAction, FileChooser::ActionValue> action =  FileChooser::ActionOpen,
-                              const ButtonVec &buttons = ButtonVec()) : 
+/// DOXYS_ON
+
+            /** Create a new FileChooserDialog. */
+            FileChooserDialog(const std::string &title = "" /**< Title of the window, it can be empty. */,
+                              Window *parent_window = NULL /**< Transient parent of the dialog, or NULL. */,
+                              OneOf<GtkFileChooserAction, FileChooser::ActionValue> action =  FileChooser::ActionOpen /**< Open or save mode for the dialog */,
+                              const ButtonVec &buttons = ButtonVec() /**< Vector of buttons to be added to the dialog, you can also use Dialog::AddButton() after the object is created to do this (look at the example) */ ) : 
                 Dialog(DerivedType()) {
                 Init(gtk_file_chooser_dialog_new(title.c_str(), NULL, action, 
                                           NULL, NULL));
@@ -706,9 +878,11 @@ If the user-selectable list of filters is non-empty, then the filter should be o
     class MessageDialog : public Dialog
     {
         public:
+/// DOXYS_OFF
             operator  GtkMessageDialog *() const { return GTK_MESSAGE_DIALOG(Obj()); }
 
             MessageDialog(GObject *obj) : Dialog(DerivedType()) { Init(obj); }
+/// DOXYS_ON
 
             MessageDialog(Window *parent, OneOf<GtkDialogFlags, DialogFlags> flags,
                           OneOf<GtkMessageType, MessageType> msgtype,

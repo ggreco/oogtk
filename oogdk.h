@@ -5,6 +5,7 @@
 
 namespace gtk
 {
+/** A simple object to represent a Point */
     struct Point
     {
         Point() : x(0), y(0) {}
@@ -14,9 +15,10 @@ namespace gtk
         int x, y;
     };
 
+/** A simple object to represent a Rectangle */
     struct Rect
     {
-        Rect() : w(0), h(0) {}
+        Rect() : x(0), y(0), w(0), h(0) {}
         Rect(const GdkRectangle *r) : x(r->x), y(r->y), w(r->width), h(r->height) {}
         Rect(const GdkRectangle &r) : x(r.x), y(r.y), w(r.width), h(r.height) {}
         Rect(int leftedge, int topedge, int width, int height) :
@@ -35,6 +37,7 @@ Align values goes from 0 to 1, where 0 is left, and 1 is right (and 0.5 is cente
 */
     typedef std::pair<float,float> Align;
 
+/** A simple object to represent a color */
     struct Color : public GdkColor
     {
         operator const GdkColor *() const { return dynamic_cast<const GdkColor *>(this); }
@@ -227,6 +230,21 @@ PointerMotionHintMask is a special mask which is used to reduce the number of Mo
             }
             void Fill(guint32 color = 0) { gdk_pixbuf_fill(*this, color); }
             void Flip(bool horizontal = true) { gdk_pixbuf_flip(*this, horizontal); }
+
+/** Saves pixbuf to a file in format type. 
+
+By default, "jpeg", "png", "ico" and "bmp" are possible file formats to save in, but more formats may be installed. If "type" is not specified the image is saved as PNG.
+
+\retval true if the save was correctly written, false otherwise.
+*/
+            bool Save(const std::string &filename /**< Destination path for the file */,
+                      const std::string &type = "png" /**< Image format, defaults to PNG. */) {
+                if( !gdk_pixbuf_save(*this, filename.c_str(), type.c_str(), NULL, NULL)) {
+                    return false;
+                }
+                else
+                    return true;
+            }
     };
 }
 inline std::ostream &operator<<(std::ostream &dest, const gtk::Point &point) {

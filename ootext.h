@@ -32,7 +32,10 @@ namespace gtk {
     inline TextSearchFlags operator|(const TextSearchFlags &l, const TextSearchFlags &r) {
         return (TextSearchFlags)( ((int)l)|((int)r) );
     }
+/** A text buffer iterator
 
+
+*/
     class TextIter {
             typedef std::pair<TextIter, TextIter> TextRange;
         public:
@@ -123,23 +126,32 @@ namespace gtk {
             TextBuffer &Buffer();
     };
 
+/** Stores attributed text for display in a TextView.
+
+You may wish to begin by reading the text widget conceptual overview in TextView which gives an overview of all the objects and data types related to the text widget and how they work together. 
+*/
     class TextBuffer : public Object
     {
         public:
+/// DOXYS_OFF            
             operator  GtkTextBuffer *() const { return GTK_TEXT_BUFFER(Obj()); }
 
             TextBuffer(GObject *o) { Init(o); }
+/// DOXYS_ON
 
+/// Creates a new text buffer.
             TextBuffer() {
                 Init(gtk_text_buffer_new(NULL)); 
                 Internal(true);
             }
 
+/// Creates a new text buffer with an associated TextTagTable.
             TextBuffer(const TextTagTable &table) {
                 Init(gtk_text_buffer_new(table)); 
                 Internal(true);
             }
 
+/// Retrieve the TextTagTable associated with the buffer.
             TextTagTable &TagTable() { 
                 GtkTextTagTable *t = gtk_text_buffer_get_tag_table(*this);
 
@@ -148,12 +160,32 @@ namespace gtk {
 
                 return * (dynamic_cast<TextTagTable *>(Object::Find((GObject *)t)));
             }
-            int Lines() const { return gtk_text_buffer_get_line_count(*this); }
-            int Characters() const { return gtk_text_buffer_get_char_count(*this); }
+            
+/** Obtains the number of lines in the buffer.
 
-            void Insert(const TextIter &position, const std::string &text) {
+This value is cached, so the function is very fast.  
+
+\return number of lines in the buffer 
+*/
+            int Lines() const { return gtk_text_buffer_get_line_count(*this); }
+/** Gets the number of characters in the buffer.
+
+Note that characters and bytes are not the same, you can't e.g. expect the contents of the buffer in string form to be this many bytes long. The character count is cached, so this function is very fast.
+
+\return number of characters in the buffer 
+*/
+            int Characters() const { return gtk_text_buffer_get_char_count(*this); }
+/** Inserts a string at position iter.
+
+Emits the "insert-text" signal; insertion actually occurs in the default handler for the signal. iter is invalidated when insertion occurs (because the buffer contents change), but the default signal handler revalidates it to point to the end of the inserted text.
+*/
+            void Insert(const TextIter &position /**< a position in the buffer */, 
+                        const std::string &text  /**< UTF-8 format string to insert */) {
                 gtk_text_buffer_insert(*this, const_cast<TextIter &>(position), 
                                 text.c_str(), text.length());
+            }
+            void InsertAtCursor(const std::string &text /**< UTF-8 format string to insert */) {
+                gtk_text_buffer_insert_at_cursor(*this, text.c_str(), text.length());
             }
             // by tag reference
             void InsertTags(const TextIter &position, const std::string &text,
@@ -353,27 +385,78 @@ namespace gtk {
         WrapWordChar = GTK_WRAP_WORD_CHAR
     };
 
+/** A widget to display multiple lines of text.
+
+GTK+ has an extremely powerful framework for multiline text editing. The primary objects involved in the process are TextBuffer, which represents the text being edited, and TextView, a widget which can display a TextBuffer. Each buffer can be displayed by any number of views.
+
+One of the important things to remember about text in GTK+ is that it's in the UTF-8 encoding. This means that one character can be encoded as multiple bytes. Character counts are usually referred to as offsets, while byte counts are called indexes. If you confuse these two, things will work fine with ASCII, but as soon as your buffer contains multibyte characters, bad things will happen.
+
+Text in a buffer can be marked with tags. A tag is an attribute that can be applied to some range of text. For example, a tag might be called "bold" and make the text inside the tag bold. However, the tag concept is more general than that; tags don't have to affect appearance. They can instead affect the behavior of mouse and key presses, "lock" a range of text so the user can't edit it, or countless other things. A tag is represented by a GtkTextTag object. One GtkTextTag can be applied to any number of text ranges in any number of buffers.
+
+Each tag is stored in a TextTagTable. A tag table defines a set of tags that can be used together. Each buffer has one tag table associated with it; only tags from that tag table can be used with the buffer. A single tag table can be shared between multiple buffers, however.
+
+Tags can have names, which is convenient sometimes (for example, you can name your tag that makes things bold "bold"), but they can also be anonymous (which is convenient if you're creating tags on-the-fly).
+
+Most text manipulation is accomplished with iterators, represented by a TextIter. An iterator represents a position between two characters in the text buffer. TextIter is a class designed to be allocated on the stack and manipulated like a STL iterator; it's guaranteed to be copiable by value and never contain any heap-allocated data. Iterators are not valid indefinitely; whenever the buffer is modified in a way that affects the number of characters in the buffer, all outstanding iterators become invalid. (Note that deleting 5 characters and then reinserting 5 still invalidates iterators, though you end up with the same number of characters you pass through a state with a different number).
+
+Because of this, iterators can't be used to preserve positions across buffer modifications. To preserve a position, the TextMark object is ideal. You can think of a mark as an invisible cursor or insertion point; it floats in the buffer, saving a position. If the text surrounding the mark is deleted, the mark remains in the position the text once occupied; if text is inserted at the mark, the mark ends up either to the left or to the right of the new text, depending on its gravity. The standard text cursor in left-to-right languages is a mark with right gravity, because it stays to the right of inserted text.
+
+Like tags, marks can be either named or anonymous. There are two marks built-in to TextBuffer; these are named "insert" and "selection_bound" and refer to the insertion point and the boundary of the selection which is not the insertion point, respectively. If no text is selected, these two marks will be in the same position. You can manipulate what is selected and where the cursor appears by moving these marks around. [2]
+
+Text buffers always contain at least one line, but may be empty (that is, buffers can contain zero characters). The last line in the text buffer never ends in a line separator (such as newline); the other lines in the buffer always end in a line separator. Line separators count as characters when computing character counts and character offsets. Note that some Unicode line separators are represented with multiple bytes in UTF-8, and the two-character sequence "\r\n" is also considered a line separator. 
+*/
     class TextView : public Container
     {
         public:
+/// DOXYS_OFF            
             operator  GtkTextView *() const { return GTK_TEXT_VIEW(Obj()); }
 
             TextView(GObject *o) { Init(o); }
+/// DOXYS_ON
+/** Creates a new TextView. 
+
+If you don't call TextView::Buffer(TextBuffer &) before using the text view, an empty default buffer will be created for you. Get the buffer with TextView::Buffer(). If you want to specify your own buffer, consider construct the object with the appropriate constructor TextView::TextView(TextBuffer &).
+*/
             TextView() { Init(gtk_text_view_new()); Internal(true); }
-            TextView(TextBuffer &buffer) { Init(gtk_text_view_new_with_buffer(buffer)); Internal(true); }
+/** Creates a new TextView widget displaying the buffer buffer. 
+
+One buffer can be shared among many widgets. The text view adds its own reference count to the buffer; it does not take over an existing reference.      
+*/
+            TextView(TextBuffer &buffer /**< A TextBuffer to be displayed in this widget */) { 
+                Init(gtk_text_view_new_with_buffer(buffer)); Internal(true); 
+            }
 
             // scroll functionalities
-            void Scroll(const TextMark &mark) { gtk_text_view_scroll_mark_onscreen(*this, mark); }
-            void Scroll(const TextMark &mark, double margin, bool use_align = false,
-                        Align align = Align(0.5, 0.5)) {
+            /** Scrolls the text view the minimum distance such that mark is contained within the visible area of the widget. */
+            void Scroll(const TextMark &mark /**< A TextMark in the buffer of the text view */) { gtk_text_view_scroll_mark_onscreen(*this, mark); }
+/** Scrolls the text view so that mark is on the screen in the position indicated by xalign and yalign. 
+
+An alignment of 0.0 indicates left or top, 1.0 indicates right or bottom, 0.5 means center. If use_align is false, the text scrolls the minimal distance to get the mark onscreen, possibly not scrolling at all. The effective screen for purposes of this function is reduced by a margin of size within_margin.
+*/
+            void Scroll(const TextMark &mark /**< A valid TextMark */, 
+                        double margin /**< 	 margin as a [0.0,0.5) fraction of screen size */, 
+                        bool use_align = false /**< whether to use alignment arguments (if false, just get the mark onscreen), defaults to false */,
+                        Align align = Align(0.5, 0.5) /**< horizontal and vertical alignment of mark within visible area */) {
                 gtk_text_view_scroll_to_mark(*this, mark, margin, use_align, align.first, align.second); 
             }
-            void Scroll(TextIter &it, double margin = 0.0f, bool use_align = false,
-                        Align align = Align(0.5, 0.5)) {
+/** Scrolls the text view so that iter is on the screen in the position indicated by xalign and yalign.
+
+An alignment of 0.0 indicates left or top, 1.0 indicates right or bottom, 0.5 means center. If use_align is false, the text scrolls the minimal distance to get the mark onscreen, possibly not scrolling at all. The effective screen for purposes of this function is reduced by a margin of size within_margin.
+
+Note that this function uses the currently-computed height of the lines in the text buffer. Line heights are computed in an idle handler; so this function may not have the desired effect if it's called before the height computations. To avoid oddness, consider using TextView::Scroll(const TextMark &, double, bool, Align) which saves a point to be scrolled to after line validation.
+*/          
+            void Scroll(TextIter &it /**< An initialized TextIter */, 
+                       double margin = 0.0f  /**< 	 margin as a [0.0,0.5) fraction of screen size */, 
+                       bool use_align = false /**< whether to use alignment arguments (if false, just get the mark onscreen), defaults to false */,
+                       Align align = Align(0.5, 0.5) /**< horizontal and vertical alignment of mark within visible area */
+                       ) {
                 gtk_text_view_scroll_to_iter(*this, it, margin, use_align, align.first, align.second); 
             }
 
             // buffer handling
+/** Returns the TextBuffer being displayed by this text view. 
+The reference count on the buffer is not incremented; the caller of this function won't own a new reference. 
+*/
             TextBuffer &Buffer() { 
                 GtkTextBuffer *b = gtk_text_view_get_buffer(*this); 
 
@@ -384,26 +467,54 @@ namespace gtk {
 
                 return dynamic_cast<TextBuffer &>(*Object::Find((GObject *)b));
             }
-            void Buffer(const TextBuffer &buffer) { gtk_text_view_set_buffer(*this, buffer); }
+            /** Sets buffer as the buffer being displayed by text_view.
+The previous buffer displayed by the text view is unreferenced, and a reference is added to buffer. If you owned a reference to buffer before passing it to this function, you must remove that reference yourself; TextView will not "adopt" it.
+*/
+            void Buffer(const TextBuffer &buffer /**< A TextBuffer */) { gtk_text_view_set_buffer(*this, buffer); }
 
 
             // cursor position/text buffer conversions
             OneOf<GtkTextWindowType, TextWindowType> WindowType(GdkWindow *window) {
                 return gtk_text_view_get_window_type(*this, window);
             }
-            Point BufferToWindow(int x, int y, 
-                    OneOf<GtkTextWindowType, TextWindowType> type = TextWindowWidget) {
+/** Converts coordinates from buffer system to window system.
+
+Converts coordinate (buffer_x, buffer_y) to coordinates for the window type win, and stores the result in Point.
+
+Note that you can't convert coordinates for a nonexisting window.
+*/
+            Point BufferToWindow(int x /**< buffer x coordinate */, 
+                                 int y /**< buffer y coordinate */, 
+                    OneOf<GtkTextWindowType, TextWindowType> type = TextWindowWidget /**< a TextWindowType, defaults to TextWindowWidget */) {
                 Point dest;
                 gtk_text_view_buffer_to_window_coords(*this, 
                         type, x, y, 
                         &dest.x, &dest.y);
                 return dest;
             }
-            Rect Location(const TextIter &it) {
+/** Gets the TextIter at the start of the line containing the coordinate y.
+
+y is in buffer coordinates, convert from window coordinates with TreeView::BufferToWindow(). 
+*/
+            TextIter LineAtY(int y /**< a y coordinate */) const { 
+                TextIter it;
+                gtk_text_view_get_line_at_y(*this, it, y, NULL); 
+                return it; 
+            }
+/** Gets a rectangle which roughly contains the character at iter.
+
+The rectangle position is in buffer coordinates; use TextView::BufferToWindow() to convert these coordinates to coordinates for one of the windows in the text view.            
+
+\return a Rect which roughly contains the character at iter.
+*/
+            Rect Location(const TextIter &it /**< An initialized valid TextIter */) {
                 GdkRectangle rect;
                 gtk_text_view_get_iter_location(*this, it, &rect);
                 return rect;
             }
+            /** Returns a Rect with the currently-visible region of the buffer, in buffer coordinates. Convert to window coordinates with TreeView::BufferToWindow().
+\return a Rect containing the currently-visible region of the buffer, in buffer coordinates.
+             */
             Rect VisibleRect() {
                 GdkRectangle rect;
                 gtk_text_view_get_visible_rect(*this, &rect);
