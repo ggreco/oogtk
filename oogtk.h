@@ -30,7 +30,9 @@ namespace gtk
             template <typename T, typename R> \
             void method(R (T::*cbk)(Widget &), T *base, bool rc = false ) {  callback(signal, cbk, base, rc); } \
             template <typename T, typename R, typename J> \
-            void method(R (T::*cbk)(Widget &, J), T *base, J data, bool rc = false ) { callback(signal, cbk, base, data, rc); }
+            void method(R (T::*cbk)(Widget &, J), T *base, J data, bool rc = false ) { callback(signal, cbk, base, data, rc); } \
+            void method(GCallback cbk, void *data = NULL) { g_signal_connect(Obj(), signal, cbk, data); }
+
 #define BUILD_VOID_EVENT(method, signal) \
             template <typename T> \
             void method(void (T::*cbk)(), T *base) { callback(signal, cbk, base); } \
@@ -39,7 +41,8 @@ namespace gtk
             template <typename T> \
             void method(void (T::*cbk)(Widget &), T *base) {  callback(signal, cbk, base); } \
             template <typename T, typename J> \
-            void method(void (T::*cbk)(Widget &, J), T *base, J data) { callback(signal, cbk, base, data); }
+            void method(void (T::*cbk)(Widget &, J), T *base, J data) { callback(signal, cbk, base, data); } \
+            void method(GCallback cbk, void *data = NULL) { g_signal_connect(Obj(), signal, cbk, data); }
 
 #define BUILD_EVENTED_EVENT(method, signal) \
             template <typename T, typename R> \
@@ -1070,17 +1073,77 @@ To receive mouse events on a drawing area, you will need to enable them with Wid
     };
 
     typedef int CbkId;
+/** Base OOGtk Application class.
+This is the base OOGtk application class, ideally you should derive your application class from this one, all the examples in oogtk does it, but it's not mandatory, the members you will need for sure (Application::Run(), Application::Quit()...) are static so you can use them without instancing an Application object, the only function you will need to call if you choose to not derive from Application is Application::Init to initialize the GTK subsystem.
 
+This class offers support for timers (Application::AddTimer() family) and idle functions (Application::AddIdle() family) and main loop handling.
+
+Application::Run() is the OOGtk equivalent of gtk_main(), Application::Quit() is the OOGtk equivalent of gtk_main_quit(). You can nest main loops like you can do in plain gtk.
+
+Example of a basic application using the Application class as base:
+
+\example
+#include "oogtk.h"
+
+class MyApp : public gtk::Application {
+    gtk::Window w_;
+public:
+    MyApp() : w_("OOGtk") {
+        w_.Border(16);
+        w_.Child(gtk::Label("Hello world!"));
+        w_.OnDelete(&gtk::Application::QuitLoop, dynamic_cast<gtk::Application *>(this));
+        w_.ShowAll();
+    }
+};
+
+int main()
+{
+    MyApp app;
+    app.Run();
+}
+\endexample
+
+Here is the same example modified not to use the Application class:
+
+\example
+#include "oogtk.h"
+
+int main() {
+    gtk::Application::Init();
+    gtk::Window win("OOGtk");
+    win.Border(16);
+    win.Child(gtk::Label("Hello world!"));
+    win.OnDelete((GCallback)gtk::Application::Quit);
+    gtk::Application::Run();
+}
+\endexample
+ */
     class Application
     {
-        public:
             typedef std::map<CbkId, AbstractCbk*> CbkMap;
             typedef CbkMap::iterator CbkIt;
+        public:
+/** initialize an Application object passing the program parameters to it.
 
-            Application(int &a, char **&b) { gtk_init(&a,&b); }
+This function initialize GTK subsystem passing the parameters from the application to GTK. This can be useful because GTK can find some debug paramaters directed to it and remove them from the command line, so argc/argv MAY be modified after this function returns.
+*/
+            Application(int &a /**< argc as received from main() */, 
+                        char **&b /**< argv as received from main() */) { gtk_init(&a,&b); }
 
+/// Initialize an application without passing parameters to GTK.
             Application() { gtk_init(NULL, NULL); }
+
+/** Initialize an Application passing the program parameters to it.
+\sa Application::Application(int&,char**&) for more informations.
+*/
+            static void Init(int &a, char **&b) { gtk_init(&a,&b); }
+/** Initialize an Application without parameters for GTK.
+\sa Application::Application(int&,char**&) for more informations.
+*/
+            static void Init() { gtk_init(NULL, NULL); }
+
             static void Run() { gtk_main(); }
+            static void Iteration() { gtk_main_iteration(); }
             static void Flush() { while (gtk_events_pending()) gtk_main_iteration(); }
             static void Quit() { gtk_main_quit(); }
 
@@ -1195,9 +1258,13 @@ To receive mouse events on a drawing area, you will need to enable them with Wid
                     return NULL;
             }
 
+// it could be an object but not a widget i.e. TreeStore/ListStore...
             template<typename T> 
             T *Get(const char *label) {
-                return dynamic_cast<T *>(Get(label));
+                if (GObject *obj = gtk_builder_get_object(builder_, label))
+                    return dynamic_cast<T *>(Object::Find(obj));
+		else
+		    return NULL;
             }
         private:
             GtkBuilder *builder_;
