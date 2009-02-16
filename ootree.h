@@ -8,6 +8,7 @@
 
 namespace gtk {
     typedef GtkTreeIter TreeIter;
+
     struct ValidIter : public TreeIter {
         operator  GtkTreeIter *() { return dynamic_cast<GtkTreeIter *>(this); }
         ValidIter() : valid(false) {}
@@ -61,8 +62,8 @@ namespace gtk {
             void Prepend(int idx) { gtk_tree_path_prepend_index(*this, idx); }
 
             int Depth() const { return gtk_tree_path_get_depth(*this); }
-            bool operator==(const TreePath &p) { return gtk_tree_path_compare(*this, p); }
-            bool operator!=(const TreePath &p) { return !gtk_tree_path_compare(*this, p); }
+            bool operator==(const TreePath &p) { return gtk_tree_path_compare(*this, p) == 0; }
+            bool operator!=(const TreePath &p) { return gtk_tree_path_compare(*this, p) != 0; }
 
             TreePath &operator++() { gtk_tree_path_next(*this); return *this; }
             TreePath &operator--() { gtk_tree_path_prev(*this); return *this; }
@@ -865,6 +866,14 @@ This API appends a new TreeViewColumn to the TreeView, the column is in text for
                 Append(*col);
 
                 return col;
+            }
+            TreeViewColumn *AddStockColumn(const std::string &title, int id) {
+                CellRendererPixbuf r;
+                int col = gtk_tree_view_insert_column_with_attributes(*this, -1,
+                        title.c_str(), r, "stock-id", id,
+                        NULL);
+            
+                return Get(col - 1);
             }
             TreeViewColumn *AddPixColumn(const std::string &title, int id) {
                 CellRendererPixbuf r;

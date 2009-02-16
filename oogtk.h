@@ -136,6 +136,7 @@ This function will take care of setting Widget property "has-tooltip" to true an
             */
             void Tooltip(const std::string &tip) { gtk_widget_set_tooltip_markup(*this, tip.c_str()); }
 
+            void SizeRequest(const Point &size) { gtk_widget_set_size_request(*this, size.x, size.y); }
             void SizeRequest(int width, int height) { gtk_widget_set_size_request(*this, width, height); }
 
             /** Modifies style values on the widget. 
@@ -884,6 +885,9 @@ The Entry widget is a single line text entry widget. A fairly large set of key b
             /// Sets the text in the widget to the given string, replacing the current contents.
             void Set(const std::string &name) { gtk_entry_set_text(*this, name.c_str()); }
 
+            /// clear the contents of the given widget, current contents are lost.
+            void Clear() { gtk_entry_set_text(*this, ""); }
+
             /// Sets the text in the widget using printf like syntax, replacing the current contents.
             void SetF(const char *format, ...) {
                 char *buffer;
@@ -1122,6 +1126,8 @@ int main() {
     {
             typedef std::map<CbkId, AbstractCbk*> CbkMap;
             typedef CbkMap::iterator CbkIt;
+            typedef std::map<CbkId, GIOChannel*> ChannelMap;
+            typedef ChannelMap::iterator ChannelIt;
         public:
 /** initialize an Application object passing the program parameters to it.
 
@@ -1152,6 +1158,27 @@ This function initialize GTK subsystem passing the parameters from the applicati
             bool True() { return true; }
             bool False() { return false; }
 
+
+/** Add a socket to the input loop.
+
+This call will start monitoring for the Condition "cond" in the oogtk
+main loop. If the condition triggers the member class "fnc" of the object "obj" will be called.
+The function will have as parameters both the socket file descriptor
+and the data field you passed to this call.
+
+Use Application::DelSource() to remove this socket from the main loop, this will only remove the socket from the GTK watch lists, you'll have to close the socket yourself.
+*/
+            template <typename T, typename R, typename J>
+            CbkId AddSocket(SockFd fd, GIOCondition cond, R (T::*fnc)(SockFd, J), 
+                            T* obj, J data, int rc = true) {
+                return AddSocket(new CbkEvent<T,R,J>(obj, fnc, data, rc), fd, cond);
+            }
+            template <typename T, typename R>
+            CbkId AddSocket(SockFd fd, GIOCondition cond, R (T::*fnc)(SockFd), 
+                            T* obj, int rc = true) {
+                return AddSocket(new CbkEvent<T,R>(obj, fnc, rc), fd, cond);
+            }
+
             // AddTimer... four variants
             template <typename T, typename R>
             CbkId AddTimer(int msec, R (T::*fnc)(void), T* obj, int rc = true) { return AddTimer(new CbkEvent<T,R>(obj, fnc, rc), msec); }
@@ -1181,13 +1208,22 @@ This function initialize GTK subsystem passing the parameters from the applicati
                     Callbacks().erase(id);
                     g_source_remove(id); 
                 }
+
+                ChannelIt cit = Channels().find(id); 
+
+                if (cit != Channels().end()) {
+                    g_io_channel_unref(cit->second);
+                    Channels().erase(id);
+                }
             }
 
             void DelTimer(CbkId id) { DelSource(id);  }
             void DelIdle(CbkId id) { DelIdle(id);  }
 
+
         private:
             static CbkMap &Callbacks() { static CbkMap objects; return objects; }
+            static ChannelMap &Channels() { static ChannelMap channels; return channels; }
 
             CbkId AddIdle(AbstractCbk *cbk) {
                 int id = g_idle_add((gboolean (*)(void*))AbstractCbk::real_callback_0, cbk);
@@ -1200,6 +1236,31 @@ This function initialize GTK subsystem passing the parameters from the applicati
                 return id;
             }
 
+            CbkId AddSocket(AbstractCbk *cbk, SockFd fd, GIOCondition cond) {
+                GIOChannel *ch = FindChannel(fd);
+
+                if (!ch) {
+#ifdef WIN32
+                    ch = g_io_channel_win32_new_socket(fd);
+#else
+                    ch = g_io_channel_unix_new(fd);
+#endif
+                }
+                else
+                    g_io_channel_ref(ch);
+
+                int id = g_io_add_watch(ch, cond, (GIOFunc)AbstractCbk::real_callback_2, cbk);
+                Callbacks().insert(CbkMap::value_type(id, cbk));
+                Channels().insert(ChannelMap::value_type(id, ch));
+
+                return id;
+            }
+            GIOChannel *FindChannel(SockFd fd) {
+                for (ChannelIt it = Channels().begin(); it != Channels().end(); ++it)
+                    if (fd == g_io_channel_unix_get_fd((it->second)))
+                        return it->second;
+                return NULL;
+            }
     };
 
     class Builder
