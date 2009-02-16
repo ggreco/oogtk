@@ -57,28 +57,29 @@ oogtk C++ enums.
     class Widget;
     struct Event;
 
-    template <typename T, typename R, typename J = int> struct ReturnType {
+    struct FakeTypeBase {
+    };
+    struct FakeType {
+    };
+
+    typedef int SockFd;
+
+    template <typename T, typename R, typename A = FakeTypeBase, typename J = FakeType> struct ReturnType {
        bool notify(R (T::*fnc)(void), T *obj, bool rc) const { 
             return (obj->*fnc)();
        }
        bool notify(J arg, R (T::*fnc)(J), T *obj, bool rc) const { 
             return (obj->*fnc)(arg);
        }
-       bool notify(Widget &w, R (T::*fnc)(Widget &), T *obj, bool rc) const { 
-            return (obj->*fnc)(w);
+       bool notify(A arg, R (T::*fnc)(A), T *obj, bool rc) const { 
+            return (obj->*fnc)(arg);
        }
-       bool notify(Widget &w, J arg, R (T::*fnc)(Widget &, J), T *obj, bool rc) const { 
-            return (obj->*fnc)(w,arg);
-       }
-       bool notify(Event &w, R (T::*fnc)(Event &), T *obj, bool rc) const { 
-            return (obj->*fnc)(w);
-       }
-       bool notify(Event &w, J arg, R (T::*fnc)(Event &, J), T *obj, bool rc) const { 
+       bool notify(A w, J arg, R (T::*fnc)(A, J), T *obj, bool rc) const { 
             return (obj->*fnc)(w,arg);
        }
     };
 
-    template <typename T, typename J> struct ReturnType<T, void, J> {
+    template <typename T, typename A, typename J> struct ReturnType<T, void, A, J> {
       bool notify(void (T::*fnc)(void), T *obj, bool rc) const { 
             (obj->*fnc)();
             return rc;
@@ -87,28 +88,49 @@ oogtk C++ enums.
             (obj->*fnc)(arg);
             return rc;
        }
-       bool notify(Widget &w, void (T::*fnc)(Widget &), T *obj, bool rc) const { 
-            (obj->*fnc)(w);
+       bool notify(A arg, void (T::*fnc)(A), T *obj, bool rc) const { 
+            (obj->*fnc)(arg);
             return rc;
        }
-       bool notify(Widget &w, J arg, void (T::*fnc)(Widget &, J), T *obj, bool rc) const { 
-            (obj->*fnc)(w,arg);
-            return rc;
-       }
-       bool notify(Event &w, void (T::*fnc)(Event &), T *obj, bool rc) const { 
-            (obj->*fnc)(w);
-            return rc;
-       }
-       bool notify(Event &w, J arg, void (T::*fnc)(Event &, J), T *obj, bool rc) const { 
-            (obj->*fnc)(w,arg);
+       bool notify(A w, J arg, void (T::*fnc)(A, J), T *obj, bool rc) const { 
+            (obj->*fnc)(w, arg);
             return rc;
        }
     };
 
-    template <typename T, typename R, typename J = int>
+    // I've had to add those two partial specialization to cover the cases where
+    // the args of the method are of the same type.
+    template <typename T, typename R, typename A> struct ReturnType<T, R, A, A> {
+       bool notify(R (T::*fnc)(void), T *obj, bool rc) const { 
+            return (obj->*fnc)();
+       }
+       bool notify(A arg, R (T::*fnc)(A), T *obj, bool rc) const { 
+            return (obj->*fnc)(arg);
+       }
+       bool notify(A w, A arg, R (T::*fnc)(A, A), T *obj, bool rc) const { 
+            return (obj->*fnc)(w,arg);
+       }
+    };
+    template <typename T, typename A> struct ReturnType<T, void, A, A> {
+      bool notify(void (T::*fnc)(void), T *obj, bool rc) const { 
+            (obj->*fnc)();
+            return rc;
+       }
+       bool notify(A arg, void (T::*fnc)(A), T *obj, bool rc) const { 
+            (obj->*fnc)(arg);
+            return rc;
+       }
+       bool notify(A w, A arg, void (T::*fnc)(A, A), T *obj, bool rc) const { 
+            (obj->*fnc)(w, arg);
+            return rc;
+       }
+    };
+
+
+    template <typename T, typename R, typename J = FakeType>
         class CbkEvent : public AbstractCbk
     {
-            enum CbkType {NoParam, HasWidget, HasEvent};
+            enum CbkType {NoParam, HasWidget, HasEvent, HasSocket};
         public:
             // two constructs for widgetless returning callbacks
             CbkEvent( T* obj, R (T::*fnc)(void), bool rc = true)
@@ -124,6 +146,11 @@ oogtk C++ enums.
                 : myObj(obj), myeFnc0(fnc), rccode(rc), type(HasEvent) {}
             CbkEvent( T* obj, R (T::*fnc)(Event &, J), J a1, bool rc = true)
                 : myObj(obj), myeFnc0(NULL), myeFnc1(fnc), ma1(a1), rccode(rc), type(HasEvent) {}
+            CbkEvent( T* obj, R (T::*fnc)(SockFd), bool rc = true)
+                : myObj(obj), mysFnc0(fnc), rccode(rc), type(HasSocket) {}
+            CbkEvent( T* obj, R (T::*fnc)(SockFd, J), J a1, bool rc = true)
+                : myObj(obj), mysFnc0(NULL), mysFnc1(fnc), ma1(a1), rccode(rc), type(HasSocket) {}
+
 
         private:    
             T*  myObj ;
@@ -133,6 +160,8 @@ oogtk C++ enums.
             R (T::*mywFnc1)(Widget &, J);
             R (T::*myeFnc0)(Event &);
             R (T::*myeFnc1)(Event &, J);
+            R (T::*mysFnc0)(int);
+            R (T::*mysFnc1)(int, J);
             J ma1;
             bool rccode;
             CbkType type;
@@ -394,18 +423,20 @@ oogtk C++ enums.
     inline bool CbkEvent<T,R,J>::
     notify(GtkWidget *w, GdkEvent *e) const
     { 
-        ReturnType<T, R, J> rtype;
-
         switch (type) {
             case NoParam:
-                if (myFnc0)
-                    return rtype.notify(myFnc0, myObj, rccode);
-                else
-                    return rtype.notify(ma1, myFnc1, myObj, rccode);
-        
-
+                {
+                   ReturnType<T, R, FakeTypeBase, J> rtype;
+    
+                   if (myFnc0)
+                        return rtype.notify(myFnc0, myObj, rccode);
+                   else
+                        return rtype.notify(ma1, myFnc1, myObj, rccode);
+                }
             case HasWidget:
                 if (Widget *ww = dynamic_cast<Widget *>(Object::Find((GObject *)w))) {
+                    ReturnType<T, R, Widget &, J> rtype;
+
                     if (mywFnc0)
                         return rtype.notify(*ww, mywFnc0, myObj, rccode);
                     else
@@ -413,8 +444,19 @@ oogtk C++ enums.
                 }
                 else
                     throw std::runtime_error("Callback asking for a widget with widget NULL!");
+            case HasSocket:
+                {
+                    ReturnType<T, R, SockFd, J> rtype;
+                    SockFd fd = g_io_channel_unix_get_fd((GIOChannel*)w);
+
+                    if (mysFnc0)
+                        return rtype.notify(fd, mysFnc0, myObj, rccode);
+                    else
+                        return rtype.notify(fd, ma1, mysFnc1, myObj, rccode);
+                }
             case HasEvent:
                 if (Event *ee = (Event *)e) {
+                    ReturnType<T, R, Event &, J> rtype;
                     if (myeFnc0)
                         return rtype.notify(*ee, myeFnc0, myObj, rccode);
                     else
@@ -426,6 +468,5 @@ oogtk C++ enums.
                     throw std::runtime_error("Callback asking for an event with unknown type!");
         }
     }
-
 }
 #endif

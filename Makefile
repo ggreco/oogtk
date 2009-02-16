@@ -3,7 +3,7 @@ LDFLAGS = `pkg-config --libs gtk+-2.0 gmodule-2.0`
 
 MODULES = testinline testbuilder testtree testdialog testobjects \
 		  testcbks testtext testbutton testuimanager testwrapper \
-		  testnoapp
+		  testnoapp testsocket
 
 all: $(MODULES)
 
