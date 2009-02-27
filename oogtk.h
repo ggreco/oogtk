@@ -1020,6 +1020,15 @@ If setting is true, pressing Enter in the entry will activate the default widget
       ProgressTopToBottom = GTK_PROGRESS_TOP_TO_BOTTOM
     };
 
+    enum SocketCondition {
+        SocketRead = G_IO_IN 	/**< There is data to read. */,
+        SocketWrite = G_IO_OUT 	/**< Data can be written (without blocking). */,
+        SocketUrgent = G_IO_PRI /**< There is urgent data to read. */,
+        SocketError = G_IO_ERR 	/**< Error condition. */,
+        SocketHung =  G_IO_HUP 	/**< Hung up (the connection has been broken, usually for pipes and sockets). */,
+        SocketInvalid = G_IO_NVAL /**< 	Invalid request. The file descriptor is not open. */
+    };
+
     class ProgressBar : public Widget {
         public:
             operator GtkProgressBar *() const { return GTK_PROGRESS_BAR(Obj()); }
@@ -1153,6 +1162,7 @@ This function initialize GTK subsystem passing the parameters from the applicati
             static void Flush() { while (gtk_events_pending()) gtk_main_iteration(); }
             static void Quit() { gtk_main_quit(); }
 
+            static void ThreadInit() { g_thread_init(NULL); }
             // helpers for signals that need a fixed answer.
             void QuitLoop() { gtk_main_quit(); }
             bool True() { return true; }
@@ -1169,12 +1179,12 @@ and the data field you passed to this call.
 Use Application::DelSource() to remove this socket from the main loop, this will only remove the socket from the GTK watch lists, you'll have to close the socket yourself.
 */
             template <typename T, typename R, typename J>
-            CbkId AddSocket(SockFd fd, GIOCondition cond, R (T::*fnc)(SockFd, J), 
+            CbkId AddSocket(SockFd fd, SocketCondition cond, R (T::*fnc)(SockFd, J), 
                             T* obj, J data, int rc = true) {
                 return AddSocket(new CbkEvent<T,R,J>(obj, fnc, data, rc), fd, cond);
             }
             template <typename T, typename R>
-            CbkId AddSocket(SockFd fd, GIOCondition cond, R (T::*fnc)(SockFd), 
+            CbkId AddSocket(SockFd fd, SocketCondition cond, R (T::*fnc)(SockFd), 
                             T* obj, int rc = true) {
                 return AddSocket(new CbkEvent<T,R>(obj, fnc, rc), fd, cond);
             }
@@ -1199,7 +1209,54 @@ Use Application::DelSource() to remove this socket from the main loop, this will
             void RunOneTimeEvent(void (T::*fnc)(void), T* obj) { AddIdle(new CbkEvent<T,void>(obj, fnc, false)); }
             template <typename T, typename J>
             void RunOneTimeEvent(void (T::*fnc)(J), T* obj, J data) { AddIdle(new CbkEvent<T,void, J>(obj, fnc, data, false)); }
-           
+
+            
+/** Add a keyboard snooper to the application.
+
+This method add a keyboard snooper to the application, the snooper will receive all the keyboard
+events before routing them to GTK widgets. If your snooper does not returns void you can use the
+return value to choice if to reroute the event to GTK (return false) or to remove it from the event
+queue (return true). You can also pass a void method and choose the return value once for all
+with the parameter 'rc'.
+
+\example
+class MyApp : public Application
+    MyApp() {
+        [...]
+        AddKeySnooper(&MyApp::mysnooper, this, (int)123456);
+    }
+    void mysnooper(Event &e, int userdata) {
+        if (EventKey *k = e) {
+            std::cerr << "Received " << (k->Press() ? "PRESS" : "RELEASE") 
+                      << " event " << k->KeyVal() << " with userdata " << userdata << "\n";
+        }
+    }
+}
+\endexample
+\return a CbkId that could be used to remove the snooper with Application::DelSource
+*/
+            template <typename T, typename R> 
+            CbkId AddKeySnooper(R (T::*fnc)(Event &) /**< The method to call every time the app receive a keyboard event */, 
+                                T *obj /**< The class the method belongs to */, 
+                                bool rc = false /**< The default return code of the snooper, it's meaningful only if your pass a void method */) {  
+                return AddKeySnooper(new CbkEvent<T,R>(obj, fnc, rc)); 
+            }
+/** Add a keyboard snooper with user defined data to the application.
+
+This method differs from the other only because it let the user pass an additional user data
+parameter of (almost) arbitrary type to the application.
+
+The almost of the previous sentence is because you cannot pass as user data a reference (but you
+can pass a pointer to an object or a simple object, also if not PoD).
+
+\sa Application::AddKeySnooper(R (T::*fnc)(Event &), T *, bool)
+\return a CbkId that could be used to remove the snooper with Application::DelSource
+*/
+            template <typename T, typename R, typename J> 
+            CbkId AddKeySnooper(R (T::*fnc)(Event &, J), T *obj, J data, bool rc = false) { 
+                return AddKeySnooper(new CbkEvent<T,R,J>(obj, fnc, rc)); 
+            }
+ 
             void DelSource(CbkId id) {
                 CbkIt it = Callbacks().find(id); 
 
@@ -1225,6 +1282,13 @@ Use Application::DelSource() to remove this socket from the main loop, this will
             static CbkMap &Callbacks() { static CbkMap objects; return objects; }
             static ChannelMap &Channels() { static ChannelMap channels; return channels; }
 
+            CbkId AddKeySnooper(AbstractCbk *cbk) {
+                int id = gtk_key_snooper_install((gint (*)(GtkWidget*, GdkEventKey*, void*))
+                                                 AbstractCbk::real_callback_2, cbk);
+                Callbacks().insert(CbkMap::value_type(id, cbk));
+                return id;
+            }
+
             CbkId AddIdle(AbstractCbk *cbk) {
                 int id = g_idle_add((gboolean (*)(void*))AbstractCbk::real_callback_0, cbk);
                 Callbacks().insert(CbkMap::value_type(id, cbk));
@@ -1236,7 +1300,7 @@ Use Application::DelSource() to remove this socket from the main loop, this will
                 return id;
             }
 
-            CbkId AddSocket(AbstractCbk *cbk, SockFd fd, GIOCondition cond) {
+            CbkId AddSocket(AbstractCbk *cbk, SockFd fd, SocketCondition cond) {
                 GIOChannel *ch = FindChannel(fd);
 
                 if (!ch) {
@@ -1249,7 +1313,7 @@ Use Application::DelSource() to remove this socket from the main loop, this will
                 else
                     g_io_channel_ref(ch);
 
-                int id = g_io_add_watch(ch, cond, (GIOFunc)AbstractCbk::real_callback_2, cbk);
+                int id = g_io_add_watch(ch, (GIOCondition)cond, (GIOFunc)AbstractCbk::real_callback_2, cbk);
                 Callbacks().insert(CbkMap::value_type(id, cbk));
                 Channels().insert(ChannelMap::value_type(id, ch));
 

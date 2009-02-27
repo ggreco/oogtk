@@ -1,5 +1,6 @@
 #include <iostream>
 #include "oogtk.h"
+#include <stdlib.h>
 
 // this simple program test the use of OOGtk without the Application class
 // helper.

@@ -65,11 +65,20 @@ class MyApplication : public Application
             b6.Active(true);
             b9.Active(true);
 
+            // let's add a new snooper to monitor some keys
+            AddKeySnooper(&MyApplication::snooper, this, (int)1234567);
 
             m_window.OnDelete(&Application::QuitLoop,
                     dynamic_cast<Application *>(this), true); // true here is needed to avoid the window to autoclose
             m_window.Child(box);
             m_window.ShowAll();
+        }
+
+        void snooper(Event &e, int userdata) {
+            if (EventKey *k = e) {
+                std::cerr << "Received " << (k->Press() ? "PRESS" : "RELEASE") 
+                          << " event " << k->KeyVal() << " with userdata " << userdata << "\n";
+            }
         }
         void handletoggle(Widget &toggle) {
             ToggleButton *b = dynamic_cast<ToggleButton *>(&toggle);

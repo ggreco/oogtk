@@ -133,6 +133,8 @@ PointerMotionHintMask is a special mask which is used to reduce the number of Mo
     };
     struct EventKey : public GdkEventKey {
         unsigned int KeyVal() const { return keyval; }
+        bool Press() { return type == GDK_KEY_PRESS; }
+        bool Release() { return type == GDK_KEY_RELEASE; }
     };
 
     struct Event : public GdkEventAny
