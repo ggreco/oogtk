@@ -202,6 +202,21 @@ it to disk with Pixbuf::Save or to do some other stuff to the pixel data.
                 else
                     return NULL;
             }
+
+            /** Asks to place window in the fullscreen state.
+
+Note that you shouldn't assume the window is definitely full screen afterward, because other entities (e.g. the user or window manager) could unfullscreen it again, and not all window managers honor requests to fullscreen windows. But normally the window will end up fullscreen. Just don't write code that crashes if not.
+
+You can track the fullscreen state via the "window-state-event" signal on gtk::Widget.
+*/
+            void Fullscreen() { gtk_window_fullscreen(*this); }
+/** Asks to toggle off the fullscreen state for window.
+
+Note that you shouldn't assume the window is definitely not full screen afterward, because other entities (e.g. the user or window manager) could fullscreen it again, and not all window managers honor requests to unfullscreen windows. But normally the window will end up restored to its normal state. Just don't write code that crashes if not.
+
+You can track the fullscreen state via the "window-state-event" signal on gtk::Widget.   
+*/
+            void Unfullscreen() { gtk_window_unfullscreen(*this); }
     };
 
     typedef std::pair<std::string, int> ButtonData;

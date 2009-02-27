@@ -151,7 +151,7 @@ A path is essentially a potential node. It is a location on a model that may or 
 
 By contrast, a TreeIter is a reference to a specific node on a specific model. It is a generic struct with an integer and three generic pointers. These are filled in by the model in a model-specific way. One can convert a path to an iterator by calling TreeModel::Get(TreeIter &, const TreePath &). These iterators are the primary way of accessing a model and are similar to the iterators used by TextBuffer. They are generally statically allocated on the stack and only used for a short time. The model interface defines a set of operations using them for navigating the model.
 
-It is expected that models fill in the iterator with private data. For example, the GtkListStore model, which is internally a simple linked list, stores a list node in one of the pointers. The GtkTreeModelSort stores an array and an offset in two of the pointers. Additionally, there is an integer field. This field is generally filled with a unique stamp per model. This stamp is for catching errors resulting from using invalid iterators with a model.
+It is expected that models fill in the iterator with private data. For example, the ListStore model, which is internally a simple linked list, stores a list node in one of the pointers. The TreeModelSort stores an array and an offset in two of the pointers. Additionally, there is an integer field. This field is generally filled with a unique stamp per model. This stamp is for catching errors resulting from using invalid iterators with a model.
 
 The lifecycle of an iterator can be a little confusing at first. Iterators are expected to always be valid for as long as the model is unchanged (and doesn't emit a signal). The model is considered to own all outstanding iterators and nothing needs to be done to free them from the user's point of view. Additionally, some models guarantee that an iterator is valid for as long as the node it refers to is valid (most notably the TreeStore and ListStore). Although generally uninteresting, as one always has to allow for the case where iterators do not persist beyond a signal, some very important performance enhancements were made in the sort model. As a result, the GTK_TREE_MODEL_ITERS_PERSIST flag was added to indicate this behavior.
 
@@ -1076,13 +1076,81 @@ This API appends a new TreeViewColumn to the TreeView, the column is in text for
         return result;
     }
 
-    class ComboBox : public Bin
+    /** CellLayout is an interface to be implemented by all objects which want to provide a GtkTreeViewColumn-like API for packing cells, setting attributes and data funcs.
+
+One of the notable features provided by implementations of CellLayout are attributes. Attributes let you set the properties in flexible ways. They can just be set to constant values like regular properties. But they can also be mapped to a column of the underlying tree model with CellLayout::Attributes(), which means that the value of the attribute can change from cell to cell as they are rendered by the cell renderer. Finally, it is possible to specify a function with CellLayout::CellDataFunc() that is called to determine the value of the attribute for each cell that is rendered.
+*/
+    class CellLayout
     {
+        protected:
+            virtual GtkCellLayout *getobj() const = 0;
         public:
+            /** Packs the cell into the beginning of cell_layout.
+If expand is false, then the cell is allocated no more space than it needs. Any unused space is divided evenly between cells for which expand is true, the default value of expand is false.
+
+Note that reusing the same cell renderer is not supported.
+*/
+            void PackStart(CellRenderer &r /**< The cell renderer to pack at the start of this cell */, 
+                           bool expand = false /**< if cell is to be given extra space allocated to cell_layout */) {
+                gtk_cell_layout_pack_start(getobj(), r, expand);
+            }
+            /** Adds the cell to the end of cell_layout.
+            \sa CellLayout::PackStart
+             */
+            void PackEnd(CellRenderer &r /**< The cell renderer to pack at the start of this cell */, 
+                         bool expand = false /**< if cell is to be given extra space allocated to cell_layout */) {
+                gtk_cell_layout_pack_end(getobj(), r, expand);
+            }
+/** Returns the cell renderers which have been added to cell_layout.
+ */
+            void GetRenderers(RendererList &objs /**< An application allocated RenderList */) {
+                GList *list = gtk_cell_layout_get_cells(getobj()), *l;
+
+                l = list;
+
+                while (l) {
+                    if (CellRenderer *o = dynamic_cast<CellRenderer *>(Object::Find((GObject *)l->data)))
+                        objs.push_back(o);
+
+                    l = l->next;
+                }
+
+                g_list_free(list);
+            }
+/** Adds an attribute mapping to the list in cell_layout. 
+
+The column is the column of the model to get a value from, and the attribute is the parameter on cell to be set from the value. So for example if column 2 of the model contains strings, you could have the "text" attribute of a GtkCellRendererText get its values from column 2.
+*/
+            void AddAttribute(CellRenderer &r /**< A previously layout added renderer (with CellLayout::PackStart or CellLayout::PackEnd)*/,
+                              const char *attribute /**< An attribute on the renderer.  */, 
+                              int column /**< The column of the model to assign this attribute to */) {
+                gtk_cell_layout_add_attribute(getobj(), r, attribute, column); 
+            }
+/** Unsets all the mappings on all renderers on cell_layout and removes all renderers from cell_layout. */            
+            void Clear() { gtk_cell_layout_clear( getobj()); } 
+/** Clears all existing attributes previously set.
+This function clears all existing attributes previously set with CellLayout::AddAttribute for 
+a particular renderer associated to this object.
+
+\sa CellLayout::AddAttribute()
+*/
+            void ClearAttributes(CellRenderer &r /**< A previously layout added renderer */) {
+                gtk_cell_layout_clear_attributes(getobj(), r);
+            }
+    };
+
+    class ComboBox : public Bin, public CellLayout
+    {
+        protected:
+            GtkCellLayout *getobj() const { return GTK_CELL_LAYOUT(Obj()); }
+        public:
+/// DOXYS_OFF             
             operator  GtkComboBox *() const { return GTK_COMBO_BOX(Obj()); }
+            operator  GtkCellLayout *() const { return GTK_CELL_LAYOUT(Obj()); }
 
             ComboBox(const DerivedType &) {}
             ComboBox(GObject *obj) { Init(obj); }
+/// DOXYS_ON             
 
             ComboBox() {
                 Init(gtk_combo_box_new());
@@ -1106,6 +1174,11 @@ This API appends a new TreeViewColumn to the TreeView, the column is in text for
             bool FocusOnClick() const { return gtk_combo_box_get_focus_on_click(*this); }
             void FocusOnClick(bool flag) { gtk_combo_box_set_focus_on_click(*this, flag); }
 
+            void AddTextColumn(int id, bool expand = true) {
+                CellRendererText txt;
+                PackStart(txt, expand);
+                AddAttribute(txt, "markup", id);
+            }
             int WrapWidth() const { return gtk_combo_box_get_wrap_width(*this); }
             void WrapWidth(int width) const { gtk_combo_box_set_wrap_width(*this, width); }
 
@@ -1122,7 +1195,9 @@ This API appends a new TreeViewColumn to the TreeView, the column is in text for
     class ComboBoxText : public ComboBox
     {
         public:
+/// DOXYS_OFF             
             operator  GtkComboBox *() const { return GTK_COMBO_BOX(Obj()); }
+/// DOXYS_ON
 
             ComboBoxText() : ComboBox(DerivedType()) {
                 Init(gtk_combo_box_new_text());
