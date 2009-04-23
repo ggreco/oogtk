@@ -851,25 +851,30 @@ The number of 'cells' that a widget will occupy is specified by left_attach, rig
             void Shadow(OneOf<GtkShadowType, ShadowType> shadow) { gtk_frame_set_shadow_type(*this, shadow); }
             OneOf<GtkShadowType, ShadowType> Shadow() const { return gtk_frame_get_shadow_type(*this); }
     };
+/** A frame that constrains its child to a particular aspect ratio.
 
+The AspectFrame is useful when you want pack a widget so that it can resize but always retains the same aspect ratio. For instance, one might be drawing a small preview of a larger image. AspectFrame derives from Frame, so it can draw a label and a frame around the child. The frame will be "shrink-wrapped" to the size of the child. 
+*/
     class AspectFrame : public Frame {  // COMPLETE API
         public:
 /// DOXYS_OFF                         
             operator  GtkAspectFrame *() const { return GTK_ASPECT_FRAME(Obj()); }
             AspectFrame(GObject *obj) : Frame(DerivedType()) { Init(obj); }
 /// DOXYS_ON
-
-            AspectFrame(float ratio, const std::string &label = "",
-                        const Align &align = Align(0.5, 0.5), 
-                        bool obey_child = false) : Frame(DerivedType()) {
+            /// Create a new AspectFrame. 
+            AspectFrame(float ratio /**< The desired aspect ratio. */, 
+                        const std::string &label = "" /**< 	Label text, default to empty. */,
+                        const Align &align = Align(0.5, 0.5) /**< 	Alignment of the child within the allocation of the AspectFrame. This ranges both for horizontal and vertical from 0.0 (left/top aligned) to 1.0 (right/top aligned), defaults to (0.5, 0.5)  */, 
+                        bool obey_child = false /**< If true, ratio is ignored, and the aspect ratio is taken from the requistion of the child, defaults to false */) : Frame(DerivedType()) {
                 Init(gtk_aspect_frame_new(label.empty() ? NULL : label.c_str(),
                                      align.first, align.second, ratio, obey_child));
                 Internal(true);
             }
 
-            void Set(float ratio, 
-                     const Align &align = Align(0.5, 0.5), 
-                     bool obey_child = false) {
+            /// Set parameters for an existing AspectFrame. 
+            void Set(float ratio /**< The new aspect ratio. */, 
+                     const Align &align = Align(0.5, 0.5) /**< 	Alignment of the child within the allocation of the AspectFrame. This ranges both for horizontal and vertical from 0.0 (left/top aligned) to 1.0 (right/top aligned), defaults to (0.5, 0.5)  */, 
+                     bool obey_child = false /**< If true, ratio is ignored, and the aspect ratio is taken from the requistion of the child, defaults to false */) {
                 gtk_aspect_frame_set(*this, align.first, align.second, ratio, obey_child);
             }
     };
@@ -902,6 +907,16 @@ Note that setting the toolbar style overrides the user's preferences for the def
             void Expand(bool flag) { return gtk_tool_item_set_expand(*this, flag); }
     };
 
+/** A ToolItem subclass that displays buttons
+
+ToolButtons are ToolItems containing buttons.
+
+You can create a new ToolButton both empty or from a stock item.
+
+The label of a ToolButton is determined by the properties "label-widget", "label", and "stock-id". If "label-widget" is non-NULL, then that widget is used as the label. Otherwise, if "label" is non-NULL, that string is used as the label. Otherwise, if "stock-id" is non-NULL, the label is determined by the stock item. Otherwise, the button does not have a label.
+
+The icon of a ToolButton is determined by the properties "icon-widget" and "stock-id". If "icon-widget" is non-NULL, then that widget is used as the icon. Otherwise, if "stock-id" is non-NULL, the icon is determined by the stock item. Otherwise, the button does not have a icon. 
+*/
     class ToolButton : public ToolItem // COMPLETE API
     {
         public:
@@ -909,26 +924,40 @@ Note that setting the toolbar style overrides the user's preferences for the def
             operator  GtkToolButton *() const { return GTK_TOOL_BUTTON(Obj()); }
             ToolButton(GObject *obj) : ToolItem(DerivedType()) { Init(obj); }
 /// DOXYS_ON
-
+            /// Creates a new empty ToolButton
             ToolButton() :
                 ToolItem(DerivedType()) {
                 Init(gtk_tool_button_new(NULL, NULL)); 
                 Internal(true); 
             }
-            ToolButton(const Widget &icon, char *label = NULL) :
+            /// Creates a new empty ToolButton with an icon and an (optional) label
+            ToolButton(const Widget &icon /**< Widget to be used as icon for the button */, 
+                       const char *label = NULL /**< Optional label for the ToolButton */) :
                 ToolItem(DerivedType()) {
                 Init(gtk_tool_button_new(icon, label)); 
                 Internal(true); 
             }
-            ToolButton(const char *stock_id) : 
+            /** Creates a new ToolButton containing the image and text from a stock item. 
+            Some stock ids have preprocessor macros like GTK_STOCK_OK and GTK_STOCK_APPLY. 
+            */
+            ToolButton(const char *stock_id /**< stock-id for this toolbutton */) : 
                 ToolItem(DerivedType()) {
                 Init(gtk_tool_button_new_from_stock(stock_id));
                 Internal(true); 
             }
+/** Sets label as the label used for the tool button.
 
-            void Label(const std::string &label) {
+The "label" property only has an effect if not overridden by a non-NULL "label_widget" property. If both the "label_widget" and "label" properties are NULL, the label is determined by the "stock_id" property. If the "stock_id" property is also NULL, button will not have a label.
+*/
+            void Label(const std::string &label /**< a string that will be used as label */) {
                 gtk_tool_button_set_label(*this, label.c_str());
             }
+/** Returns the label used by the tool button.
+
+This method will return a string containing the label of this ToolButton or an empty string if the tool button doesn't have a label or uses a the label from a stock item. 
+
+\return A string containing the label of this ToolButton
+*/
             std::string Label() const { 
                 if (const gchar *label = gtk_tool_button_get_label(*this)) 
                     return label;
@@ -950,11 +979,25 @@ Note that setting the toolbar style overrides the user's preferences for the def
                 return dynamic_cast<Widget *>(
                         Object::Find((GObject *)gtk_tool_button_get_icon_widget(*this))); 
             }
+/** Set the underline property for the ToolButton label.
+
+If set, an underline in the label property indicates that the next character should be used for the mnemonic accelerator key in the overflow menu. For example, if the label property is "_Open" and use_underline is TRUE, the label on the tool button will be "Open" and the item on the overflow menu will have an underlined 'O'.
+
+Labels shown on tool buttons never have mnemonics on them; this property only affects the menu item on the overflow menu.            
+*/
             void Underline(bool flag) { gtk_tool_button_set_use_underline(*this, flag); }
+/** Return the state of the underline property for this ToolButton.
+
+Returns whether underscores in the label property are used as mnemonics on menu items on the overflow menu.
+
+\sa ToolButton::Underline(bool)
+*/    
             bool Underline() const { return gtk_tool_button_get_use_underline(*this); }
 
+            /// Call a method if the ToolButton is clicked             
             template <typename T>
-            void OnClick(void (T::*cbk)(), T *base ) {
+            void OnClick(void (T::*cbk)() /**< the method to call */, 
+                         T *base /**< the base of the class containing the method above */) {
                 callback("clicked", cbk, base);
             }
 
@@ -974,32 +1017,50 @@ Note that setting the toolbar style overrides the user's preferences for the def
             void Draw(bool flag) { return gtk_separator_tool_item_set_draw(*this, flag); }
     };
 
+/** Create bars of buttons and other widgets
+
+A toolbar can contain instances of a subclass of ToolItem. To add a ToolItem to the a toolbar, use Toolbar::Insert(), Toolbar::Append() or one of the constructors. To remove an item from the toolbar use Container::Remove(). To add a button to the toolbar, add an instance of ToolButton.
+
+Toolbar items can be visually grouped by adding instances of SeparatorToolItem to the toolbar. If a SeparatorToolItem has the "expand" property set to TRUE and the "draw" property set to FALSE the effect is to force all following items to the end of the toolbar.
+
+Creating a context menu for the toolbar can be done by connecting to the "popup-context-menu" signal. 
+*/
     class Toolbar : public Container {
+/// DOXYS_OFF
         private:
             void newitem() { Init(gtk_toolbar_new()); Internal(true); }
         public:
             operator  GtkToolbar *() const { return GTK_TOOLBAR(Obj()); }
             Toolbar(GObject *obj) { Init(obj); }
+/// DOXYS_ON            
+            /// Creates a new empty Toolbar
             Toolbar() { newitem(); }
 
+            /// Creates a new Toolbar with a ToolItem
             Toolbar(const ToolItem &i1) { 
                 newitem(); Append(i1);
             }
+            /// Creates a new Toolbar with two ToolItem
             Toolbar(const ToolItem &i1, const ToolItem &i2) { 
                 newitem(); Append(i1); Append(i2);
             }
+            /// Creates a new Toolbar with three ToolItem
             Toolbar(const ToolItem &i1, const ToolItem &i2, const ToolItem &i3) { 
                 newitem(); Append(i1); Append(i2); Append(i3);
             }
+            /// Creates a new Toolbar with four ToolItem
             Toolbar(const ToolItem &i1, const ToolItem &i2, const ToolItem &i3, const ToolItem &i4) { 
                 newitem(); Append(i1); Append(i2); Append(i3); Append(i4);
             }
+            /// Creates a new Toolbar with five ToolItem
             Toolbar(const ToolItem &i1, const ToolItem &i2, const ToolItem &i3, const ToolItem &i4, const ToolItem &i5) { 
                 newitem(); Append(i1); Append(i2); Append(i3); Append(i4); Append(i5);
             }
+            /// Creates a new Toolbar with six ToolItem
             Toolbar(const ToolItem &i1, const ToolItem &i2, const ToolItem &i3, const ToolItem &i4, const ToolItem &i5, const ToolItem &i6) { 
                 newitem(); Append(i1); Append(i2); Append(i3); Append(i4); Append(i5); Append(i6);
             }
+            /// Creates a new Toolbar with seven ToolItem
             Toolbar(const ToolItem &i1, const ToolItem &i2, const ToolItem &i3, const ToolItem &i4, const ToolItem &i5, const ToolItem &i6, const ToolItem &i7) { 
                 newitem(); Append(i1); Append(i2); Append(i3); Append(i4); Append(i5); Append(i6); Append(i7);
             }
@@ -1020,10 +1081,16 @@ Note that setting the toolbar style overrides the user's preferences for the def
                 return dynamic_cast<ToolItem *>(
                         Object::Find((GObject *)gtk_toolbar_get_nth_item(*this, idx)));
             }
-            void Insert(const ToolItem &item, int pos) {
+            /** Add a ToolItem at a particular position in the Toolbar
+
+Insert a ToolItem into the toolbar at position pos. If pos is 0 the item is prepended to the start of the toolbar. If pos is negative, the item is appended to the end of the toolbar.
+*/
+            void Insert(const ToolItem &item /**< A ToolItem. */, 
+                        int pos /**< the position of the new item. */) {
                 gtk_toolbar_insert(*this, item, pos);
             }
-            void Append(const ToolItem &item) { Insert(item, -1); }
+            /// Add a ToolItem at the end of the Toolbar
+            void Append(const ToolItem &item /**< A ToolItem. */) { Insert(item, -1); }
     };
 
     class Statusbar : public HBox // complete API

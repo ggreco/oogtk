@@ -1021,7 +1021,7 @@ If setting is true, pressing Enter in the entry will activate the default widget
     };
 
     enum SocketCondition {
-        SocketRead = G_IO_IN 	/**< There is data to read. */,
+        SocketRead = G_IO_IN|G_IO_HUP 	/**< There is data to read. */,
         SocketWrite = G_IO_OUT 	/**< Data can be written (without blocking). */,
         SocketUrgent = G_IO_PRI /**< There is urgent data to read. */,
         SocketError = G_IO_ERR 	/**< Error condition. */,
@@ -1326,13 +1326,99 @@ can pass a pointer to an object or a simple object, also if not PoD).
                 return NULL;
             }
     };
+/** A Builder is an auxiliary object that reads textual descriptions of a user interface and instantiates the described objects. 
 
+To pass a description to a Builder, call Builder::Load() or directly pass the description to the class constructor. Builder::Load can be called multiple times; the builder merges the content of all descriptions.
+
+A Builder holds a reference to all objects that it has constructed and drops these references when it is finalized. This finalization can cause the destruction of non-widget objects or widgets which are not contained in a toplevel window. For toplevel windows constructed by a builder, it is the responsibility of the user to delete the top level objects (Window, Dialog...) to get rid of them and all the widgets they contain.
+
+The methods Builder::Get() and Builder:Get<>() can be used to access the widgets in the interface by the names assigned to them inside the UI description. Toplevel windows returned by these functions will stay around until the user explicitly destroys them. Other widgets will either be part of a larger hierarchy constructed by the builder (in which case you should not have to worry about their lifecycle), or without a parent, in which case they have to be added to some container to make use of them. Non-widget objects need to be reffed with Object::Ref() to keep them beyond the lifespan of the builder.
+
+Builder UI Definitions
+
+Builder parses textual descriptions of user interfaces which are specified in an XML format which can be roughly described by the DTD below. We refer to these descriptions as Builder UI definitions or just UI definitions if the context is clear. Do not confuse Builder UI Definitions with UIManager UI Definitions, which are more limited in scope.
+
+\example
+<!ELEMENT interface (requires|object)* >
+<!ELEMENT object    (property|signal|child|ANY)* >
+<!ELEMENT property  PCDATA >
+<!ELEMENT signal    EMPTY >
+<!ELEMENT requires  EMPTY >
+<!ELEMENT child     (object|ANY*) >
+<!ATTLIST interface  domain         	    #IMPLIED >
+<!ATTLIST object     id             	    #REQUIRED
+                     class          	    #REQUIRED
+                     type-func      	    #IMPLIED
+                     constructor    	    #IMPLIED >
+<!ATTLIST requires   lib             	    #REQUIRED
+                     version          	    #REQUIRED >
+<!ATTLIST property   name           	    #REQUIRED
+                     translatable   	    #IMPLIED
+                     comments               #IMPLIED
+                     context                #IMPLIED >
+<!ATTLIST signal     name           	    #REQUIRED
+                     handler        	    #REQUIRED
+                     after          	    #IMPLIED
+                     swapped        	    #IMPLIED
+                     object         	    #IMPLIED
+                     last_modification_time #IMPLIED >
+<!ATTLIST child      type           	    #IMPLIED
+                     internal-child 	    #IMPLIED >
+\endexample
+
+The toplevel element is <interface>. It optionally takes a "domain" attribute, which will make the builder look for translated strings using dgettext() in the domain specified. This can also be done by calling Builder::TranslationDomain() on the builder. Objects are described by <object> elements, which can contain <property> elements to set properties, <signal> elements which connect signals to handlers, and <child> elements, which describe child objects (most often widgets inside a container, but also e.g. actions in an action group, or columns in a tree model). A <child> element contains an <object> element which describes the child object. The target toolkit version(s) are described by <requires> elements, the "lib" attribute specifies the widget library in question (currently the only supported value is "gtk+") and the "version" attribute specifies the target version in the form "<major>.<minor>". The builder will error out if the version requirements are not met.
+
+Typically, the specific kind of object represented by an <object> element is specified by the "class" attribute. If the type has not been loaded yet, GTK+ tries to find the _get_type() from the class name by applying heuristics. This works in most cases, but if necessary, it is possible to specify the name of the _get_type() explictly with the "type-func" attribute. As a special case, Builder allows to use an object that has been constructed by a UIManager in another part of the UI definition by specifying the id of the UIManager in the "constructor" attribute and the name of the object in the "id" attribute.
+
+Objects must be given a name with the "id" attribute, which allows the application to retrieve them from the builder with Builder::Get(). An id is also necessary to use the object as property value in other parts of the UI definition.
+
+Setting properties of objects is pretty straightforward with the <property> element: the "name" attribute specifies the name of the property, and the content of the element specifies the value. If the "translatable" attribute is set to a true value, GTK+ uses gettext() (or dgettext() if the builder has a translation domain set) to find a translation for the value. This happens before the value is parsed, so it can be used for properties of any type, but it is probably most useful for string properties. It is also possible to specify a context to disambiguate short strings, and comments which may help the translators.
+
+Builder can parse textual representations for the most common property types: characters, strings, integers, floating-point numbers, booleans (strings like "TRUE", "t", "yes", "y", "1" are interpreted as TRUE, strings like "FALSE", "f", "no", "n", "0" are interpreted as FALSE), enumerations (can be specified by their name, nick or integer value), flags (can be specified by their name, nick, integer value, optionally combined with "|", e.g. "GTK_VISIBLE|GTK_REALIZED") and colors (in a format understood by gdk_color_parse()). Objects can be referred to by their name. Pixbufs can be specified as a filename of an image file to load. In general, Builder allows forward references to objects — an object doesn't have to constructed before it can be referred to. The exception to this rule is that an object has to be constructed before it can be used as the value of a construct-only property.
+
+Sometimes it is necessary to refer to widgets which have implicitly been constructed by GTK+ as part of a composite widget, to set properties on them or to add further children (e.g. the vbox of a Dialog). This can be achieved by setting the "internal-child" propery of the <child> element to a true value. Note that Builder still requires an <object> element for the internal child, even if it has already been constructed.
+
+A number of widgets have different places where a child can be added (e.g. tabs vs. page content in notebooks). This can be reflected in a UI definition by specifying the "type" attribute on a <child> The possible values for the "type" attribute are described in the sections describing the widget-specific portions of UI definitions. 
+
+\example
+<interface>
+  <object class="GtkDialog" id="dialog1">
+    <child internal-child="vbox">
+      <object class="GtkVBox" id="vbox1">
+        <property name="border-width">10</property>
+        <child internal-child="action_area">
+          <object class="GtkHButtonBox" id="hbuttonbox1">
+            <property name="border-width">20</property>
+            <child>
+              <object class="GtkButton" id="ok_button">
+                <property name="label">gtk-ok</property>
+                <property name="use-stock">TRUE</property>
+                <signal name="clicked" handler="ok_button_clicked"/>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>
+\endexample
+
+Beyond this general structure, several object classes define their own XML DTD fragments for filling in the ANY placeholders in the DTD above. Note that a custom element in a <child> element gets parsed by the custom tag handler of the parent object, while a custom element in an <object> element gets parsed by the custom tag handler of the object.
+*/
     class Builder
     {
         public:
-            enum BuildSource {File, String};
+            /// this type describes the source type for a Builder interface.
+            enum BuildSource {File /**< The string is a file name */, 
+                              String /**< The string contains an XML definition for the Builder */ };
 
-            Builder(const std::string &ui = "", BuildSource source = File) {
+            /** Create a new Builder object.
+Usually you should use this by deriving one of your classes from a Builder object.
+\sa Builder::Get<>() for an example.
+            */
+            Builder(const std::string &ui = "" /**< the filename of the builder interface to load or a string containing an interface definition, as specified by the second parameter */, 
+                    BuildSource source = File /**< specify what kind of objects the first parameter points to, defaults to Builder::File*/) {
                 builder_ = gtk_builder_new();
 
                 if (!ui.empty()) {                    
@@ -1343,7 +1429,11 @@ can pass a pointer to an object or a simple object, also if not PoD).
                 }
             }
 
-            bool Load(const std::string &ui, BuildSource source = File) {
+            /** Load an interface inside the Builder
+If the builder already contains one or more interfaces the interfaces are merged.
+            */
+            bool Load(const std::string &ui/**< the filename of the builder interface to load or a string containing an interface definition, as specified by the second parameter */, 
+                    BuildSource source = File /**< specify what kind of objects the first parameter points to, defaults to Builder::File*/) {
                 GError *err = NULL;
 
                 int rc;
@@ -1369,13 +1459,25 @@ can pass a pointer to an object or a simple object, also if not PoD).
                 return true;
             }
 
-            bool FromString(const std::string &ui) { return Load(ui, String); }
-            bool FromFile(const std::string &ui) { return Load(ui, File); }
+            /** Parses a string containing a Builder UI definition and merges it with the current contents of builder.
+            \return false if the string contains an invalid interface
+            */
+            bool FromString(const std::string &ui /**< 	 the string to parse */) { return Load(ui, String); }
+            /** Parses a file containing a Builder UI definition and merges it with the current contents of builder.
+            \return false if the file doesn't exist or if the file contains an invalid interface
+            */
+            bool FromFile(const std::string &ui /**< the name of the file to parse */) { return Load(ui, File); }
 
             ~Builder() { g_object_unref(builder_); }
 
+/** Gets the widget named "label". 
+Note that this function does not increment the reference count of the returned object.
+
+You can dynamic_cast the result to whatever object it's the real type of this widget,
+\return a pointer to a Widget or NULL if a object with that name doesn't exist or if the object is not a Widget (for instance a TreeStore).
+*/
             Widget *
-            Get(const char *label) {
+            Get(const char *label /**< name of object to get */) {
                 if (GObject *obj = gtk_builder_get_object(builder_, label)) {
                     return dynamic_cast<Widget *>(Object::Find(obj));
                 }
@@ -1383,13 +1485,41 @@ can pass a pointer to an object or a simple object, also if not PoD).
                     return NULL;
             }
 
-// it could be an object but not a widget i.e. TreeStore/ListStore...
+/** Gets the object named "label", casting it to the appropriate type.
+Note that this function does not increment the reference count of the returned object.
+
+\example
+    class MyApp : public gtk::Application, public gtk::Builder {
+            gtk::Window win_;
+        public:
+            MyApp() : Builder("interface.xml") {
+                if (gtk::TreeView *tv = Get<gtk::TreeView>("treeview_main")) {
+                    tv->AddSortableTextColumn("Title", 0);
+                    tv->AddSortableTextColumn("Author", 1);
+                    tv->AddTextColumn("Price", 2);
+                }
+                if (win_ = Get<gtk::Window>("window_main")) 
+                    win_->Show();
+            }
+            ~MyApp() {
+                delete win_;
+            }
+    }
+
+    int main()
+    {
+        MyApp app;
+        app.Run();
+    }
+\endexample
+\return NULL if a object with that name doesn't exist or if the object is not dynamic_cast-able to the template type.
+*/
             template<typename T> 
-            T *Get(const char *label) {
+            T *Get(const char *label /**< name of object to get */) {
                 if (GObject *obj = gtk_builder_get_object(builder_, label))
                     return dynamic_cast<T *>(Object::Find(obj));
-		else
-		    return NULL;
+                else
+                    return NULL;
             }
         private:
             GtkBuilder *builder_;

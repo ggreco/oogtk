@@ -56,7 +56,7 @@ If you simply want an undecorated window (no window borders), use Window::Decora
             }
 
             // windows are special objects and must be destroyed
-            virtual ~Window() { if (ObjType() == InternalObj) gtk_widget_destroy(GTK_WIDGET(Obj())); }
+            virtual ~Window() { /*if (ObjType() == InternalObj) */ gtk_widget_destroy(GTK_WIDGET(Obj())); }
             // window signals
             BUILD_EVENT(OnDelete, "delete_event");
 
@@ -86,15 +86,57 @@ The title of a window will be displayed in its title bar; on the X Window System
             void Title(const std::string &title /**< title of the window */) { 
                 gtk_window_set_title(*this, title.c_str()); 
             }
+/** Presents a window to the user. 
 
+This may mean raising the window in the stacking order, deiconifying it, moving it to the current desktop, and/or giving it the keyboard focus, possibly dependent on the user's platform, window manager, and preferences.
+
+If window is hidden, this function calls Window::Show() as well.
+
+This function should be used when the user tries to open a window that's already open. Say for example the preferences dialog is currently open, and the user chooses Preferences from the menu a second time; use Window::Present() to move the already-open dialog where the user can see it. 
+*/
+            void Present() { gtk_window_present(*this); }
+/** Obtains the current size of window. 
+
+If window is not onscreen, it returns the size GTK+ will suggest to the window manager for the initial window size (but this is not reliably the same as the size the window manager will actually select). The size obtained by Window::Size() is the last size received in a EventConfigure, that is, GTK+ uses its locally-stored size, rather than querying the X server for the size. As a result, if you call Window::Resize() then immediately call Window::Size(), the size won't have taken effect yet. After the window manager processes the resize request, GTK+ receives notification that the size has changed via a configure event, and the size of the window gets updated.
+
+Note 1: Nearly any use of this function creates a race condition, because the size of the window may change between the time that you get the size and the time that you perform some action assuming that size is the current size. To avoid race conditions, connect to "configure-event" on the window and adjust your size-dependent state to match the size delivered in the EventConfigure.
+
+Note 2: The returned size does not include the size of the window manager decorations (aka the window frame or border). Those are not drawn by GTK+ and GTK+ has no reliable method of determining their size.
+
+Note 3: If you are getting a window size in order to position the window onscreen, there may be a better way. The preferred way is to simply set the window's semantic type with Window::TypeHint(), which allows the window manager to e.g. center dialogs. Also, if you set the transient parent of dialogs with Window::TransientFor() window managers will often center the dialog over its parent window. It's much preferred to let the window manager handle these things rather than doing it yourself, because all apps will behave consistently and according to user prefs if the window manager handles it. Also, the window manager can take the size of the window decorations/border into account, while your application cannot.
+
+In any case, if you insist on application-specified window positioning, there's still a better way than doing it yourself - Window::Position(const Point &) or better Window::Position(OneOf<GtkWindowPosition, WindowPosition> ) will frequently handle the details for you.
+*/
             Point Size() const { 
                 Point pos;
                 gtk_window_get_size(*this, &pos.x, &pos.y); 
                 return pos;
             }
-            void Size(const Point &size) { Size(size.x, size.y); }
-            void Size(int width, int height) { gtk_window_resize(*this, width, height); }
+/** Resizes a window.
 
+Symmetric shortcut for Window::Resize() added in OOGtk for API coherence.
+\sa Window::Resize()
+*/
+            void Size(const Point &size /**< A point containing the wanted width and height for the window */) { Size(size.x, size.y); }
+/** Resizes a window.
+\sa Window::Resize()
+*/
+            void Size(int width /**< wanted width in pixels */, 
+                      int height /**< wanted height in pixels */) 
+            { gtk_window_resize(*this, width, height); }
+/** Resizes the window as if the user had done so, obeying geometry constraints. 
+
+The default geometry constraint is that windows may not be smaller than their size request; to override this constraint, call Widget::SizeRequest() to set the window's request to a smaller value.
+
+If Window::Resize() is called before showing a window for the first time, it overrides any default size set.
+
+Windows may not be resized smaller than 1 by 1 pixels.
+
+\sa Window::Size(int, int), Window::Size(const Point &)
+*/
+            void Resize(int width /**< wanted width in pixels*/, 
+                      int height /**< wanted height in pixels */) 
+            { gtk_window_resize(*this, width, height); }
 /** Obtain the position of a window.
 
 This function returns the position you need to pass to Window::Position(const Point &) or Window::Position(int, int) to keep window in its current position. This means that the meaning of the returned value varies with window gravity. Window::Position(const Point &) for more details.
@@ -149,7 +191,6 @@ On Windows, this function puts the child window on top of the parent, much as th
 
             // shortcut GTK uses
             void Move(int x, int y) { Position(x, y); }
-            void Resize(int width, int height) { Size(width, height); }
 
             /** Returns whether the window has been set to have decorations such as a title bar.
             \sa Window::Decorated(bool)

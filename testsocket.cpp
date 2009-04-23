@@ -55,22 +55,14 @@ public:
     }
 };
 
-int main(int argc, char *argv[]) {
-#ifdef WIN32
-    WSADATA wsaData;
-    WORD wVersionRequested;
-
-    wVersionRequested = MAKEWORD( 2, 0 );
-	
-    if (WSAStartup(wVersionRequested, &wsaData) != 0) {
-        std::cerr << "Unable to initialize winsock!\n";
-        exit(0);
-    }
-#endif
+int main(int argc, char *argv[]) 
+{
     if(argc != 3) {
         std::cerr << "Usage: testsocket host port\n";
         exit(0);
     }
+
+    initialize_tcpip();
 
     struct sockaddr_in addr_out; 
     int fd = socket(AF_INET, SOCK_STREAM, 0);

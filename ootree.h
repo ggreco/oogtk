@@ -1083,6 +1083,7 @@ One of the notable features provided by implementations of CellLayout are attrib
     class CellLayout
     {
         protected:
+            virtual ~CellLayout() {}
             virtual GtkCellLayout *getobj() const = 0;
         public:
             /** Packs the cell into the beginning of cell_layout.
