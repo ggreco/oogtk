@@ -952,7 +952,7 @@ std::string open() {
                 va_end(va);
 
                 Init(gtk_message_dialog_new_with_markup(*parent, flags, msgtype, buttontype,
-                        msg));
+                        "%s", msg));
                 g_free(msg);
                 Internal(true);
             }
@@ -964,7 +964,7 @@ std::string open() {
                 g_vasprintf(&msg, msg_format, va);
 
                 Init(gtk_message_dialog_new_with_markup(*parent, flags, msgtype, buttontype,
-                        msg));
+                        "%s", msg));
                 g_free(msg);
                 Internal(true);
             }
@@ -974,14 +974,14 @@ std::string open() {
                           OneOf<GtkDialogFlags, DialogFlags> flags = DialogDestroyWithParent,
                           Window *parent = NULL) : Dialog(DerivedType()) {
                 Init(gtk_message_dialog_new_with_markup(parent ? GTK_WINDOW(parent->Obj()) : NULL, flags, msgtype, buttontype,
-                            msg.c_str()));
+                            "%s", msg.c_str()));
                 Internal(true);
             }
             void Text(const std::string &text) {
                 gtk_message_dialog_set_markup(*this, text.c_str());
             }
             void Secondary(const std::string &text) {
-                gtk_message_dialog_format_secondary_markup(*this, text.c_str());
+                gtk_message_dialog_format_secondary_markup(*this, "%s", text.c_str());
             }
             void Image(gtk::Image &image) {
                  gtk_message_dialog_set_image(*this, image);

@@ -370,7 +370,7 @@ By default, "jpeg", "png", "ico" and "bmp" are possible file formats to save in,
             }
 
             /// Queries whether a pixbuf has an alpha channel (opacity information).
-            bool HasAlpha() const { return gdk_pixbuf_has_alpha(*this); }
+            bool HasAlpha() const { return gdk_pixbuf_get_has_alpha(*this); }
             /// Queries the rowstride of a pixbuf, which is the number of bytes between the start of a row and the start of the next row.
             int Rowstride() const { return gdk_pixbuf_get_rowstride(*this); }
             /// Queries a pointer to the pixel data of a pixbuf.
