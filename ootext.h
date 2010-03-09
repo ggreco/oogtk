@@ -60,9 +60,9 @@ namespace gtk {
                 return InRange(range.first, range.second);
             }
             bool Search(const std::string &text, TextRange &result,
-                             OneOf<GtkTextSearchFlags, TextSearchFlags> flags = TextSearchTextOnly,
+                             TextSearchFlags flags = TextSearchTextOnly,
                              TextIter *limit = NULL) {
-                return gtk_text_iter_forward_search(&it_, text.c_str(), flags,
+                return gtk_text_iter_forward_search(&it_, text.c_str(), (GtkTextSearchFlags)flags,
                                              &result.first.it_, &result.second.it_, 
                                              limit ? &limit->it_ : NULL);
             }
@@ -474,8 +474,8 @@ The previous buffer displayed by the text view is unreferenced, and a reference 
 
 
             // cursor position/text buffer conversions
-            OneOf<GtkTextWindowType, TextWindowType> WindowType(GdkWindow *window) {
-                return gtk_text_view_get_window_type(*this, window);
+            TextWindowType WindowType(GdkWindow *window) {
+                return (TextWindowType)gtk_text_view_get_window_type(*this, window);
             }
 /** Converts coordinates from buffer system to window system.
 
@@ -485,10 +485,10 @@ Note that you can't convert coordinates for a nonexisting window.
 */
             Point BufferToWindow(int x /**< buffer x coordinate */, 
                                  int y /**< buffer y coordinate */, 
-                    OneOf<GtkTextWindowType, TextWindowType> type = TextWindowWidget /**< a TextWindowType, defaults to TextWindowWidget */) {
+                    TextWindowType type = TextWindowWidget /**< a TextWindowType, defaults to TextWindowWidget */) {
                 Point dest;
                 gtk_text_view_buffer_to_window_coords(*this, 
-                        type, x, y, 
+                        (GtkTextWindowType)type, x, y, 
                         &dest.x, &dest.y);
                 return dest;
             }
@@ -521,10 +521,10 @@ The rectangle position is in buffer coordinates; use TextView::BufferToWindow() 
                 return rect; 
             }
             Point WindowToBuffer(int x, int y, 
-                     OneOf<GtkTextWindowType, TextWindowType> type = TextWindowWidget) {
+                                 TextWindowType type = TextWindowWidget) {
                 Point dest;
                 gtk_text_view_window_to_buffer_coords(*this, 
-                        type, x, y, 
+                        (GtkTextWindowType)type, x, y, 
                         &dest.x, &dest.y);
                 return dest;
             }
@@ -559,10 +559,10 @@ The rectangle position is in buffer coordinates; use TextView::BufferToWindow() 
             int PixelsBelow() const { return gtk_text_view_get_pixels_below_lines(*this); }
             void PixelsBelow(int pixels) { gtk_text_view_set_pixels_below_lines(*this, pixels); }
             // misc
-            OneOf<GtkWrapMode, gtk::WrapMode> WrapMode() const { return gtk_text_view_get_wrap_mode(*this); }
-            void WrapMode(OneOf<GtkWrapMode, gtk::WrapMode> mode) { return gtk_text_view_set_wrap_mode(*this, mode); }
-            OneOf<GtkJustification, gtk::Justification> Justification() const { return gtk_text_view_get_justification(*this); }
-            void Justification(OneOf<GtkJustification, gtk::Justification> mode) { return gtk_text_view_set_justification(*this, mode); }
+            gtk::WrapMode WrapMode() const { return (gtk::WrapMode)gtk_text_view_get_wrap_mode(*this); }
+            void WrapMode(gtk::WrapMode mode) { gtk_text_view_set_wrap_mode(*this, (GtkWrapMode)mode); }
+            gtk::Justification Justification() const { return (gtk::Justification)gtk_text_view_get_justification(*this); }
+            void Justification(gtk::Justification mode) { return gtk_text_view_set_justification(*this, (GtkJustification)mode); }
 
             // misc CUSTOM predicates
             void WordWrap() { WrapMode(WrapWord); }

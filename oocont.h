@@ -209,8 +209,7 @@ This problem doesn't occur for visible event boxes, because in that case, the ev
       PolicyNever =GTK_POLICY_NEVER /**< The scrollbar will never appear. */
     };
     /// A pair of PolicyType to represent both horizontal and vertical adjustments.
-    typedef std::pair<OneOf<GtkPolicyType, PolicyType>, 
-                      OneOf<GtkPolicyType, PolicyType> > PolicyTypes;
+    typedef std::pair<PolicyType, PolicyType> PolicyTypes;
 
 /** Adds scrollbars to its child widget.
 ScrolledWindow is a Bin subclass: it's a container the accepts a single child widget. ScrolledWindow adds scrollbars to the child widget and optionally draws a beveled frame around the child widget.
@@ -258,7 +257,7 @@ The policy determines when the scrollbar should appear; it is a pair of values f
 */
             void Policy(const PolicyTypes &policy /**< A locally defined policy object*/) {
                 gtk_scrolled_window_set_policy(*this, 
-                        policy.first, policy.second);
+                        (GtkPolicyType)policy.first, (GtkPolicyType)policy.second);
             }
             /** Retrieves the current policy values for the horizontal and vertical scrollbars. 
              \sa ScrolledWindow::Policy(const PolicyTypes &)
@@ -267,7 +266,7 @@ The policy determines when the scrollbar should appear; it is a pair of values f
             PolicyTypes Policy() const {
                 GtkPolicyType w, h;
                 gtk_scrolled_window_get_policy(*this, &w, &h);
-                return PolicyTypes(w, h);
+                return PolicyTypes((PolicyType)w, (PolicyType)h);
             }
     };
 /** Base class for box containers
@@ -336,6 +335,22 @@ A widget's position in the box children list determines where the widget is pack
             void ReorderChild(Widget &child /**< the Widget to move */ , 
                               int position = -1 /**< the new position for child in the list of children of box, starting from 0. If negative, indicates the end of the list, defaults to -1, so if you don't specify the parameter you'll move the child widget to the end of the list. */) {
                 gtk_box_reorder_child(*this, child, position);
+            }
+
+             /** Adds childs to box, packed with reference to the start of box. 
+The child is packed after any other child packed with reference to the start of box with default attributes (expand = true, fill = true, padding = 0).
+*/
+            void Pack(const Widget &c1, const Widget &c2) {
+                PackStart(c1); PackStart(c2);
+            }
+            void Pack(const Widget &c1, const Widget &c2, const Widget &c3) {
+                PackStart(c1); PackStart(c2); PackStart(c3);
+            }
+            void Pack(const Widget &c1, const Widget &c2, const Widget &c3, const Widget &c4) {
+                PackStart(c1); PackStart(c2); PackStart(c3); PackStart(c4);
+            }
+            void Pack(const Widget &c1, const Widget &c2, const Widget &c3, const Widget &c4, const Widget &c5) {
+                PackStart(c1); PackStart(c2); PackStart(c3); PackStart(c4); PackStart(c5);
             }
     };
 /** A vertical container box
@@ -493,13 +508,13 @@ This group appears after the other children if the style is ButtonBoxStart, Butt
             }
 
             //// Changes the way buttons are arranged in their container.
-            void Layout(OneOf<GtkButtonBoxStyle, ButtonBoxStyle> style /**< the new layout style. */) {
-                gtk_button_box_set_layout(*this, style);
+            void Layout(ButtonBoxStyle style /**< the new layout style. */) {
+                gtk_button_box_set_layout(*this, (GtkButtonBoxStyle)style);
             }
             /// Retrieves the way buttons are arranged in their container.
             /// \return the actual layout style
-            OneOf<GtkButtonBoxStyle, ButtonBoxStyle> Layout() const {
-                return gtk_button_box_get_layout(*this);
+            ButtonBoxStyle Layout() const {
+                return (ButtonBoxStyle)gtk_button_box_get_layout(*this);
             }
 
             /// Changes the amount of internal padding used by all buttons in a given button box.
@@ -772,15 +787,14 @@ The number of 'cells' that a widget will occupy is specified by left_attach, rig
                         int top /**< the row number to attach the top of a child widget to. */, 
                         int right = -1 /**< the column number to attach the right side of a child widget to, if not specified or -1 defaults to left + 1. */, 
                         int bottom = -1 /**< 	the row number to attach the bottom of a child widget to, if not specified or -1 defaults to top + 1 */,
-                        OneOf<GtkAttachOptions, AttachOptions> xoptions = (Expand|Fill) /**< Used to specify the properties of the child widget when the table is resized, defaults to AttachOptions::Expand and AttachOptions::Fill. */,
-                        OneOf<GtkAttachOptions, AttachOptions> yoptions = (Expand|Fill) /**< The same as xoptions, except this field determines behaviour of vertical resizing, defaults to AttachOptions::Expand and AttachOptions::Fill.*/,
+                        AttachOptions xoptions = (Expand|Fill) /**< Used to specify the properties of the child widget when the table is resized, defaults to AttachOptions::Expand and AttachOptions::Fill. */,
+                        AttachOptions yoptions = (Expand|Fill) /**< The same as xoptions, except this field determines behaviour of vertical resizing, defaults to AttachOptions::Expand and AttachOptions::Fill.*/,
                         int xpadding = 0 /**< An integer value specifying the padding on the left and right of the widget being added to the table. */, 
                         int ypadding = 0 /**< The amount of padding above and below the child widget. */
                         ) {
                 gtk_table_attach(*this, child, 
-                        left, right != -1 ? right : left + 1,
-                        top, bottom != -1 ? bottom : top + 1,
-                        xoptions, yoptions, xpadding, ypadding);
+                        left, right != -1 ? right : left + 1, top, bottom != -1 ? bottom : top + 1,
+                        (GtkAttachOptions)xoptions, (GtkAttachOptions)yoptions, xpadding, ypadding);
             }
 
             void ColSpacing(int space, int column = -1) {
@@ -848,8 +862,8 @@ The number of 'cells' that a widget will occupy is specified by left_attach, rig
                 return align;
             }
 
-            void Shadow(OneOf<GtkShadowType, ShadowType> shadow) { gtk_frame_set_shadow_type(*this, shadow); }
-            OneOf<GtkShadowType, ShadowType> Shadow() const { return gtk_frame_get_shadow_type(*this); }
+            void Shadow(ShadowType shadow) { gtk_frame_set_shadow_type(*this, (GtkShadowType)shadow); }
+            ShadowType Shadow() const { return (ShadowType)gtk_frame_get_shadow_type(*this); }
     };
 /** A frame that constrains its child to a particular aspect ratio.
 
@@ -1065,17 +1079,17 @@ Creating a context menu for the toolbar can be done by connecting to the "popup-
                 newitem(); Append(i1); Append(i2); Append(i3); Append(i4); Append(i5); Append(i6); Append(i7);
             }
 
-            void IconSize(OneOf<GtkIconSize, gtk::IconSize> size) {
-                gtk_toolbar_set_icon_size(*this, size);
+            void IconSize(gtk::IconSize size) {
+                gtk_toolbar_set_icon_size(*this, (GtkIconSize)size);
             }
-            OneOf<GtkIconSize, gtk::IconSize> IconSize() const {
-                return gtk_toolbar_get_icon_size(*this);
+            gtk::IconSize IconSize() const {
+                return (gtk::IconSize)gtk_toolbar_get_icon_size(*this);
             }
-            void Style(OneOf<GtkToolbarStyle, ToolbarStyle> style) {
-                gtk_toolbar_set_style(*this, style);
+            void Style(ToolbarStyle style) {
+                gtk_toolbar_set_style(*this, (GtkToolbarStyle)style);
             }
-            OneOf<GtkToolbarStyle, ToolbarStyle> Style() const {
-                return gtk_toolbar_get_style(*this);
+            ToolbarStyle Style() const {
+                return (ToolbarStyle)gtk_toolbar_get_style(*this);
             }
             ToolItem *GetNth(int idx) { 
                 return dynamic_cast<ToolItem *>(
@@ -1130,12 +1144,12 @@ Insert a ToolItem into the toolbar at position pos. If pos is 0 the item is prep
         public:
             operator  GtkSizeGroup *() const { return GTK_SIZE_GROUP(Obj()); }
             SizeGroup(GObject *obj) { Init(obj); }
-            SizeGroup(OneOf<GtkSizeGroupMode, SizeGroupMode> mode = SizeGroupHorizontal) { 
-                Init(gtk_size_group_new(mode));
+            SizeGroup(SizeGroupMode mode = SizeGroupHorizontal) { 
+                Init(gtk_size_group_new((GtkSizeGroupMode)mode));
                 Internal(true);
             }
-            void Mode(OneOf<GtkSizeGroupMode, SizeGroupMode> mode) { gtk_size_group_set_mode(*this, mode); }
-            OneOf<GtkSizeGroupMode, SizeGroupMode> Mode() const { return gtk_size_group_get_mode(*this); }
+            void Mode(SizeGroupMode mode) { gtk_size_group_set_mode(*this, (GtkSizeGroupMode)mode); }
+            SizeGroupMode Mode() const { return (SizeGroupMode)gtk_size_group_get_mode(*this); }
 
             void IgnoreHidden(bool flag) { gtk_size_group_set_ignore_hidden(*this, flag); }
             bool IgnoreHidden() const { return gtk_size_group_get_ignore_hidden(*this); }

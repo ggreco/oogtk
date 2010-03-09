@@ -49,14 +49,14 @@ The Button widget can hold any valid child widget. That is it can hold most any 
 
             /** Sets the relief style of the edges of the given gtk::Button widget. Three styles exist, gtk::ReliefNormal, gtk::ReliefHalf, gtk::ReliefNone. The default style is, as one can guess, gtk::ReliefNormal.
             */
-            void Relief(OneOf<GtkReliefStyle, ReliefStyle> relief /**< A valid gtk::ReliefStyle value as described above. */ ) {
-                gtk_button_set_relief(*this, relief);
+            void Relief(ReliefStyle relief /**< A valid gtk::ReliefStyle value as described above. */ ) {
+                gtk_button_set_relief(*this, (GtkReliefStyle)relief);
             }
             /** Returns the current relief style of the given gtk::Button.
              \return The current gtk::ReliefStyle used by the button.
              */
-            OneOf<GtkReliefStyle, ReliefStyle> Relief() const { 
-                return gtk_button_get_relief(*this);
+            ReliefStyle Relief() const { 
+                return (ReliefStyle)gtk_button_get_relief(*this);
             }
 
             /** Set the image of button to the given widget. Note that it depends on the "gtk-button-images" setting whether the image will be displayed or not, you don't have to call gtk::Widget::Show() on image yourself.
@@ -98,14 +98,14 @@ The Button widget can hold any valid child widget. That is it can hold most any 
             }
             /** Sets the position of the image relative to the text inside the button.
              */
-            void ImagePosition(OneOf<GtkPositionType, PositionType> pos /** the position */ ) {
-                gtk_button_set_image_position(*this, pos);
+            void ImagePosition(PositionType pos /** the position */ ) {
+                gtk_button_set_image_position(*this, (GtkPositionType)pos);
             }
             /** Gets the position of the image relative to the text inside the button.
              \return the position
              */
-            OneOf<GtkPositionType, PositionType> ImagePosition() const {
-                return gtk_button_get_image_position(*this);
+            PositionType ImagePosition() const {
+                return (PositionType)gtk_button_get_image_position(*this);
             }
 
             /** if true, an underline in the text of the button label indicates the next character should be used for the mnemonic accelerator key. 

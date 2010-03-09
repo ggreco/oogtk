@@ -7,12 +7,14 @@
 #include <gtk/gtk.h>
 #include <glib/gprintf.h>
 #include <assert.h>
+#include <stdint.h>
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <list>
 #include <map>
 #include <iomanip>
+#include <stdint.h>
 #include "oogdk.h"
 
 namespace gtk
@@ -161,16 +163,16 @@ All other style values are left untouched. The base color is the background colo
 Note that "no window" widgets (which have the GTK_NO_WINDOW flag set) draw on their parent container's window and thus may not draw any background themselves. This is the case for e.g. Label. To modify the background of such widgets, you have to set the base color on their parent; if you want to set the background of a rectangular area around a label, try placing the label in a EventBox widget and setting the base color on that.
 */
             void ModifyBase(const Color &color, /**< the color to assign */
-                            OneOf<GtkStateType, StateType> type = StateNormal /**< 	 the state for which to set the text color */) {
-                gtk_widget_modify_base(*this, type, color);
+                            StateType type = StateNormal /**< 	 the state for which to set the text color */) {
+                gtk_widget_modify_base(*this, (GtkStateType)type, color);
             }
             /** Sets the text color for a widget in a particular state.
 All other style values are left untouched. The text color is the foreground color used along with the base color (see Widget::ModifyBase()) for widgets such as Entry and TextView.
 \sa  See also Widget::ModifyStyle().
              */
             void ModifyText(const Color &color, /**< the color to assign */
-                            OneOf<GtkStateType, StateType> type = StateNormal /**< 	 the state for which to set the text color */) {
-                 gtk_widget_modify_text(*this, type, color);
+                            StateType type = StateNormal /**< 	 the state for which to set the text color */) {
+                 gtk_widget_modify_text(*this, (GtkStateType)type, color);
             }
             /** Sets the font to use for a widget. All other style values are left untouched. */
             void ModifyFont(const FontDesc &font /**< the font description to use */) { 
@@ -179,9 +181,9 @@ All other style values are left untouched. The text color is the foreground colo
 
             /** Sets the foreground color for a widget in a particular state. All other style values are left untouched. */
             void ModifyFg(const Color &color, /**< the color to assign */
-                          OneOf<GtkStateType, StateType> type = StateNormal /**< the state for which to set the text color */
+                          StateType type = StateNormal /**< the state for which to set the text color */
                     ) {
-                gtk_widget_modify_fg(*this, type, color);
+                gtk_widget_modify_fg(*this, (GtkStateType)type, color);
             }
             /** Sets the background color for a widget in a particular state. 
 All other style values are left untouched. See also Widget::ModifyStyle().
@@ -189,9 +191,9 @@ All other style values are left untouched. See also Widget::ModifyStyle().
 Note that "no window" widgets (which have the NoWindow flag set) draw on their parent container's window and thus may not draw any background themselves. This is the case for e.g. Label. To modify the background of such widgets, you have to set the background color on their parent; if you want to set the background of a rectangular area around a label, try placing the label in a EventBox widget and setting the background color on that.
 */
             void ModifyBg(const Color &color, /**< the color to assign */
-                          OneOf<GtkStateType, StateType> type = StateNormal /**< the state for which to set the text color */
+                          StateType type = StateNormal /**< the state for which to set the text color */
                     ) {
-                gtk_widget_modify_bg(*this, type, color);
+                gtk_widget_modify_bg(*this, (GtkStateType)type, color);
             }
             /** Causes widget to have the keyboard focus for the Window it's inside. 
 Widget must be a focusable widget, such as a Entry; something like Frame won't work. (More precisely, it must have the CanFocus flag set.)
@@ -265,10 +267,11 @@ Normally you would only use this function in widget implementations. You might a
 The advantage of adding to the invalidated region compared to simply drawing immediately is efficiency; using an invalid region ensures that you only have to redraw one time.
 */
             void QueueDraw(const Rect &area = Rect() /**< The rectangle that has to be redrawn, if not specified queues the redraw of the entire widget */) {
-                if (!area.w && !area.h)
+                if (!area.width && !area.height)
                     gtk_widget_queue_draw(*this);
                 else
-                    gtk_widget_queue_draw_area(*this, area.x, area.y, area.w, area.h);
+                    gtk_widget_queue_draw_area(*this, area.x, area.y, 
+                                                      area.width, area.height);
             }
 
 /** Enable/disable double buffering for this object.
@@ -471,7 +474,7 @@ Sample stock icon names are GTK_STOCK_OPEN, GTK_STOCK_QUIT. Sample stock sizes a
 If the Image has no image data, the return value will be ImageEmpty.
 \return a ImageType value specific for the object.
 */
-            OneOf<ImageType,GtkImageType> StorageType() const { return gtk_image_get_storage_type(*this); }
+            ImageType StorageType() const { return (ImageType)gtk_image_get_storage_type(*this); }
 /** Sets the Image with the image pointed by the file name.
 Existing contents are unrefrenced and freed, if you don't own other references to them.
 \sa Image::Image(const std::string &)
@@ -613,17 +616,17 @@ Selectable labels allow the user to select text from the label, for copy-and-pas
             PangoEllipsizeMode Ellipsize() const { return gtk_label_get_ellipsize(*this); }
 
             /** Returns the justification of the label
-             \sa Label::Justify(OneOf<GtkJustification, Justification>)
+             \sa Label::Justify(Justification )
              \return a Justification or a GtkJustification valid enum value.
              */
-            OneOf<GtkJustification, Justification> Justify() const {
-                return gtk_label_get_justify(*this); 
+            Justification Justify() const {
+                return (Justification)gtk_label_get_justify(*this); 
             }
             /** Sets the alignment of the lines in the text of the label relative to each other. 
             JustifyLeft is the default value when the widget is first created with any constructor. If you instead want to set the alignment of the label as a whole, use Misc::Alignment() instead. Label::Justify() has no effect on labels containing only a single line.
             */
-            void Justify(OneOf<GtkJustification, Justification> mode) {
-                gtk_label_set_justify(*this, mode); 
+            void Justify(Justification mode) {
+                gtk_label_set_justify(*this, (GtkJustification)mode); 
             }
 
             /** Returns whether lines in the label are automatically wrapped. 
@@ -1012,12 +1015,13 @@ If setting is true, pressing Enter in the entry will activate the default widget
 
     };
 
+/// An enumeration representing possible orientations and growth directions for the visible progress bar. 
     enum ProgressBarOrientation
     {
-      ProgressLeftToRight = GTK_PROGRESS_LEFT_TO_RIGHT,
-      ProgressRightToLeft = GTK_PROGRESS_RIGHT_TO_LEFT,
-      ProgressBottomToTop = GTK_PROGRESS_BOTTOM_TO_TOP,
-      ProgressTopToBottom = GTK_PROGRESS_TOP_TO_BOTTOM
+      ProgressLeftToRight = GTK_PROGRESS_LEFT_TO_RIGHT /**< A horizontal progress bar growing from left to right. */,
+      ProgressRightToLeft = GTK_PROGRESS_RIGHT_TO_LEFT /**< A horizontal progress bar growing from right to left.  */,
+      ProgressBottomToTop = GTK_PROGRESS_BOTTOM_TO_TOP /**< A vertical progress bar growing from bottom to top. */,
+      ProgressTopToBottom = GTK_PROGRESS_TOP_TO_BOTTOM /**< A vertical progress bar growing from top to bottom.  */
     };
 
     enum SocketCondition {
@@ -1029,28 +1033,58 @@ If setting is true, pressing Enter in the entry will activate the default widget
         SocketInvalid = G_IO_NVAL /**< 	Invalid request. The file descriptor is not open. */
     };
 
+/** A widget which indicates progress visually
+
+The ProgressBar object is typically used to display the progress of a long running operation. It provides a visual clue that processing is underway. The ProgressBar object can be used in two different modes: percentage mode and activity mode.
+
+When an application can determine how much work needs to take place (e.g. read a fixed number of bytes from a file) and can monitor its progress, it can use the ProgressBar in percentage mode and the user sees a growing bar indicating the percentage of the work that has been completed. In this mode, the application is required to call ProgressBar::Fraction(double) periodically to update the progress bar.
+
+When an application has no accurate way of knowing the amount of work to do, it can use the ProgressBar in activity mode, which shows activity by a block moving back and forth within the progress area. In this mode, the application is required to call ProgressBar::Pulse() perodically to update the progress bar.
+
+There is quite a bit of flexibility provided to control the appearance of the ProgressBar. Functions are provided to control the orientation of the bar, optional text can be displayed along with the bar, and the step size used in activity mode can be set. 
+*/
     class ProgressBar : public Widget {
         public:
+/// DOXYS_OFF            
             operator GtkProgressBar *() const { return GTK_PROGRESS_BAR(Obj()); }
             ProgressBar(GObject *obj) { Init(obj); }
+/// DOXYS_ON           
+            /// Creates a new ProgressBar object
             ProgressBar() {
                 Init(gtk_progress_bar_new());
                 Internal(true);
             }
+            /** Indicates that some progress is made, but you don't know how much.
+Causes the progress bar to enter "activity mode," where a block bounces back and forth. Each call to ProgressBar::Pulse() causes the block to move by a little bit (the amount of movement per pulse is determined by ProgressBar::PulseStep(double) ).
+              */
             void Pulse() { gtk_progress_bar_pulse(*this); }
 
             // get/set methods
-            void Text(const std::string &text) { gtk_progress_bar_set_text(*this, text.c_str()); }
-            void Fraction(double value) { gtk_progress_bar_set_fraction(*this, value); }
-            void PulseStep(double value) { gtk_progress_bar_set_pulse_step(*this, value); }
-            void Orientation(OneOf<ProgressBarOrientation, GtkProgressBarOrientation> mode) {
-                gtk_progress_bar_set_orientation(*this, mode);
+            /// Causes the given text to appear superimposed on the progress bar.
+            void Text(const std::string &text /**< string to be shown over the progress bar */ ) { gtk_progress_bar_set_text(*this, text.c_str()); }
+            /// Causes the progress bar to "fill in" the given fraction of the bar. The fraction should be between 0.0 and 1.0, inclusive.
+            void Fraction(double value /**< fraction of the task that's been completed */) { gtk_progress_bar_set_fraction(*this, value); }
+            /// Sets the fraction of total progress bar length to move the bouncing block for each call to ProgressBar::Pulse().
+            void PulseStep(double value /**< fraction between 0.0 and 1.0 */) { gtk_progress_bar_set_pulse_step(*this, value); }
+            /// Causes the progress bar to switch to a different orientation (left-to-right, right-to-left, top-to-bottom, or bottom-to-top).
+            void Orientation(ProgressBarOrientation mode /**< orientation of the progress bar */) {
+                gtk_progress_bar_set_orientation(*this, (GtkProgressBarOrientation)mode);
             }
-            std::string Text() const { return gtk_progress_bar_get_text(*this); }
+            /** Retrieves the text displayed superimposed on the progress bar.
+            This method returns the text displayed superimposed on the progress bar, if any, otherwise it returns an empty string. The return value is a copy to the text, so will not become invalid (nor change) if you change the text in the progress bar.
+            */
+            std::string Text() const { if (const gchar *g =  gtk_progress_bar_get_text(*this)) return g; else return ""; }
+            /** Returns the current fraction of the task that's been completed.
+              \retval A fraction between 0.0 and 1.0
+            */
             double Fraction() const { return gtk_progress_bar_get_fraction(*this); }
+            /** Retrieves the pulse step set with ProgressBar::PulseStep(double)
+              \retval A fraction between 0.0 and 1.0
+            */
             double PulseStep() const { return gtk_progress_bar_get_pulse_step(*this); }
-            OneOf<ProgressBarOrientation, GtkProgressBarOrientation> Orientation() const {
-                return gtk_progress_bar_get_orientation(*this);
+            /// Retrieves the current progress bar orientation.
+            ProgressBarOrientation Orientation() const {
+                return (ProgressBarOrientation)gtk_progress_bar_get_orientation(*this);
             }
     };
 
@@ -1444,12 +1478,13 @@ If the builder already contains one or more interfaces the interfaces are merged
                     rc = gtk_builder_add_from_string(builder_, ui.c_str(), ui.length(), &err);
 
                 if (!rc) {
-                    if (err)
+                    if (err) {
                         error_ = err->message;
+                        g_error_free(err);
+                    }
                     else
                         error_ = "generic error";
 
-                    g_free(err);
                     return false;
                 }
 
@@ -1477,7 +1512,7 @@ You can dynamic_cast the result to whatever object it's the real type of this wi
 \return a pointer to a Widget or NULL if a object with that name doesn't exist or if the object is not a Widget (for instance a TreeStore).
 */
             Widget *
-            Get(const char *label /**< name of object to get */) {
+            Get(const char *label /**< name of object to get */) const {
                 if (GObject *obj = gtk_builder_get_object(builder_, label)) {
                     return dynamic_cast<Widget *>(Object::Find(obj));
                 }
@@ -1515,12 +1550,14 @@ Note that this function does not increment the reference count of the returned o
 \return NULL if a object with that name doesn't exist or if the object is not dynamic_cast-able to the template type.
 */
             template<typename T> 
-            T *Get(const char *label /**< name of object to get */) {
+            T *Get(const char *label /**< name of object to get */) const {
                 if (GObject *obj = gtk_builder_get_object(builder_, label))
                     return dynamic_cast<T *>(Object::Find(obj));
                 else
                     return NULL;
             }
+            /** Returns last error of Load() if any */
+            const std::string &Error() const { return error_; }
         private:
             GtkBuilder *builder_;
             std::string error_;
@@ -1631,6 +1668,8 @@ namespace gtk {
                 return new VBox(o);
             } else if (GTK_IS_HBOX(o)) {
                 return new HBox(o);
+            } else if (GTK_IS_PROGRESS_BAR(o)) {
+                return new ProgressBar(o);
             } else if (GTK_IS_DRAWING_AREA(o)) {
                 return new DrawingArea(o);
             } else if (GTK_IS_TABLE(o)) {

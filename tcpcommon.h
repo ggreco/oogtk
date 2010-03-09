@@ -22,8 +22,12 @@ typedef size_t len_t;
 #else
 #include <winsock2.h>
 #include <sys/time.h>
+#ifndef EINPROGRESS
 #define EINPROGRESS WSAEWOULDBLOCK
+#endif
+#ifndef EWOULDBLOCK
 #define EWOULDBLOCK WSAEWOULDBLOCK
+#endif
 #define ECONNABORTED WSAECONNABORTED
 #define EALREADY WSAEALREADY
 #define EISCONN WSAEISCONN
