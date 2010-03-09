@@ -221,7 +221,7 @@ namespace gtk {
                     else
                         errorstring = "FromString UIManager error";
 
-                    g_free(err);
+                    g_error_free(err);
                     throw std::runtime_error(errorstring);
                 }
                 return rc;
@@ -236,7 +236,7 @@ namespace gtk {
                     else
                         errorstring = "FromString UIManager error";
 
-                    g_free(err);
+                    g_error_free(err);
                     throw std::runtime_error(errorstring);
                 }
                 return rc;

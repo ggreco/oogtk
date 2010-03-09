@@ -47,8 +47,8 @@ If you simply want an undecorated window (no window borders), use Window::Decora
             See Window class description for details. The type of the window can be chosen from the values in the WindowType enumeration and defaults to WindowTopLevel.
             */
             Window(const std::string &title = "" /**< Window title*/, 
-                   OneOf<GtkWindowType, WindowType> type = WindowTopLevel /**<A Window type value from WindowType, defaults to WindowTopLevel */) {
-                Init(gtk_window_new(type));
+                   WindowType type = WindowTopLevel /**<A Window type value from WindowType, defaults to WindowTopLevel */) {
+                Init(gtk_window_new((GtkWindowType)type));
 
                 if (!title.empty())
                     gtk_window_set_title(GTK_WINDOW(obj_), title.c_str());
@@ -105,7 +105,7 @@ Note 2: The returned size does not include the size of the window manager decora
 
 Note 3: If you are getting a window size in order to position the window onscreen, there may be a better way. The preferred way is to simply set the window's semantic type with Window::TypeHint(), which allows the window manager to e.g. center dialogs. Also, if you set the transient parent of dialogs with Window::TransientFor() window managers will often center the dialog over its parent window. It's much preferred to let the window manager handle these things rather than doing it yourself, because all apps will behave consistently and according to user prefs if the window manager handles it. Also, the window manager can take the size of the window decorations/border into account, while your application cannot.
 
-In any case, if you insist on application-specified window positioning, there's still a better way than doing it yourself - Window::Position(const Point &) or better Window::Position(OneOf<GtkWindowPosition, WindowPosition> ) will frequently handle the details for you.
+In any case, if you insist on application-specified window positioning, there's still a better way than doing it yourself - Window::Position(const Point &) or better Window::Position(WindowPosition) will frequently handle the details for you.
 */
             Point Size() const { 
                 Point pos;
@@ -175,8 +175,8 @@ The Extended Window Manager Hints specification at http://www.freedesktop.org/St
 
             /** Sets a position constraint for this window. 
 If the old or new constraint is PositionCenterAlways, this will also cause the window to be repositioned to satisfy the new constraint.
-*/            void Position(OneOf<GtkWindowPosition, WindowPosition> pos) { 
-                gtk_window_set_position(*this, pos); 
+*/            void Position(WindowPosition pos) { 
+                gtk_window_set_position(*this, (GtkWindowPosition)pos); 
             }
 /** Set a window as "transient" for a parent one.
 
@@ -774,12 +774,12 @@ This is only relevant if the action is set to be FileChooser::SelectFolder or Fi
 
             /// Gets the type of operation that the file chooser is performing
             /// \return the action that the file selector is performing 
-            OneOf<GtkFileChooserAction, FileChooser::ActionValue> Action() const { 
-                return gtk_file_chooser_get_action(getobj()); 
+            FileChooser::ActionValue Action() const { 
+                return  (FileChooser::ActionValue)gtk_file_chooser_get_action(getobj()); 
             }
             /// Sets the type of operation that the chooser is performing; the user interface is adapted to suit the selected action. For example, an option to create a new folder might be shown if the action is FileChooser::ActionSave but not if the action is FileChooser::ActionOpen.
-            void Action(OneOf<GtkFileChooserAction, FileChooser::ActionValue> action /**< the action that the file selector is performing */) { 
-                gtk_file_chooser_set_action(getobj(), action); 
+            void Action(FileChooser::ActionValue action /**< the action that the file selector is performing */) { 
+                gtk_file_chooser_set_action(getobj(), (GtkFileChooserAction)action); 
             }
 
             /// Queries whether a file chooser is set to confirm for overwriting when the user types a file name that already exists.
@@ -901,10 +901,10 @@ std::string open() {
             /** Create a new FileChooserDialog. */
             FileChooserDialog(const std::string &title = "" /**< Title of the window, it can be empty. */,
                               Window *parent_window = NULL /**< Transient parent of the dialog, or NULL. */,
-                              OneOf<GtkFileChooserAction, FileChooser::ActionValue> action =  FileChooser::ActionOpen /**< Open or save mode for the dialog */,
+                              FileChooser::ActionValue action =  FileChooser::ActionOpen /**< Open or save mode for the dialog */,
                               const ButtonVec &buttons = ButtonVec() /**< Vector of buttons to be added to the dialog, you can also use Dialog::AddButton() after the object is created to do this (look at the example) */ ) : 
                 Dialog(DerivedType()) {
-                Init(gtk_file_chooser_dialog_new(title.c_str(), NULL, action, 
+                Init(gtk_file_chooser_dialog_new(title.c_str(), NULL, (GtkFileChooserAction)action, 
                                           NULL, NULL));
                 AddButtons(buttons);
                 Internal(true);
@@ -940,9 +940,9 @@ std::string open() {
             MessageDialog(GObject *obj) : Dialog(DerivedType()) { Init(obj); }
 /// DOXYS_ON
 
-            MessageDialog(Window *parent, OneOf<GtkDialogFlags, DialogFlags> flags,
-                          OneOf<GtkMessageType, MessageType> msgtype,
-                          OneOf<GtkButtonsType, ButtonsType> buttontype,
+            MessageDialog(Window *parent, DialogFlags flags,
+                          MessageType msgtype,
+                          ButtonsType buttontype,
                           const char *msg_format, ...) : Dialog(DerivedType()) {
                 char *msg;
                 va_list va;
@@ -951,29 +951,32 @@ std::string open() {
                 g_vasprintf(&msg, msg_format, va);
                 va_end(va);
 
-                Init(gtk_message_dialog_new_with_markup(*parent, flags, msgtype, buttontype,
+                Init(gtk_message_dialog_new_with_markup(*parent, 
+                        (GtkDialogFlags)flags, (GtkMessageType)msgtype, (GtkButtonsType)buttontype,
                         "%s", msg));
                 g_free(msg);
                 Internal(true);
             }
-            MessageDialog(va_list va, Window *parent, OneOf<GtkDialogFlags, DialogFlags> flags,
-                          OneOf<GtkMessageType, MessageType> msgtype,
-                          OneOf<GtkButtonsType, ButtonsType> buttontype,
+            MessageDialog(va_list va, Window *parent, DialogFlags flags,
+                          MessageType msgtype,
+                          ButtonsType buttontype,
                           const char *msg_format) : Dialog(DerivedType()) {
                 char *msg;
                 g_vasprintf(&msg, msg_format, va);
 
-                Init(gtk_message_dialog_new_with_markup(*parent, flags, msgtype, buttontype,
-                        "%s", msg));
+                Init(gtk_message_dialog_new_with_markup(*parent,
+                            (GtkDialogFlags)flags, (GtkMessageType)msgtype, (GtkButtonsType)buttontype,
+                            "%s", msg));
                 g_free(msg);
                 Internal(true);
             }
             MessageDialog(const std::string &msg,
-                          OneOf<GtkMessageType, MessageType> msgtype = MessageInfo,
-                          OneOf<GtkButtonsType, ButtonsType> buttontype = ButtonsOk,
-                          OneOf<GtkDialogFlags, DialogFlags> flags = DialogDestroyWithParent,
+                          MessageType msgtype = MessageInfo,
+                          ButtonsType buttontype = ButtonsOk,
+                          DialogFlags flags = DialogDestroyWithParent,
                           Window *parent = NULL) : Dialog(DerivedType()) {
-                Init(gtk_message_dialog_new_with_markup(parent ? GTK_WINDOW(parent->Obj()) : NULL, flags, msgtype, buttontype,
+                Init(gtk_message_dialog_new_with_markup(parent ? GTK_WINDOW(parent->Obj()) : NULL, 
+                            (GtkDialogFlags)flags, (GtkMessageType)msgtype, (GtkButtonsType)buttontype,
                             "%s", msg.c_str()));
                 Internal(true);
             }

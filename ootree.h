@@ -7,6 +7,11 @@
 #include <stdarg.h>
 
 namespace gtk {
+    /**
+      The TreeIter is the primary structure for accessing a tree/liststore. 
+      
+      Models are expected to put a unique integer in the stamp member, and put model-specific data in the three user_data members, all these datas are opaque to the user. 
+    */
     typedef GtkTreeIter TreeIter;
 
     struct ValidIter : public TreeIter {
@@ -16,12 +21,20 @@ namespace gtk {
         bool IsValid() { return valid; }
     };
 
+    /// Identifies how the user can interact with a particular cell. 
+    enum CellRendererMode {
+        CellRendererModeInert = GTK_CELL_RENDERER_MODE_INERT /**< The cell is just for display and cannot be interacted with. Note that this doesn't mean that eg. the row being drawn can't be selected -- just that a particular element of it cannot be individually modified.  */,
+        CellRendererModeActivatable = GTK_CELL_RENDERER_MODE_ACTIVATABLE /**< The cell can be clicked.  */,
+        CellRendererModeEditable = GTK_CELL_RENDERER_MODE_EDITABLE /**< The cell can be edited or otherwise modified.  */
+    };
+
+    /// Used to control what selections users are allowed to make. 
     enum SelectionMode {
-        SelectionNone = GTK_SELECTION_NONE,                             /* Nothing can be selected */
-        SelectionSingle = GTK_SELECTION_SINGLE,
-        SelectionBrowse = GTK_SELECTION_BROWSE,
-        SelectionMultiple = GTK_SELECTION_MULTIPLE,
-        SelectionExtended = GTK_SELECTION_EXTENDED
+        SelectionNone = GTK_SELECTION_NONE /**< No selection is possible. */,
+        SelectionSingle = GTK_SELECTION_SINGLE /**< Zero or one element may be selected. A click on an unselected item selects that one and unselect the current selection. */,
+        SelectionBrowse = GTK_SELECTION_BROWSE /**< Exactly one element is selected. In some circumstances, such as initially or during a search operation, it's possible for no element to be selected with SelectionBrowse. What is really enforced is that the user can't deselect a currently selected element except by selecting another element. */,
+        SelectionMultiple = GTK_SELECTION_MULTIPLE /**< Any number of elements may be selected. Clicks toggle the state of an item. Any number of elements may be selected. The Ctrl key may be used to enlarge the selection, and Shift key to select between the focus and the child pointed to. Some widgets may also allow Click-drag to select a range of elements. */,
+        SelectionExtended = GTK_SELECTION_EXTENDED /**< Deprecated, now falls back and behave exactly like SelectionMultiple */
     };
 
     class TreePath // complete API 
@@ -84,7 +97,9 @@ namespace gtk {
 
     class TreeRowReference;
 
+    /// A list of TreeRowReference, useful for TreeStore/ListStore operations.
     typedef std::list<TreeRowReference> RefVec;
+
 /** The selection object for TreeView.
 The TreeSelection object is a helper object to manage the selection for a TreeView widget. The TreeSelection object is automatically created when a new TreeView widget is created, and cannot exist independentally of this widget. The primary reason the TreeSelection objects exists is for cleanliness of code and API. That is, there is no conceptual reason all these functions could not be methods on the TreeView widget instead of a separate function.
 
@@ -100,40 +115,58 @@ One of the important things to remember when monitoring the selection of a view 
             TreeSelection(GObject *o) { Init(o); }
 /// DOXYS_ON
             /** Gets the selection mode for selection.
-\sa TreeSelection::Mode(OneOf<SelectionMode,GtkSelectionMode>)
+\sa TreeSelection::Mode(SelectionMode)
 \return the current selection mode 
             */
-            OneOf<SelectionMode,GtkSelectionMode> Mode() const { return gtk_tree_selection_get_mode(*this); }
+            SelectionMode Mode() const { return (SelectionMode)gtk_tree_selection_get_mode(*this); }
             /** Sets the selection mode of the selection. 
 If the previous type was SelectionMultiple, then the anchor is kept selected, if it was previously selected.
             */
-            void Mode(OneOf<SelectionMode,GtkSelectionMode> mode /**< a SelectionMode valid value or a GtkSelectionMode value */) { gtk_tree_selection_set_mode(*this, mode); }
+            void Mode(SelectionMode mode /**< a SelectionMode valid value or a GtkSelectionMode value */) { gtk_tree_selection_set_mode(*this, (GtkSelectionMode)mode); }
 
             /** Get a reference to the TreeView this TreeSelection is associated to. 
             \return a reference to the TreeView object paired with this TreeSelection.
             */
             gtk::TreeView &TreeView();
 
+            /// Returns the number of rows that have been selected in tree.
             int Count() const {
                 return gtk_tree_selection_count_selected_rows(*this);
             }
 
-            // select/unselect functions
-            void Select(const TreePath &path) { gtk_tree_selection_select_path(*this, path); }
-            void Unselect(const TreePath &path) { gtk_tree_selection_unselect_path(*this, path); }
-            bool IsSelected(const TreePath &path) const { return gtk_tree_selection_path_is_selected(*this, path); }
-            void Select(const TreeIter &it) { gtk_tree_selection_select_iter(*this, const_cast<TreeIter *>(&it)); }
-            void Unselect(const TreeIter &it) { gtk_tree_selection_unselect_iter(*this, const_cast<TreeIter *>(&it)); }
-            bool IsSelected(const TreeIter &it) const { return gtk_tree_selection_iter_is_selected(*this, const_cast<TreeIter *>(&it)); }
+            /// Select the row at path.
+            void Select(const TreePath &path /**< The TreePath to be selected. */) { gtk_tree_selection_select_path(*this, path); }
+            /// Unselects the row at path.
+            void Unselect(const TreePath &path /**< The TreePath to be unselected. */) { gtk_tree_selection_unselect_path(*this, path); }
+            /// Returns true if the row pointed to by path is currently selected. If path does not point to a valid location, false is returned
+            bool IsSelected(const TreePath &path /**< A TreePath to check selection on */) const { return gtk_tree_selection_path_is_selected(*this, path); }
+            /// Selects the specified iterator.
+            void Select(const TreeIter &it /**< The TreeIter to be selected */ ) { gtk_tree_selection_select_iter(*this, const_cast<TreeIter *>(&it)); }
+            /// Unselects the specified iterator.
+            void Unselect(const TreeIter &it /**< The TreeIter to be unselected */) { gtk_tree_selection_unselect_iter(*this, const_cast<TreeIter *>(&it)); }
+            /// Returns true if the row at iter is currently selected.
+            bool IsSelected(const TreeIter &it /**< A valid TreeIter */) const { return gtk_tree_selection_iter_is_selected(*this, const_cast<TreeIter *>(&it)); }
 
+            /// Selects all the nodes. selection must be set to SelectionMultiple mode.
             void SelectAll() { gtk_tree_selection_select_all(*this); }
+            /// Unselects all the nodes.
             void UnselectAll() { gtk_tree_selection_unselect_all(*this); }
 
-            void SelectRange(const TreePath &begin, const TreePath &end) {
+            /// Selects a range of nodes, determined by start_path and end_path inclusive. selection must be set to SelectionMultiple mode.
+            void SelectRange(const TreePath &begin /**< The initial node of the range. */,
+                             const TreePath &end /**< The final node of the range. */) {
                 gtk_tree_selection_select_range(*this, begin, end);
             }
+            /// Unselects a range of nodes, determined by start_path and end_path inclusive.
+            void UnselectRange(const TreePath &begin /**< The initial node of the range. */,
+                             const TreePath &end /**< The final node of the range. */) {
+                gtk_tree_selection_unselect_range(*this, begin, end);
+            }
 
+            /** Returns a RefVec containing a TreeRowReference for every line in the TreeSelection */
             RefVec SelectedRows();
+
+            /// Callback to call if the user change the state of the TreeSelection
             BUILD_VOID_EVENT(OnChanged, "changed");
     };
 
@@ -497,20 +530,26 @@ Otherwise, iter is left invalid and false is returned.
 
     class TreeRowReference
     {
+/// DOXYS_OFF
             friend class TreeSelection;
             // only for internal use
             TreeRowReference(GtkTreeModel *model, GtkTreePath *path) {
                 obj_ = gtk_tree_row_reference_new(model, path);
             }
+/// DOXYS_ON
         public:
             operator  GtkTreeRowReference *() const { return obj_; }
+/** Creates a row reference based on path. 
+This reference will keep pointing to the node pointed to by path, so long as it exists. It listens to all signals emitted by model, and updates its path appropriately. If path isn't a valid path in model, then an invalid path is created, you can check this with TreeRowReference::Valid().
+*/
             TreeRowReference(const TreeModel &model, const TreePath &path) {
                 obj_ = gtk_tree_row_reference_new(model, path);
             }
-            // copy constructor
+            // Creates a new TreeRowReference from an existing one
             TreeRowReference(const TreeRowReference &src) {
                 obj_ = gtk_tree_row_reference_copy(src);
             }
+            /// Returns the model that the row reference is monitoring.
             TreeModel &Model() const {
                 if (TreeModel *m = dynamic_cast<TreeModel *>(
                             Object::Find((GObject *)gtk_tree_row_reference_get_model(obj_))))
@@ -518,6 +557,7 @@ Otherwise, iter is left invalid and false is returned.
                 else
                     throw std::runtime_error("TreeRowReference without Model!!!");
             }
+            // Returns a TreeIter to the row the object currenttly points to, use TreeRowReference::Valid before this call if your code can bring here with an invalid item.
             TreeIter Iter() const {
                 if (GtkTreePath *p = gtk_tree_row_reference_get_path(obj_)) {
                     TreeIter it;
@@ -527,9 +567,11 @@ Otherwise, iter is left invalid and false is returned.
                 }
                 throw std::runtime_error("Unable to get the Iter from the reference!");
             }
+            /// Returns a path that the row reference currently points to, use TreeRowReference::Valid to check this object exists before calling this function.
             TreePath Path() const {
                 return TreePath(gtk_tree_row_reference_get_path(obj_));
             }
+            /// Returns true if the reference refers to a current valid path.
             bool Valid() const {
                 return gtk_tree_row_reference_valid(obj_);
             }
@@ -550,15 +592,45 @@ Otherwise, iter is left invalid and false is returned.
             GtkTreeRowReference *obj_;
     };
 
+/** An object for rendering a single cell on a Drawable
 
+The CellRenderer is a base class of a set of objects used for rendering a cell to a Drawable. These objects are used primarily by the TreeView widget, though they aren't tied to them in any specific way. It is worth noting that CellRenderer is not a Widget and cannot be treated as such.
+
+The primary use of a CellRenderer is for drawing a certain graphical elements on a Drawable. Typically, one cell renderer is used to draw many cells on the screen. To this extent, it isn't expected that a CellRenderer keep any permanent state around. Instead, any state is set just prior to use using GObjects property system. Then, the cell is measured using CellRenderer::Size(). Finally, the cell is rendered in the correct location using CellRenderer::Render().
+
+There are a number of rules that must be followed when writing a new CellRenderer. First and formost, it's important that a certain set of properties will always yield a cell renderer of the same size, barring a Style change. The CellRenderer also has a number of generic properties that are expected to be honored by all children.
+
+Beyond merely rendering a cell, cell renderers can optionally provide active user interface elements. A cell renderer can be activatable like CellRendererToggle, which toggles when it gets activated by a mouse click, or it can be editable like CellRendererText, which allows the user to edit the text using a Entry. To make a cell renderer activatable or editable, you have to implement the activate or start_editing virtual functions, respectively. 
+*/
     class CellRenderer : public Object
     {
         public:
-            operator  GtkCellRenderer *() const { return GTK_CELL_RENDERER(obj_); }            
-    };
+/// DOXYS_OFF
+            operator  GtkCellRenderer *() const { return GTK_CELL_RENDERER(obj_); }
+/// DOXYS_ON
+/** Obtains the width and height needed to render the cell. 
+  
+Used by view widgets to determine the appropriate size for the cell_area passed to CellRenderer::Render(). If cell_area is specified, the method will fill in the x and y offsets (if set) of the cell relative to this location.       
 
+\\
+*/
+        Rect Size(Widget &widget /**< the widget the renderer is rendering to */, 
+                  Rect   *cell_area = NULL /**< Optional area where the cell will be allocated */) {
+            gint x = 0, y = 0, w, h;
+            gtk_cell_renderer_get_size(*this, widget, cell_area, 
+                                       &x, &y, &w, &h);
+            return Rect(x,y,w,h);
+        }
+    };
+/** Renders text in a cell
+
+A CellRendererText renders a given text in its cell, using the font, color and style information provided by its properties. The text will be ellipsized if it is too long and the ellipsize property allows it.
+
+If the mode is CellRendererModeEditable, the CellRendererText allows to edit its text using an entry. 
+*/
     class CellRendererText : public CellRenderer
     {
+/// DOXYS_OFF        
             class AbstractEdited {
                     Object &obj_;
                     int id_;
@@ -584,11 +656,17 @@ Otherwise, iter is left invalid and false is returned.
             AbstractEdited *edited_;
         public:
             CellRendererText(GObject *obj) : edited_(NULL) { Init(obj); }
+            ~CellRendererText() { if (edited_) delete edited_; }
+/// DOXYS_ON
+/** Creates a new CellRendererText. 
+  
+Adjust how text is drawn using object properties. Object properties can be set globally (with Object::Set()). Also, with TreeViewColumn, you can bind a property to a value in a TreeModel. For example, you can bind the "text" property on the cell renderer to a string value in the model, thus rendering a different string in each row of the TreeView
+*/
             CellRendererText() : edited_(NULL) { 
                 Init(gtk_cell_renderer_text_new()); 
                 Internal(true);
             }
-            ~CellRendererText() { if (edited_) delete edited_; }
+            /// Callback to be called if the cell is edited
             template <typename T>
             void OnEdited(void (T::*cbk)(const std::string &, const std::string &), T* base) {
                 if (edited_) delete edited_;
@@ -707,8 +785,8 @@ Otherwise, iter is left invalid and false is returned.
             bool SortIndicator() const { return gtk_tree_view_column_get_sort_indicator(*this); }
             void SortIndicator(bool flag) { gtk_tree_view_column_set_sort_indicator(*this, flag); }
 
-            OneOf<gtk::SortType, GtkSortType> SortType() const { return gtk_tree_view_column_get_sort_order(*this); }
-            void SortType(OneOf<gtk::SortType, GtkSortType> type) { gtk_tree_view_column_set_sort_order(*this, type); }
+            gtk::SortType SortType() const { return (gtk::SortType)gtk_tree_view_column_get_sort_order(*this); }
+            void SortType(gtk::SortType type) { gtk_tree_view_column_set_sort_order(*this, (GtkSortType)type); }
             
             int SortColumnId() const { return gtk_tree_view_column_get_sort_column_id(*this); }
             void SortColumnId(int sort_col_id) { gtk_tree_view_column_set_sort_column_id(*this, sort_col_id); }
@@ -1076,7 +1154,7 @@ This API appends a new TreeViewColumn to the TreeView, the column is in text for
         return result;
     }
 
-    /** CellLayout is an interface to be implemented by all objects which want to provide a GtkTreeViewColumn-like API for packing cells, setting attributes and data funcs.
+    /** CellLayout is an interface to be implemented by all objects which want to provide a TreeViewColumn-like API for packing cells, setting attributes and data funcs.
 
 One of the notable features provided by implementations of CellLayout are attributes. Attributes let you set the properties in flexible ways. They can just be set to constant values like regular properties. But they can also be mapped to a column of the underlying tree model with CellLayout::Attributes(), which means that the value of the attribute can change from cell to cell as they are rendered by the cell renderer. Finally, it is possible to specify a function with CellLayout::CellDataFunc() that is called to determine the value of the attribute for each cell that is rendered.
 */
@@ -1140,6 +1218,12 @@ a particular renderer associated to this object.
             }
     };
 
+/**  A ComboBox is a widget that allows the user to choose from a list of valid choices. The ComboBox displays the selected choice. When activated, the ComboBox displays a popup which allows the user to make a new choice. The style in which the selected value is displayed, and the style of the popup is determined by the current theme. It may be similar to a OptionMenu, or similar to a Windows-style combo box.
+
+Unlike its predecessors Combo and OptionMenu, the ComboBox uses the model-view pattern; the list of valid choices is specified in the form of a tree model, and the display of the choices can be adapted to the data in the model by using cell renderers, as you would in a tree view. This is possible since ComboBox implements the CellLayout interface. The tree model holding the valid choices is not restricted to a flat list, it can be a real tree, and the popup will reflect the tree structure.
+
+In addition to the model-view API, ComboBox offers a simple API which is suitable for text-only combo boxes, and hides the complexity of managing the data in a model. It consists in the subclass ComboBoxText.
+*/
     class ComboBox : public Bin, public CellLayout
     {
         protected:
@@ -1152,24 +1236,79 @@ a particular renderer associated to this object.
             ComboBox(const DerivedType &) {}
             ComboBox(GObject *obj) { Init(obj); }
 /// DOXYS_ON             
+/** Creates a new empty ComboBox.
 
+The combobox must be populated with a TreeModel, via ComboBox::Model(const TreeModel &),
+and how the model is viewed should be configured through the ComboBox CellLayout interface,
+via CellLayout::PackStart and CellLayout::AddAttribute.
+
+\sa ComboBox(const TreeModel &)
+*/
             ComboBox() {
                 Init(gtk_combo_box_new());
                 Internal(true);
             }
-            ComboBox(const TreeModel &model) {
+/**  Creates a new ComboBox with the model initialized to model.
+The model must implement TreeModel interface, to display your model contents
+you'll need to attach to the ComboBox also one or more CellRenderer, the ComboBox
+widget implements the CellLayout interface so, to attach a model to a widget, you'll
+have to use CellLayout::PackStart or your CellRenderer, and connect it to the model 
+data using CellLayout::AddAttribute.
+
+\example
+void PopulateCombo(gtk::ComboBox &combo, const std::list<std::string> &items) {
+    combo.Clear(); // clear previous renderers
+
+    // create a simple ListStore with a single column
+    gtk::ListStore store(1, G_TYPE_STRING);
+
+    // create and setup a text renderer with markup support
+    gtk::CellRendererText text;
+    combo.PackStart(text, false);
+    combo.SetAttribute(text, "markup", 0);
+
+    for (std::list<std::string>::const_iterator it = items.begin(); 
+                                                it != items.end(); ++it)
+        store.AddTail(0, it->c_str(), -1);
+
+    combo.Model(store);
+}
+\endexample
+*/
+            ComboBox(const TreeModel &model /**< A ListStore, TreeStore or a custom model that implements the TreeModel interface */ ) {
                 Init(gtk_combo_box_new_with_model(model));
                 Internal(true);
             }
-            void Model(const TreeModel &model) { gtk_combo_box_set_model(*this, model); }
+/** Sets the model used by ComboBox to be model. Will unset a previously set model (if applicable). 
+
+\note that this function does not clear the cell renderers, you have to call CellLayout::Clear() yourself if you need to set up different cell renderers for the new model.  
+
+\sa  ComboBox(const TreeModel &)
+*/
+            void Model(const TreeModel &model /**< A ListStore, TreeStore or a custom model that implements the TreeModel interface */ ) { gtk_combo_box_set_model(*this, model); }
+/** Returns the TreeModel which is acting as data source for the object. 
+\return A TreeModel which was passed during construction or through ComboBox::Model(const TreeModel&), NULL if no model has been set for this object.
+*/
             TreeModel *Model() {
                 return dynamic_cast<TreeModel *>(Object::Find((GObject *)
                         gtk_combo_box_get_model(*this)));
             }
-            int Active() const { return gtk_combo_box_get_active(*this); }
-            void Active(int row) { gtk_combo_box_set_active(*this, row); }
+/** Returns the index of the currently active item, or -1 if there's no active item.
 
+If the model is a non-flat treemodel, and the active item is not an immediate child of the root of the tree, this function returns gtk_tree_path_get_indices (path)[0], where path is the TreePath of the active item.
+*/
+            int Active() const { return gtk_combo_box_get_active(*this); }
+/** Sets the active item of the object to be the item at index. */
+            void Active(int row /**< 	 An index in the model passed during construction, or -1 to have no active item */) { gtk_combo_box_set_active(*this, row); }
+/** Pops up the menu or dropdown list of the object.
+
+This function is mostly intended for use by accessibility technologies; applications should have little use for it.
+*/
             void Popup() { gtk_combo_box_popup(*this); }
+/** Hides the menu or dropdown list of the object.
+
+This function is mostly intended for use by accessibility technologies; applications should have little use for it.          
+*/
             void Popdown() { gtk_combo_box_popdown(*this); }
 
             bool FocusOnClick() const { return gtk_combo_box_get_focus_on_click(*this); }
@@ -1180,16 +1319,24 @@ a particular renderer associated to this object.
                 PackStart(txt, expand);
                 AddAttribute(txt, "markup", id);
             }
+/** Returns the wrap width which is used to determine the number of columns for the popup menu. If the wrap width is larger than 1, the combo box is in table mode. */
             int WrapWidth() const { return gtk_combo_box_get_wrap_width(*this); }
+/** Sets the wrap width of the object to be width. The wrap width is basically the preferred number of columns when you want the popup to be layed out in a table.
+*/
             void WrapWidth(int width) const { gtk_combo_box_set_wrap_width(*this, width); }
-
-            virtual void SetActiveIter(const TreeIter &it) { 
+/** Sets the current active item to be the one referenced by iter. 
+\note Iter must correspond to a path of depth one.
+*/
+            virtual void SetActiveIter(const TreeIter &it /* An initialized and valid TreeIter */) { 
                 gtk_combo_box_set_active_iter(*this, const_cast<TreeIter *>(&it));
             }
-            virtual bool GetActiveIter(TreeIter &it) {
+/** Sets it to point to the current active item, if it exists.
+\return true, if it was set
+*/
+            virtual bool GetActiveIter(TreeIter &it /* Destination iter */ ) {
                 return gtk_combo_box_get_active_iter(*this, &it);
             }
-
+/** The changed signal is emitted when the active item is changed. The can be due to the user selecting a different item from the list, or due to a call to ComboBox::ActiveIter(). It will also be emitted while typing into a ComboBoxEntry, as well as when selecting an item from the ComboBoxEntry's list. */
             BUILD_EVENT(OnChanged, "changed");
    };
 

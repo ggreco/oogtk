@@ -23,25 +23,24 @@ namespace gtk
     };
 
 /** A simple object to represent a Rectangle */
-    struct Rect
+    struct Rect : GdkRectangle
     {
         /** Create a new rectangle with all 0'ed coordinates */
-        Rect() : x(0), y(0), w(0), h(0) {}
+        Rect() { x = y = width = height = 0; }
         /** Create a new rectangle from a GdkRectangle (pointer) */
-        Rect(const GdkRectangle *r) : x(r->x), y(r->y), w(r->width), h(r->height) {}
+        Rect(const GdkRectangle *r) { *this = *r; }
         /** Create a new rectangle from a GdkRectangle (reference) */
-        Rect(const GdkRectangle &r) : x(r.x), y(r.y), w(r.width), h(r.height) {}
+        Rect(const GdkRectangle &r) { *this = r; }
         /** Create a new rectangle with given coords and size */
-        Rect(int leftedge, int topedge, int width, int height) :
-            x(leftedge), y(topedge), w(width), h(height) {}
+        Rect(int leftedge, int topedge, int w, int h) {
+            x = leftedge; y = topedge;
+            width = w; height = h;
+        }
         /** Returns a point rapresenting (width,height) of the rectangle */
-        Point Size() const { return Point(w,h); }
+        Point Size() const { return Point(width,height); }
         /** Returns a point rapresenting (x,y) position of left corner of the rectangle */
         Point Position() const { return Point(x,y); }
-        Rect &operator=(const GdkRectangle &r) { x = r.x; y = r.y; w = r.width; h = r.height; return *this; }
-/// DOXYS_OFF        
-        int x,y,w,h;
-/// DOXYS_ON        
+        Rect &operator=(const GdkRectangle &r) { *this = r; return *this; }
     };
 
     /** A pair of floats to specify X and Y alignments.
@@ -305,15 +304,16 @@ an unknown image format.
             /// Creates a new pixmap from a Rect of the actual object and returns a reference to it.
             Pixbuf &Sub(const Rect &area) {
                 Pixbuf *b = new Pixbuf((GObject *)
-                        gdk_pixbuf_new_subpixbuf(*this, area.x, area.y, area.w, area.h)); 
+                        gdk_pixbuf_new_subpixbuf(*this, area.x, area.y, 
+                                                 area.width, area.height)); 
                 b->Internal(true); 
                 return *b;
             }
 
             /// Scale the pixmap resizing its size to the specified parameters.
-            void Scale(int width, int height, OneOf<GdkInterpType, InterpType> interpolation = InterpNearest)
+            void Scale(int width, int height, InterpType interpolation = InterpNearest)
             {
-                GdkPixbuf *b = gdk_pixbuf_scale_simple(*this, width, height, interpolation);
+                GdkPixbuf *b = gdk_pixbuf_scale_simple(*this, width, height, (GdkInterpType)interpolation);
                 g_object_unref(Obj());
                 obj_ = (GObject *)b;
             }
@@ -323,11 +323,13 @@ an unknown image format.
                        Rect &destarea /**< A rectangle specifying the destination region to render*/, 
                        double scale_x /**< the scale factor in the X direction  */, 
                        double scale_y /**< the scale factor in the Y direction */, 
-                       OneOf<GdkInterpType, InterpType> interpolation = InterpNearest /**< the interpolation type for the transformation. */,
+                       InterpType interpolation = InterpNearest /**< the interpolation type for the transformation. */,
                        double offset_x = 0.0  /**< the offset in the X direction, currently rounded to an integer */, 
                        double offset_y = 0.0  /**< 	 the offset in the Y direction, currently rounded to an integer */) {
-                gdk_pixbuf_scale(*this, dest, destarea.x, destarea.y, destarea.w, destarea.h,
-                                 offset_x, offset_y, scale_x, scale_y, interpolation);
+                gdk_pixbuf_scale(*this, dest, destarea.x, destarea.y, 
+                                              destarea.width, destarea.height,
+                                 offset_x, offset_y, scale_x, scale_y,
+                                 (GdkInterpType)interpolation);
             }
 
             /// Queries the width of a pixbuf.
@@ -345,7 +347,8 @@ an unknown image format.
             void CopyArea(const Rect &area /**< A rectangle rapresenting the source Pixmap area to copy */, 
                           Pixbuf &dest /**< The destination Pixmap for the operation */, 
                           const Point &position /**< The position where to copy the source rectangle in the destination Pixmap */) {
-                gdk_pixbuf_copy_area(*this, area.x, area.y, area.w, area.h,
+                gdk_pixbuf_copy_area(*this, area.x, area.y, 
+                                            area.width, area.height,
                                       dest, position.x, position.y);
             }
             /// Fills a pixmap with a given color.
@@ -384,7 +387,7 @@ inline std::ostream &operator<<(std::ostream &dest, const gtk::Point &point) {
     return dest;
 }
 inline std::ostream &operator<<(std::ostream &dest, const gtk::Rect &rect) {
-    dest << '(' << rect.x << ',' << rect.y << ' ' << rect.w << 'x' << rect.h << ')';
+    dest << '(' << rect.x << ',' << rect.y << ' ' << rect.width << 'x' << rect.height << ')';
     return dest;
 }
 #endif
