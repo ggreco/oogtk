@@ -5,6 +5,41 @@
 
 namespace gtk
 {
+    /// Used in DragContext to indicate what the destination should do with the dropped data.
+    enum DragAction {
+        ActionDefault = GDK_ACTION_DEFAULT /**< Means nothing, and should not be used. */,
+        ActionCopy = GDK_ACTION_COPY /**< 	Copy the data. */,
+        ActionMove = GDK_ACTION_MOVE /**< Move the data, i.e. first copy it, then delete it from the source using the DELETE target of the X selection protocol. */,
+        ActionLink = GDK_ACTION_LINK /**< Add a link to the data. Note that this is only useful if source and destination agree on what it means. */,
+        ActionPrivate = GDK_ACTION_PRIVATE /**< Special action which tells the source that the destination will do something that the source doesn't understand. */,
+        ActionAsk = GDK_ACTION_ASK  /**< Ask the user what to do with the data. */
+    };
+
+    /** A set of bit-flags to indicate the state of modifier keys and mouse buttons in various event types. Typical modifier keys are Shift, Control, Meta, Super, Hyper, Alt, Compose, Apple, CapsLock or ShiftLock.
+
+Like the X Window System, GDK supports 8 modifier keys and 5 mouse buttons.
+    */
+    enum ModifierType {
+        ShiftMask = GDK_SHIFT_MASK,
+        LockMask = GDK_LOCK_MASK,
+        ControlMask = GDK_CONTROL_MASK,
+        Mod1Mask = GDK_MOD1_MASK,
+        Mod2Mask = GDK_MOD2_MASK,
+        Mod3Mask = GDK_MOD3_MASK,
+        Mod4Mask = GDK_MOD4_MASK,
+        Mod5Mask = GDK_MOD5_MASK,
+        Button1Mask = GDK_BUTTON1_MASK,
+        Button2Mask = GDK_BUTTON2_MASK,
+        Button3Mask = GDK_BUTTON3_MASK,
+        Button4Mask = GDK_BUTTON4_MASK,
+        Button5Mask = GDK_BUTTON5_MASK,
+        SuperMask = GDK_SUPER_MASK,
+        HyperMask = GDK_HYPER_MASK,
+        MetaMask = GDK_META_MASK,
+        ReleaseMask = GDK_RELEASE_MASK,
+        ModifierMask = GDK_MODIFIER_MASK
+    };
+
 /** A simple object to represent a Point */
     struct Point
     {
@@ -28,19 +63,31 @@ namespace gtk
         /** Create a new rectangle with all 0'ed coordinates */
         Rect() { x = y = width = height = 0; }
         /** Create a new rectangle from a GdkRectangle (pointer) */
-        Rect(const GdkRectangle *r) { *this = *r; }
+        Rect(const GdkRectangle *r) { memcpy(this, r, sizeof(GdkRectangle)); }
         /** Create a new rectangle from a GdkRectangle (reference) */
-        Rect(const GdkRectangle &r) { *this = r; }
+        Rect(const GdkRectangle &r) { memcpy(this, &r, sizeof(GdkRectangle)); }
         /** Create a new rectangle with given coords and size */
         Rect(int leftedge, int topedge, int w, int h) {
             x = leftedge; y = topedge;
             width = w; height = h;
         }
+        /** Returns point X coordinate */
+        int X() const { return x; }
+        /** Returns point Y coordinate */
+        int Y() const { return y; }
+        /** Returns the width of the rectangle */
+        int Width() const { return width; }
+        /** Returns the height of the rectangle */
+        int Height() const { return height; }
+
+        /** Set the position of the rectangle */
+        void Position(const Point &p) { x = p.x; y = p.y; }
+        /** Set the size of the rectangle */
+        void Size(const Point &p) { width = p.x; height = p.y; }
         /** Returns a point rapresenting (width,height) of the rectangle */
         Point Size() const { return Point(width,height); }
         /** Returns a point rapresenting (x,y) position of left corner of the rectangle */
         Point Position() const { return Point(x,y); }
-        Rect &operator=(const GdkRectangle &r) { *this = r; return *this; }
     };
 
     /** A pair of floats to specify X and Y alignments.
@@ -94,7 +141,7 @@ RGB48 values are used internally by GTK+.
         public:
             operator  PangoFontDescription *() const { return desc_; }
 
-            FontDesc(std::string &name) {
+            FontDesc(const std::string &name) {
                 if (!(desc_ = pango_font_description_from_string(name.c_str())))
                     throw std::runtime_error("Font unavailable " + name);
             }
@@ -148,11 +195,28 @@ PointerMotionHintMask is a special mask which is used to reduce the number of Mo
     struct EventExpose : public GdkEventExpose {
         gtk::Rect  Rect() const { return gtk::Rect(area); }
     };
+    struct EventScroll : public GdkEventScroll {
+        bool Up() const { return direction == GDK_SCROLL_UP; }
+        bool Down() const { return direction == GDK_SCROLL_DOWN; }
+        bool Left() const { return direction == GDK_SCROLL_LEFT; }
+        bool Right() const { return direction == GDK_SCROLL_RIGHT; }
+    };
+
     struct EventButton : public GdkEventButton {
         bool IsDoubleClick() const { 
             return (type == GDK_2BUTTON_PRESS ||
                     type == GDK_3BUTTON_PRESS);
         }
+        bool IsLeft() const { return button == 1; }
+        bool IsMiddle() const { return button == 2; }
+        bool IsRight() const { 
+#ifdef __APPLE__
+            if ((state & GDK_CONTROL_MASK) && button == 1)
+                return true;
+#endif
+            return button == 3; 
+        }
+        int Button() const { return button; }
         bool IsPress()   const { return type == GDK_BUTTON_PRESS; }
         bool IsRelease() const { return type == GDK_BUTTON_RELEASE; }
         Point Coords()   const { return Point((int)x,(int)y); }
@@ -166,6 +230,7 @@ PointerMotionHintMask is a special mask which is used to reduce the number of Mo
     };
     struct EventKey : public GdkEventKey {
         unsigned int KeyVal() const { return keyval; }
+        unsigned int Modifiers() const { return state; }
         bool Press() { return type == GDK_KEY_PRESS; }
         bool Release() { return type == GDK_KEY_RELEASE; }
     };
@@ -192,6 +257,17 @@ a pointer to it or NULL otherwise.
         operator EventExpose *() const {
             if (type == GDK_EXPOSE)
                 return (EventExpose *)this;
+            else
+                return NULL;
+        }
+        /** checks if a generic event is a EventScroll.
+
+This cast method checks if a generic event is a EventScroll and returns
+a pointer to it or NULL otherwise.
+*/
+        operator EventScroll *() const {
+            if (type == GDK_SCROLL)
+                return (EventScroll *)this;
             else
                 return NULL;
         }
@@ -238,7 +314,9 @@ a pointer to it or NULL otherwise.
         unsigned int Type() const { return type; }
     };
 
-/*** Class that describes an image.
+    typedef GdkDrawable Drawable;
+    
+/** Class that describes an image.
 
 The Pixbuf object contains information that describes an image in memory. 
 
@@ -252,6 +330,18 @@ Image data in a pixbuf is stored in memory in uncompressed, packed format. Rows 
             operator  GdkPixbuf *() const { return GDK_PIXBUF(Obj()); }
             Pixbuf(GObject *obj) { Init(obj); }
 /// DOXYS_ON
+            /** Creates a new pixbuf from a drawable. */
+            Pixbuf(const Drawable &drawable) {
+                int w, h;
+                gdk_drawable_get_size(const_cast<Drawable*>(&drawable), &w, &h);
+                Init(gdk_pixbuf_get_from_drawable(NULL, const_cast<Drawable*>(&drawable), gdk_colormap_get_system(), 0, 0, 0, 0, w, h));
+                Internal(true);
+            }
+            /** Creates a new pixbuf copying another pixbuf. */
+            Pixbuf(const Pixbuf &rhs) {
+                Init(gdk_pixbuf_copy(rhs));
+                Internal(true);
+            }
             /** Creates a new pixbuf by loading an image from a file.
 
 The file format is detected automatically. If the file is not found or it is of an unknown format
@@ -259,7 +349,7 @@ an exception (std::runtime_error) is thrown. So it's a good policy to wrap your 
 in a try / catch block
 */
             Pixbuf(const std::string &name) {
-                if (GdkPixbuf *b = gdk_pixbuf_new_from_file(name.c_str(), NULL))
+                if (GdkPixbuf *b = gdk_pixbuf_new_from_file(name.c_str(), NULL)) 
                     Init(b);
                 else
                     throw std::runtime_error("Unable to load file " + name);
@@ -271,8 +361,9 @@ in a try / catch block
 This call can thrown an exception (std::runtime_error) if the memory block contains
 an unknown image format.
 
-\note If you use this method in your code you should link your code with gio-2.0.
-*/            
+\note If you use this method in your code you should link your code with gio-2.0, so this method is not available if GTK version is below 2.16.
+*/           
+#if GTK_MINOR_VERSION > 15
             Pixbuf(int len, const char *data) {
                 GInputStream *s = g_memory_input_stream_new_from_data (data, len, NULL);
                 if (!s) 
@@ -289,6 +380,7 @@ an unknown image format.
 
                 Internal(true);
             }
+#endif
 /// Create a new empty pixbuf.            
             Pixbuf(int width /**< The width of the image in pixels */,
                    int height /**< The height of the image in pixels */, 
@@ -297,7 +389,11 @@ an unknown image format.
                 Init(gdk_pixbuf_new(GDK_COLORSPACE_RGB, alpha, depth, width, height));
                 Internal(true);
             }
-
+            GdkPixmap *Pixmap() const { 
+                GdkPixmap *p = NULL;
+                gdk_pixbuf_render_pixmap_and_mask(*this, &p, NULL, 0);
+                return p;
+            }
             /// Creates an exact copy of the Pixmap and returns a reference to it. 
             Pixbuf &Copy() const { Pixbuf *b = new Pixbuf((GObject *)gdk_pixbuf_copy(*this)); b->Internal(true); return *b; }
 
@@ -310,11 +406,33 @@ an unknown image format.
                 return *b;
             }
 
+            // Save the pixmap to a buffer in the specified format
+            bool Save(std::string &dest /**< A string that will contain the BINARY image */, 
+                      const std::string &format = "png" /**< Destination image format, defaults to png, available formats: png, jpeg, bmp, ico */) {
+                gboolean rc;
+                gchar *buffer;
+                gsize len;
+                if (format == "png")
+                    rc = gdk_pixbuf_save_to_buffer(*this, &buffer, &len, "png", NULL, "compression", "9", NULL);
+                else if (format == "jpeg")
+                    rc = gdk_pixbuf_save_to_buffer(*this, &buffer, &len, "jpeg", NULL, "quality", "50", NULL);
+                else
+                    rc = gdk_pixbuf_save_to_buffer(*this, &buffer, &len, format.c_str(), NULL, NULL);
+
+                if (!rc)
+                    return false;
+
+                dest.assign(buffer, len);
+                g_free(buffer);
+                return true;
+            }
             /// Scale the pixmap resizing its size to the specified parameters.
             void Scale(int width, int height, InterpType interpolation = InterpNearest)
             {
                 GdkPixbuf *b = gdk_pixbuf_scale_simple(*this, width, height, (GdkInterpType)interpolation);
-                g_object_unref(Obj());
+                if (type_ == InternalObj)
+                    g_object_unref(obj_);
+                Internal(true);
                 obj_ = (GObject *)b;
             }
 
