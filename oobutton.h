@@ -21,6 +21,147 @@ namespace gtk {
       PosBottom = GTK_POS_BOTTOM /**< The feature is at the bottom edge. */
     };
 
+/** Range is the common base class for widgets which visualize an adjustment, e.g scales or scrollbars.
+
+Apart from signals for monitoring the parameters of the adjustment, Range provides properties and methods for influencing the sensitivity of the "steppers". It also provides properties and methods for setting a "fill level" on range widgets. See Range::FillLevel(double).   
+*/
+    class Range : public Widget
+    {
+        public: 
+/// DOXYS_OFF
+            operator  GtkRange *() const { return GTK_RANGE(Obj()); }
+
+            Range(GObject *obj) { Init(obj); }
+            Range(const DerivedType &) {} // empty constructor for derived classes
+/// DOXYS_ON
+            /// Gets the current position of the fill level indicator.
+            double FillLevel() const { return gtk_range_get_fill_level(*this); }
+            /** Set the new position of the fill level indicator.
+
+The "fill level" is probably best described by its most prominent use case, which is an indicator for the amount of pre-buffering in a streaming media player. In that use case, the value of the range would indicate the current play position, and the fill level would be the position up to which the file/stream has been downloaded.
+
+This amount of prebuffering can be displayed on the range's trough and is themeable separately from the trough. To enable fill level display, use Range::ShowFillLevel(bool). The range defaults to not showing the fill level.
+
+Additionally, it's possible to restrict the range's slider position to values which are smaller than the fill level. This is controller by Range::RestrictToFillLevel(bool) and is by default enabled.
+*/
+            void FillLevel(double level) { gtk_range_set_fill_level(*this, level); }
+            /// Gets whether the range is restricted to the fill level.
+            bool RestrictToFillLevel() const { return gtk_range_get_restrict_to_fill_level(*this); }
+            /// Sets whether the slider is restricted to the fill level. See Range::FillLevel(double) for a general description of the fill level concept.
+            void RestrictToFillLevel(bool flag) { gtk_range_set_restrict_to_fill_level(*this, flag); }
+            /// Gets whether the range displays the fill level graphically.
+            bool ShowFillLevel() const { return gtk_range_get_show_fill_level(*this); }
+            /// Sets whether a graphical fill level is show on the trough. 
+            void ShowFillLevel(bool flag) { gtk_range_set_show_fill_level(*this, flag); }
+            /// Gets the value set by Range::Inverted(bool).
+            bool Inverted() const { return gtk_range_get_inverted(*this); }
+            /// Ranges normally move from lower to higher values as the slider moves from top to bottom or left to right. Inverted ranges have higher values at the top or on the right rather than on the bottom or left.
+            void Inverted(bool flag) { gtk_range_set_inverted(*this, flag); }
+            /** Sets the step and page sizes for the range. 
+              
+The step size is used when the user clicks the Scrollbar arrows or moves Scale via arrow keys. The page size is used for example when moving via Page Up or Page Down keys.
+*/
+            void Increments(double step, double page) { gtk_range_set_increments(*this, step, page); }
+            /// Sets the allowable values in the Range, and clamps the range value to be between min and max. (If the range has a non-zero page size, it is clamped between min and max - page-size.)
+            void SetRange(double vmin, double vmax) { gtk_range_set_range(*this, vmin, vmax); }
+            /// Sets the current value of the range; if the value is outside the minimum or maximum range values, it will be clamped to fit inside them. The range emits the "value-changed" signal if the value changes.
+            void Value(double val) { gtk_range_set_value(*this, val); }
+            /// Gets the current value of the range.
+            double Value() const { return gtk_range_get_value(*this); }
+
+#if GTK_MINOR_VERSION > 16
+
+            /// This function returns sliders range along the long dimension, in widget->window coordinates.
+            void SliderRange(int &slider_start,
+                             int &slider_end) {
+                gtk_range_get_slider_range(*this, &slider_start, &slider_end);
+            }
+            /// Sets the minimum size of the range's slider.
+            void MinSliderSize(int min_size /**< The slider minimum size in pixels */) { gtk_range_set_min_slider_size(*this, min_size); }
+            /// This function is useful mainly for Range subclasses. See Range::MinSliderSize(int) for more info.
+            int MinSliderSize() const { return gtk_range_get_min_slider_size (*this); }
+            /// Gets the value set by Range::Flippable(bool).
+            bool Flippable() const { return gtk_range_get_flippable(*this); }
+            /// If a range is flippable, it will switch its direction if it is horizontal and its direction is GTK_TEXT_DIR_RTL.
+            void Flippable(bool flag) { gtk_range_set_flippable(*this, flag); }
+            /// The callback you pass to this method is fired when the range value changes.
+#endif
+            BUILD_VOID_EVENT(OnChanged, "value-changed");
+    };
+
+/** A Scale is a slider control used to select a numeric value. 
+  
+To use it, you'll probably want to investigate the methods on its base class, Range, in addition to the methods for Scale itself. To set the value of a scale, you would normally use Range::Value(double). To detect changes to the value, you would normally use the "value_changed" signal.
+
+The Scale widget is an abstract class, used only for deriving the subclasses HScale and VScale. To create a scale widget, call HScale::HScale() or VScale::VScale().
+*/
+    class Scale : public Range
+    {
+        public: 
+/// DOXYS_OFF
+            operator  GtkScale *() const { return GTK_SCALE(Obj()); }
+
+            Scale(GObject *obj) : Range(DerivedType()) { Init(obj); }
+            Scale(const DerivedType &d) : Range(d) {} // empty constructor for derived classes
+/// DOXYS_ON
+            /// Sets the number of decimal places that are displayed in the value. Also causes the value of the adjustment to be rounded off to this number of digits, so the retrieved value matches the value the user saw.
+            void Digits(unsigned int d) { gtk_scale_set_digits(*this, d); }
+            /// Gets the number of decimal places that are displayed in the value.
+            int Digits() const { return gtk_scale_get_digits(*this); }
+            /// Specifies whether the current value is displayed as a string next to the slider.
+            void DrawValue(bool flag) { gtk_scale_set_draw_value(*this, flag); }
+            /// Returns whether the current value is displayed as a string next to the slider.
+            bool DrawValue() const { return gtk_scale_get_draw_value(*this); }
+    };
+
+/** The HScale widget is used to allow the user to select a value using a horizontal slider. 
+
+The position to show the current value, and the number of decimal places shown can be set using the parent Scale and Range class's functions.
+*/
+    class HScale : public Scale
+    {
+        public:
+/// DOXYS_OFF
+            operator  GtkHScale *() const { return GTK_HSCALE(Obj()); }
+
+            HScale(GObject *obj) : Scale(DerivedType()) { Init(obj); }
+/// DOXYS_ON        
+            /** Creates a new horizontal scale widget that lets the user input a number between min and max (including min and max) with the increment step. step must be nonzero; it's the distance the slider moves when using the arrow keys to adjust the scale value.
+
+Note that the way in which the precision is derived works best if step is a power of ten. If the resulting precision is not suitable for your needs, use Scale::Digits(unsigned int) to correct it.
+*/
+            HScale(double vmin /**< minimum value */,
+                   double vmax /**< maximum value */,
+                   double step /**< step increment (tick size) used with keyboard shortcuts */) : Scale(DerivedType()) { 
+                Init(gtk_hscale_new_with_range(vmin, vmax, step)); 
+                Internal(true); 
+            }
+    };
+
+/** The VScale widget is used to allow the user to select a value using a vertical slider. 
+
+The position to show the current value, and the number of decimal places shown can be set using the parent Scale and Range class's functions.
+*/
+    class VScale : public Scale
+    {
+        public:
+/// DOXYS_OFF
+            operator  GtkVScale *() const { return GTK_VSCALE(Obj()); }
+
+            VScale(GObject *obj) : Scale(DerivedType()) { Init(obj); }
+/// DOXYS_ON        
+            /** Creates a new vertical scale widget that lets the user input a number between min and max (including min and max) with the increment step. step must be nonzero; it's the distance the slider moves when using the arrow keys to adjust the scale value.
+
+Note that the way in which the precision is derived works best if step is a power of ten. If the resulting precision is not suitable for your needs, use Scale::Digits(unsigned int) to correct it.
+*/
+            VScale(double vmin /**< minimum value */,
+                   double vmax /**< maximum value */,
+                   double step /**< step increment (tick size) used with keyboard shortcuts */) : Scale(DerivedType()) { 
+                Init(gtk_vscale_new_with_range(vmin, vmax, step)); 
+                Internal(true); 
+            }
+    };
+
     /** A widget that creates a signal when clicked on
 The Button widget is generally used to attach a function to that is called when the button is pressed. The various signals and how to use them are outlined below.
 

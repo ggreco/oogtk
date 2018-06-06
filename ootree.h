@@ -163,7 +163,7 @@ If the previous type was SelectionMultiple, then the anchor is kept selected, if
                 gtk_tree_selection_unselect_range(*this, begin, end);
             }
 
-            /** Returns a RefVec containing a TreeRowReference for every line in the TreeSelection */
+            //// Returns a RefVec containing a TreeRowReference for every line in the TreeSelection
             RefVec SelectedRows();
 
             /// Callback to call if the user change the state of the TreeSelection
@@ -199,6 +199,10 @@ To help show some common operation of a model, some examples are provided. The f
                 gtk_tree_model_get(*this, 
                         const_cast<TreeIter *>(&it), idx, &value, -1);
             }
+            void GetValue(const TreeIter &it, int idx, gdouble &value) {
+                gtk_tree_model_get(*this, 
+                        const_cast<TreeIter *>(&it), idx, &value, -1);
+            }
             void GetValue(const TreeIter &it, int idx, void *&value) {
                 gtk_tree_model_get(*this, 
                         const_cast<TreeIter *>(&it), idx, &value, -1);
@@ -207,11 +211,19 @@ To help show some common operation of a model, some examples are provided. The f
                 gchar *field;
                 gtk_tree_model_get(*this, 
                         const_cast<TreeIter *>(&it), idx, &field, -1);
-                value = field;
-                g_free(field);
+                if (field) {
+                    value = field;
+                    g_free(field);
+                }
+                else
+                    value.clear();
+            }
+            void GetValue(const TreeIter &it, int idx, long long &value) {
+                gtk_tree_model_get(*this, 
+                        const_cast<TreeIter *>(&it), idx, &value, -1);
             }
 
-            void Get(const TreeIter &it, ...) {
+            void Get(TreeIter it, ...) {
                 va_list va;
                 va_start(va, it);
                 gtk_tree_model_get_valist(*this, const_cast<TreeIter *>(&it), va);
@@ -242,11 +254,12 @@ Otherwise, iter is left invalid and false is returned.
             }
 
             virtual void Remove(const TreeIter &it) = 0;
-            virtual void Set(const TreeIter &it, ...) = 0;
+            virtual void Set(TreeIter it, ...) = 0;
             virtual bool IsValid(const TreeIter &it) const = 0;
             virtual void SetValue(const TreeIter &it, int idx, int value) = 0;
             virtual void SetValue(const TreeIter &it, int idx, const std::string &value) = 0;
             virtual void SetValue(const TreeIter &it, int idx, void *value) = 0;
+            virtual void SetValue(const TreeIter &it, int idx, bool value) = 0;
 
             ValidIter Children() {
                 ValidIter it;
@@ -286,7 +299,7 @@ Otherwise, iter is left invalid and false is returned.
             /** Returns a TreePath referenced by iter.
             \return a TreePath.
             */
-            TreePath Path(const TreeIter &it /**< a valid iterator for this TreeModel */) {
+            TreePath Path(const TreeIter &it /**< a valid iterator for this TreeModel */) const {
                 return TreePath(gtk_tree_model_get_path(*this, const_cast<TreeIter *>(&it)));
             }
             /** Sets iter to a valid iterator pointing to path. 
@@ -324,7 +337,7 @@ Otherwise, iter is left invalid and false is returned.
                 Init(gtk_list_store_newv(types.size(), (GType *)&types[0]));
                 Internal(true);
             }
-            void Set(const TreeIter &it, ...) {
+            void Set(TreeIter it, ...) {
                 va_list va;
                 va_start(va, it);
                 gtk_list_store_set_valist(*this, const_cast<TreeIter *>(&it), va);
@@ -343,20 +356,28 @@ Otherwise, iter is left invalid and false is returned.
                 gtk_list_store_set(*this, 
                         const_cast<TreeIter *>(&it), idx, value.c_str(), -1);
             }
-            
-            void AddTail(...) {
+            void SetValue(const TreeIter &it, int idx, bool value) {
+                gtk_list_store_set(*this, 
+                        const_cast<TreeIter *>(&it), idx, value ? TRUE : FALSE, -1);
+            }
+           
+            template <typename T>
+            void AddTail(gint col, T v, ...) {
                 TreeIter it;
                 gtk_list_store_append(*this, &it);
+                gtk_list_store_set(*this, &it, col, v, -1);
                 va_list va;
-                va_start(va, this);
+                va_start(va, v);
                 gtk_list_store_set_valist(*this, &it, va);
                 va_end(va);
             }
-            void AddFront(...) {
+            template <typename T>
+            void AddFront(gint col, T v, ...) {
                 TreeIter it;
                 gtk_list_store_prepend(*this, &it);
+                gtk_list_store_set(*this, &it, col, v, -1);                
                 va_list va;
-                va_start(va, this);
+                va_start(va, v);
                 gtk_list_store_set_valist(*this, &it, va);
                 va_end(va);
             }
@@ -414,7 +435,7 @@ Otherwise, iter is left invalid and false is returned.
                 Init(gtk_tree_store_newv(types.size(), (GType *)&types[0]));
                 Internal(true);
             }
-            void Set(const TreeIter &it, ...) {
+            void Set(TreeIter it, ...) {
                 va_list va;
                 va_start(va, it);
                 gtk_tree_store_set_valist(*this, const_cast<TreeIter *>(&it), va);
@@ -432,8 +453,12 @@ Otherwise, iter is left invalid and false is returned.
                 gtk_tree_store_set(*this, 
                         const_cast<TreeIter *>(&it), idx, value.c_str(), -1);
             }
+            void SetValue(const TreeIter &it, int idx, bool value) {
+                gtk_tree_store_set(*this, 
+                        const_cast<TreeIter *>(&it), idx, value ? TRUE : FALSE, -1);
+            }
             
-            TreeIter AddFront(const TreeIter &parent, ...) {
+            TreeIter AddFront(TreeIter parent, ...) {
                 TreeIter it;
                 gtk_tree_store_prepend(*this, &it, const_cast<TreeIter *>(&parent));
                 va_list va;
@@ -444,7 +469,7 @@ Otherwise, iter is left invalid and false is returned.
                 return it;
             }
 
-            TreeIter AddTail(const TreeIter &parent, ...) {
+            TreeIter AddTail(TreeIter parent, ...) {
                 TreeIter it;
                 gtk_tree_store_append(*this, &it, const_cast<TreeIter *>(&parent));
                 va_list va;
@@ -454,22 +479,26 @@ Otherwise, iter is left invalid and false is returned.
 
                 return it;
             }
-            TreeIter AddFront(...) {
+            template <typename T>
+            TreeIter AddFront(gint col, T v, ...) {
                 TreeIter it;
                 gtk_tree_store_prepend(*this, &it, NULL);
+                gtk_tree_store_set(*this, &it, col, v, -1);
                 va_list va;
-                va_start(va, this);
+                va_start(va, v);
                 gtk_tree_store_set_valist(*this, &it, va);
                 va_end(va);
 
                 return it;
             }
 
-            TreeIter AddTail(...) {
+            template <typename T>
+            TreeIter AddTail(gint col, T v, ...) {
                 TreeIter it;
                 gtk_tree_store_append(*this, &it, NULL);
+                gtk_tree_store_set(*this, &it, col, v, -1);
                 va_list va;
-                va_start(va, this);
+                va_start(va, v);
                 gtk_tree_store_set_valist(*this, &it, va);
                 va_end(va);
 
@@ -528,10 +557,12 @@ Otherwise, iter is left invalid and false is returned.
             }
     };
 
+
     class TreeRowReference
     {
 /// DOXYS_OFF
             friend class TreeSelection;
+            friend class IconView;
             // only for internal use
             TreeRowReference(GtkTreeModel *model, GtkTreePath *path) {
                 obj_ = gtk_tree_row_reference_new(model, path);
@@ -674,6 +705,15 @@ Adjust how text is drawn using object properties. Object properties can be set g
             }
     };
 
+    class CellRendererProgress : public CellRenderer
+    {
+        public:
+            CellRendererProgress(GObject *obj) { Init(obj); }
+            CellRendererProgress() { 
+                Init(gtk_cell_renderer_progress_new()); 
+                Internal(true);
+            }
+    };
     class CellRendererPixbuf : public CellRenderer
     {
         public:
@@ -686,19 +726,48 @@ Adjust how text is drawn using object properties. Object properties can be set g
 
     class CellRendererToggle : public CellRenderer
     {
+            class AbstractToggled {
+                    Object &obj_;
+                    int id_;
+                    static void real_cbk(GtkCellRendererToggle *cell, gchar *path_string, AbstractToggled *base) {
+                        if (base) base->notify(path_string);
+                    }
+                public:
+                    AbstractToggled(Object &obj) : obj_(obj) { id_ = g_signal_connect(obj_.Obj(), "toggled", GCallback(real_cbk), this); }
+                    virtual ~AbstractToggled() { g_signal_handler_disconnect(obj_.Obj(), id_); }
+                    virtual void notify(const char *) const  = 0;
+            };
+            template <typename T>
+            class ToggledCbk : public AbstractToggled {
+                    T*myObj;
+                    void (T::*myFnc)(const std::string &);
+                public:
+                    ToggledCbk(Object &w, T*obj, void (T::*fnc)(const std::string &)) :
+                        AbstractToggled(w), myObj(obj), myFnc(fnc) {}
+                    void notify(const char *a) const { (myObj->*myFnc)(a); }
+            };
+
+            AbstractToggled *toggled_;
         public:
             operator  GtkCellRendererToggle *() const { return GTK_CELL_RENDERER_TOGGLE(obj_); }            
 
-            CellRendererToggle(GObject *obj) { Init(obj); }
-            CellRendererToggle() { 
+            CellRendererToggle(GObject *obj) : toggled_(NULL) { Init(obj); }
+            CellRendererToggle() : toggled_(NULL) { 
                 Init(gtk_cell_renderer_toggle_new()); 
                 Internal(true);
             }
+            ~CellRendererToggle() { if (toggled_) delete toggled_; }
 
             void Radio(bool flag) { gtk_cell_renderer_toggle_set_radio(*this, flag); }
             bool Radio() const { return gtk_cell_renderer_toggle_get_radio(*this); }
             void Active(bool flag) { gtk_cell_renderer_toggle_set_active(*this, flag); }
             bool Active() const { return gtk_cell_renderer_toggle_get_active(*this); }
+/// Callback to be called if the cell is edited
+            template <typename T>
+            void OnToggled(void (T::*cbk)(const std::string &), T* base) {
+                if (toggled_) delete toggled_;
+                toggled_ = new ToggledCbk<T>(*this, base, cbk);
+            }            
     };
 
     /// A list of CellRendererer, used by TreeViewColumn::GetRenderers, may be empty.
@@ -713,10 +782,18 @@ Adjust how text is drawn using object properties. Object properties can be set g
     class TreeViewColumn : public Object
     {
         public:
+            /// The sizing method the column uses to determine its width. Please note that TreeViewColumn::Autosize are inefficient for large views, and can make columns appear choppy.
+            typedef enum {
+                GrowOnly = GTK_TREE_VIEW_COLUMN_GROW_ONLY /**< Columns only get bigger in reaction to changes in the model */,
+                Autosize = GTK_TREE_VIEW_COLUMN_AUTOSIZE /**< Columns resize to be the optimal size everytime the model changes */,
+                Fixed = GTK_TREE_VIEW_COLUMN_FIXED /**< Columns are a fixed numbers of pixels wide. */
+            } SizingMode;            
+
             operator  GtkTreeViewColumn *() const { return GTK_TREE_VIEW_COLUMN(obj_); }
 
             TreeViewColumn(GObject *obj) { Init(obj); }
 
+            /// Creates a new empty TreeViewColumn.
             TreeViewColumn() {
                 Init(gtk_tree_view_column_new());
                 Internal(true);
@@ -743,8 +820,11 @@ Adjust how text is drawn using object properties. Object properties can be set g
             }
 
             // get/set methods
+
+            /// Returns true if tree_column is visible.
             bool Visible() const { return gtk_tree_view_column_get_visible(*this); }
-            void Visible(bool flag) { gtk_tree_view_column_set_visible(*this, flag); }
+            /// Sets the visibility of the tree column.
+            void Visible(bool flag /**< whether the column is visible or not. If it is visible, then the tree will show the column. */) { gtk_tree_view_column_set_visible(*this, flag); }
 
             bool Clickable() const { return gtk_tree_view_column_get_clickable(*this); }
             void Clickable(bool flag) { gtk_tree_view_column_set_clickable(*this, flag); }
@@ -755,11 +835,23 @@ Adjust how text is drawn using object properties. Object properties can be set g
             bool Resizable() const { return gtk_tree_view_column_get_resizable(*this); }
             void Resizable(bool flag) { gtk_tree_view_column_set_resizable(*this, flag); }
 
+            /// Returns the spacing of tree_column.
             int Spacing() const { return gtk_tree_view_column_get_spacing(*this); }
-            void Spacing(int pixels) { gtk_tree_view_column_set_spacing(*this, pixels); }
+            /// Sets the spacing field of tree_column, which is the number of pixels to place between cell renderers packed into it.
+            void Spacing(int pixels /**< distance between cell renderers in pixels.*/) { gtk_tree_view_column_set_spacing(*this, pixels); }
 
-            bool FixedWidth() const { return gtk_tree_view_column_get_fixed_width(*this); }
-            void FixedWidth(bool flag) { gtk_tree_view_column_set_fixed_width(*this, flag); }
+            /// Gets the fixed width of the column. This value is only meaning may not be the actual width of the column on the screen, just what is requested.
+            int FixedWidth() const { return gtk_tree_view_column_get_fixed_width(*this); }
+/** Sets the size of the column in pixels. 
+
+This is meaningful only if the TreeViewColumn::SizingMode is TreeViewColumn::Fixed. The size of the column is clamped to the min/max width for the column. Please note that the min/max width of the column doesn't actually affect the "fixed_width" property of the widget, just the actual size when displayed.
+ */
+            void FixedWidth(int val /**< The size to set tree_column to. Must be greater than 0. */ ) { gtk_tree_view_column_set_fixed_width(*this, val); }
+
+            /// Returns the current type of tree_column.
+            SizingMode Sizing() const { return (SizingMode)gtk_tree_view_column_get_sizing(*this); }
+            /// Sets the growth behavior of tree_column to type.
+            void Sizing(SizingMode m) { gtk_tree_view_column_set_sizing(*this, (GtkTreeViewColumnSizing)m); }
 
             int  Width() const { return gtk_tree_view_column_get_width(*this); }
             //void Width(int pixels) { gtk_tree_view_column_set_width(*this, pixels); }
@@ -780,6 +872,20 @@ Adjust how text is drawn using object properties. Object properties can be set g
             
             float Alignment() const { return gtk_tree_view_column_get_alignment(*this); }
             void Alignment(float xalign) { gtk_tree_view_column_set_alignment(*this, xalign); }
+
+            // Obtains the horizontal position and size of a cell in a column (or in the first cell of the column if cell is not passed). If the cell is not found in the column, or the column has no cell start_pos and width are not changed and false is returned.
+            bool Position(int &start /**< return location for the horizontal position of cell within tree_column*/, 
+                          int &width /**<return location for the width of cell*/, 
+                          CellRenderer *cell = NULL /**<optional cell column */) {
+                if (cell == NULL) {
+                   GList *list = gtk_tree_view_column_get_cell_renderers(*this);
+                   if (!list) return false;
+                   cell = dynamic_cast<CellRenderer *>(Object::Find((GObject *)list->data));
+                   if (!cell) return false;
+                   g_list_free(list);
+                }
+                return gtk_tree_view_column_cell_get_position(*this, *cell, &start, &width);
+            }
 
             // some sorting related methods
             bool SortIndicator() const { return gtk_tree_view_column_get_sort_indicator(*this); }
@@ -901,6 +1007,57 @@ This API appends a new TreeViewColumn to the TreeView, the column is in text for
 
                 return Get(col - 1);
             }
+
+            /// Returns a pointer to the column actually displayed in the treeview at a particular
+            /// x coordinate in pixels where 0 is the leftmost point of the widget.
+            /// \return pointer to a TreeViewColumn or null if not found
+            TreeViewColumn *ColumnAt(int x /**< X position inside the widget in pixels */) {
+                int colx = 0;
+                GtkTreeViewColumn *col = NULL;
+                GList *columns = gtk_tree_view_get_columns(*this);
+
+                for (GList *node = columns;  node != NULL && col == NULL;  node = node->next) {
+                    GtkTreeViewColumn *checkcol = (GtkTreeViewColumn*) node->data;
+
+                    if (x >= colx  &&  x < (colx + checkcol->width))
+                        col = checkcol;
+                    else
+                        colx += checkcol->width;
+                }
+
+                g_list_free(columns);
+                if (col)
+                    return dynamic_cast<TreeViewColumn*>(Object::Find((GObject *)col)); 
+
+                return NULL;
+            }
+            TreeViewColumn *AddProgressColumn(const std::string &title, int id, int ptext = -1, int visibility_col = -1) {
+                CellRendererProgress r;
+                
+                int col;
+                
+                if (ptext == -1) {
+                    if (visibility_col == -1)
+                        col = gtk_tree_view_insert_column_with_attributes(*this, -1,
+                                 title.c_str(), r, "value", id,
+                                 NULL);
+                    else
+                         col = gtk_tree_view_insert_column_with_attributes(*this, -1,
+                                 title.c_str(), r, "value", id, "visible", visibility_col,
+                                 NULL);
+                } else {
+                    if (visibility_col == -1)
+                        col = gtk_tree_view_insert_column_with_attributes(*this, -1,
+                                 title.c_str(), r, "value", id, "text", ptext,
+                                 NULL);
+                    else
+                        col = gtk_tree_view_insert_column_with_attributes(*this, -1,
+                                 title.c_str(), r, "value", id, "text", ptext, "visible", visibility_col,
+                                 NULL);
+                }
+                return Get(col - 1);
+            }
+
             TreeViewColumn *AddBooleanColumn(const std::string &title, int id,
                                              int inconsistent = -1, int visibility = -1)
             {
@@ -953,11 +1110,18 @@ This API appends a new TreeViewColumn to the TreeView, the column is in text for
             
                 return Get(col - 1);
             }
-            TreeViewColumn *AddPixColumn(const std::string &title, int id) {
+            TreeViewColumn *AddPixColumn(const std::string &title, int id, int hide_column = -1) {
                 CellRendererPixbuf r;
-                int col = gtk_tree_view_insert_column_with_attributes(*this, -1,
-                        title.c_str(), r, "pixbuf", id,
-                        NULL);
+                int col;
+                
+                if (hide_column == -1) 
+                    col = gtk_tree_view_insert_column_with_attributes(*this, -1,
+                            title.c_str(), r, "pixbuf", id,
+                            NULL);
+                else 
+                    col = gtk_tree_view_insert_column_with_attributes(*this, -1,
+                            title.c_str(), r, "pixbuf", id, "visible", hide_column, 
+                            NULL);
             
                 return Get(col - 1);
             }
@@ -997,6 +1161,8 @@ This API appends a new TreeViewColumn to the TreeView, the column is in text for
                 return dynamic_cast<TreeViewColumn *>(Object::Find((GObject *)
                             gtk_tree_view_get_expander_column(*this)));
             }
+            /// Resizes all columns to their optimal width. Only works after the treeview has been realized.
+            void Autosize() {  gtk_tree_view_columns_autosize(*this);  }
             /// Expands the row at path. This will also expand all parent rows of path as necessary.
             void Expand(const TreePath &path /**< path to a row. */) { gtk_tree_view_expand_to_path(*this, path); }
             /// Recursively expands all nodes in the TreeView.
@@ -1023,16 +1189,37 @@ This API appends a new TreeViewColumn to the TreeView, the column is in text for
                 return dynamic_cast<TreeSelection&>(*(Object::Find((GObject *)s)));
             }
 
-            bool PathAt(TreePath &path, const Point &position) {
+            bool PathAt(TreePath &path, const Point &position, TreeViewColumn **c = NULL) {
                 GtkTreePath *p;
+                GtkTreeViewColumn *cc = NULL;
                 if(gtk_tree_view_get_path_at_pos(*this, position.x, position.y,
-                            &p, NULL, NULL, NULL)) {
+                            &p, &cc, NULL, NULL)) {
                     path = *p;
                     gtk_tree_path_free(p);
+                    if (c) {
+                        if (cc) 
+                            *c = dynamic_cast<TreeViewColumn*>(Object::Find((GObject*)cc));
+                        else
+                            *c = NULL;
+                    }
                     return true;
                 }
                 return false;
             }
+
+            // DRAG & DROP Support
+
+            /// Turns tree_view into a drop destination for automatic DND. Calling this method sets "reorderable" to FALSE.
+            void EnableModelDragDest( const std::vector<TargetEntry> &targets, int32_t actions) {
+                gtk_tree_view_enable_model_drag_dest(*this, &targets[0], targets.size(), (GdkDragAction)actions); 
+            }
+            /// Turns tree_view into a drag source for automatic DND. Calling this method sets "reorderable" to FALSE.
+            void EnableModelDragSource(int32_t mods, const std::vector<TargetEntry> &targets, int32_t actions) {                         gtk_tree_view_enable_model_drag_source(*this, (GdkModifierType)mods, &targets[0], targets.size(), (GdkDragAction)actions);
+            }
+            /// Undoes the effect of TreeView::EnableModelDragSource().
+            void DisableModelDragSource() { gtk_tree_view_unset_rows_drag_source(*this); }
+            /// Undoes the effect of TreeView::EnableModelDragDest().
+            void DisableModelDragDest() { gtk_tree_view_unset_rows_drag_dest(*this); }
 
             // get/set methods
             bool HeadersClickable() const { return gtk_tree_view_get_headers_clickable(*this); }
@@ -1138,8 +1325,7 @@ This API appends a new TreeViewColumn to the TreeView, the column is in text for
 
         if (GtkTreeView *tv = gtk_tree_selection_get_tree_view(*this)) {
             if (GtkTreeModel *model = gtk_tree_view_get_model(tv)) {
-                if (GList *list = gtk_tree_selection_get_selected_rows(*this,
-                            &model)) {
+                if (GList *list = gtk_tree_selection_get_selected_rows(*this, &model)) {
                     GList *l = list;
                     while (l) {
                         result.push_back(TreeRowReference(model, (GtkTreePath *)l->data));
@@ -1265,7 +1451,7 @@ void PopulateCombo(gtk::ComboBox &combo, const std::list<std::string> &items) {
     // create and setup a text renderer with markup support
     gtk::CellRendererText text;
     combo.PackStart(text, false);
-    combo.SetAttribute(text, "markup", 0);
+    combo.AddAttribute(text, "markup", 0);
 
     for (std::list<std::string>::const_iterator it = items.begin(); 
                                                 it != items.end(); ++it)
@@ -1340,31 +1526,74 @@ This function is mostly intended for use by accessibility technologies; applicat
             BUILD_EVENT(OnChanged, "changed");
    };
 
+/**
+A ComboBoxText is a simple variant of ComboBox that hides the model-view complexity for simple text-only use cases.
+To create a ComboBoxText, use the constructor ComboBoxText::ComboBoxText().
+You can add items to a ComboBoxText with ComboBoxText::Append(), ComboBoxText::Insert() or ComboBoxText::Prepend() and remove options with ComboBoxText::Remove().
+If the ComboBoxText contains an entry (via the 'has-entry' property), its contents can be retrieved using ComboBoxText::ActiveText(). The entry itself can be accessed by calling Bin::Child() on the combo box.  
+ */
     class ComboBoxText : public ComboBox
     {
         public:
 /// DOXYS_OFF             
-            operator  GtkComboBox *() const { return GTK_COMBO_BOX(Obj()); }
+#if GTK_MINOR_VERSION > 23
+            operator  GtkComboBoxText *() const { return GTK_COMBO_BOX_TEXT(Obj()); }
+            ComboBoxText(GObject *obj) { Init(obj); }
+#else
+            operator  GtkComboBox *() const { return GTK_COMBO_BOX(Obj()); }            
+#endif
 /// DOXYS_ON
-
+            /// Creates a new ComboBoxText, which is a ComboBox just displaying strings. With GTK 2.24+ the combo box created by this function may have an optional entry.
+#if GTK_MINOR_VERSION > 23
+            ComboBoxText(bool with_entry = false  /**< optional entry for the ComboBoxText, defaults to false */
+                        ) : ComboBox(DerivedType()) {
+                Init(with_entry ? gtk_combo_box_text_new_with_entry() : gtk_combo_box_text_new());
+                Internal(true);
+            }
+#else
             ComboBoxText() : ComboBox(DerivedType()) {
                 Init(gtk_combo_box_new_text());
                 Internal(true);
             }
+#endif
             void Append(const std::string &text) {
+#if GTK_MINOR_VERSION < 24
                 gtk_combo_box_append_text(*this, text.c_str());
+#else
+                gtk_combo_box_text_append_text(*this, text.c_str());
+#endif
             }
             void Prepend(const std::string &text) {
+#if GTK_MINOR_VERSION < 24
                 gtk_combo_box_prepend_text(*this, text.c_str());
+#else
+                gtk_combo_box_text_prepend_text(*this, text.c_str());
+#endif
             }
             void Insert(const std::string &text, int position) {
+#if GTK_MINOR_VERSION < 24
                 gtk_combo_box_insert_text(*this, position, text.c_str());
+#else
+                gtk_combo_box_text_insert_text(*this, position, text.c_str());
+#endif
             }
-            void Remove(int row) { gtk_combo_box_remove_text(*this, row); }
+            void Remove(int row) { 
+#if GTK_MINOR_VERSION < 24
+                gtk_combo_box_remove_text(*this, row); 
+#else
+                gtk_combo_box_text_remove(*this, row); 
+#endif
+            }
 
             std::string ActiveText() { 
                 std::string res;
-                if (gchar *c = gtk_combo_box_get_active_text(*this)) {
+                if (gchar *c = 
+#if GTK_MINOR_VERSION < 24
+                        gtk_combo_box_get_active_text(*this)                        
+#else
+                        gtk_combo_box_text_get_active_text(*this)
+#endif
+                        ) {
                     res = c; 
                     g_free(c);
                 }
@@ -1376,6 +1605,312 @@ This function is mostly intended for use by accessibility technologies; applicat
             virtual bool GetActiveIter(TreeIter &it) {
                 throw std::runtime_error("Iter not available on ComboBoxText items!");
             }
+    };
+
+/**
+EntryCompletion is an auxiliary object to be used in conjunction with Entry to provide the completion functionality. It implements the CellLayout interface, to allow the user to add extra cells to the TreeView with completion matches.
+
+"Completion functionality" means that when the user modifies the text in the entry, EntryCompletion checks which rows in the model match the current content of the entry, and displays a list of matches. By default, the matching is done by comparing the entry text case-insensitively against the text column of the model (see EntryCompletion::TextColumn() ), but this can be overridden with a custom match function (see EntryCompletion::MatchFunc() ).
+
+When the user selects a completion, the content of the entry is updated. By default, the content of the entry is replaced by the text column of the model, but this can be overridden by connecting to the ::match-selected signal and updating the entry in the signal handler. Note that you should return TRUE from the signal handler to suppress the default behaviour.
+
+To add completion functionality to an entry, use Entry::Completion(const EntryCompletion &).
+
+In addition to regular completion matches, which will be inserted into the entry when they are selected, EntryCompletion also allows to display "actions" in the popup window. Their appearance is similar to menuitems, to differentiate them clearly from completion strings. When an action is selected, the ::action-activated signal is emitted.
+ */
+    class EntryCompletion: public Object, public CellLayout
+    {   
+        protected:
+            GtkCellLayout *getobj() const { return GTK_CELL_LAYOUT(Obj()); }
+        public:
+/// DOXYS_OFF
+         operator  GtkEntryCompletion *() const { return GTK_ENTRY_COMPLETION(Obj()); }        
+         EntryCompletion(GObject *obj) { Init(obj); }
+/// DOXYS_ON        
+            /// Creates a new EntryCompletion object.
+            EntryCompletion() {
+                Init(gtk_entry_completion_new());
+                Internal(true);
+            }
+            /// Gets the entry completion has been attached to.
+            Entry *GetEntry() { return dynamic_cast<Entry *>(Find((GObject*)gtk_entry_completion_get_entry(*this))); }
+            /// Sets the model for this object. If completion already has a model set, it will remove it before setting the new model. If model is NULL, then it will unset the model.
+            void Model(const TreeModel *m) { 
+                if (!m) 
+                    gtk_entry_completion_set_model(*this, NULL); 
+                else
+                    gtk_entry_completion_set_model(*this, *m);
+            }
+            /// Get the model associated with the object, returns NULL if the model is unset.
+            TreeModel *Model() {
+                return dynamic_cast<TreeModel *>(Find((GObject*)gtk_entry_completion_get_model(*this)));
+            }
+            /// Sets the match function for completion to be func. The match function is used to determine if a row should or should not be in the completion list.
+            void MatchFunc(GtkEntryCompletionMatchFunc func, gpointer func_data) {
+                gtk_entry_completion_set_match_func(*this, func, func_data, NULL);
+            }
+            /// Requires the length of the search key for completion to be at least length. This is useful for long lists, where completing using a small key takes a lot of time and will come up with meaningless results anyway (ie, a too large dataset).
+            void MinimumKeyLength(size_t t) { gtk_entry_completion_set_minimum_key_length(*this, t); }
+            /// Returns the minimum key length as set for completion.
+            int MinimumKeyLength() const { return gtk_entry_completion_get_minimum_key_length(*this); }
+            /// Requests a completion operation, or in other words a refiltering of the current list with completions, using the current key. The completion list view will be updated accordingly.
+            void Complete() const { gtk_entry_completion_complete(*this); }
+            /// Convenience method for setting up the most used case of this code: a completion list with just strings. This function will set up completion to have a list displaying all (and just) strings in the completion list, and to get those strings from column in the model of completion.
+            void TextColumn(size_t column /**< The column in the model of completion to get strings from. */) {
+                gtk_entry_completion_set_text_column(*this, column);
+            }
+            /// Returns the column in the model of completion to get strings from.
+            int TextColumn() const { return gtk_entry_completion_get_text_column(*this); }
+    };
+    inline void Entry::Completion(const EntryCompletion *completion) {
+        if (!completion)
+            gtk_entry_set_completion(*this, NULL);
+        else
+            gtk_entry_set_completion(*this, *completion);
+    }
+    inline EntryCompletion *Entry::Completion() const {
+        return dynamic_cast<EntryCompletion *>(Find((GObject*)gtk_entry_get_completion(*this)));
+    }
+
+// 95% complete, only drag & drop handling is not implemented
+
+/** a widget that provides an alternative view on a list model.
+IconView provides an alternative view on a list model. It displays the model as a grid of icons with labels. Like TreeView, it allows to select one or multiple items (depending on the selection mode, see IconView::Mode()). In addition to selection with the arrow keys, IconView supports rubberband selection, which is controlled by dragging the pointer.
+*/
+    class IconView : public Container
+    {
+        public:
+/// DOXYS_OFF            
+            operator  GtkIconView *() const { return GTK_ICON_VIEW(Obj()); }
+
+            IconView(GObject *obj) { Init(obj); }
+/// DOXYS_ON
+            /// Creates a new IconView widget with a existing model.
+            IconView(const TreeModel &model) {
+                TreeModel &m = const_cast<TreeModel &>(model);
+                m.Ref();
+                Init(gtk_icon_view_new_with_model(m));
+                Internal(true);
+            }
+            /// Creates a new IconView widget
+            IconView() {
+                Init(gtk_icon_view_new());
+                Internal(true);
+            }
+            /** Sets the model for a IconView. 
+            If the icon_view already has a model set, it will remove it before setting the new model. 
+            */
+            void Model(TreeModel &model /**< The model */) {
+                gtk_icon_view_set_model(*this, model);
+            }
+            /** Returns the model the GtkIconView is based on. 
+            \note Returns NULL if the model is unset.
+            \return A TreeModel, or NULL if none is currently being used.
+            */
+            TreeModel *Model() {
+                GtkTreeModel *m = gtk_icon_view_get_model(*this);
+
+                return dynamic_cast<TreeModel *>(Object::Find((GObject *)m));
+            }
+            /// Sets the column with text for icon_view to be column. The text column must be of type G_TYPE_STRING.
+            void TextColumn(int column /**< A column in the currently used model, or -1 to display no text */) {
+                gtk_icon_view_set_text_column(*this, column);
+            }
+            /// Returns the column with text for icon_view, -1 if it's unset.
+            int TextColumn() const {
+                return gtk_icon_view_get_text_column(*this);
+            }
+            /** Sets the column with markup information for icon_view to be column. 
+              The markup column must be of type G_TYPE_STRING. If the markup column is set to something, 
+              it overrides the text column set by IconView::TextColumn(int).
+            */
+            void MarkupColumn(int column /**< A column in the currently used model, or -1 to display no text */) {
+                gtk_icon_view_set_markup_column(*this, column);
+            }
+            /// Returns the column with markup for icon_view, -1 if it's unset.
+            int MarkupColumn() const {
+                return gtk_icon_view_get_markup_column(*this);
+            }
+
+            /** Sets the column with pixbufs for icon_view.
+            The pixbuf column must be of type GDK_TYPE_PIXBUF.
+            */
+            void PixbufColumn(int column /**< A column in the currently used model, or -1 to display no text */) {
+                gtk_icon_view_set_pixbuf_column(*this, column);
+            }
+            /// Returns the column with pixbuf for icon_view, -1 if it's unset.
+            int PixbufColumn() const {
+                return gtk_icon_view_get_pixbuf_column(*this);
+            }
+            /** Finds the path at the point (x, y), relative to bin_window coordinates. 
+           See IconView::ConvertWidget2BinCoords() for converting widget coordinates to bin_window coordinates.
+           */           
+            bool PathAt(TreePath &path, const Point &position) {
+                if(GtkTreePath *p = gtk_icon_view_get_path_at_pos(*this, position.x, position.y)) {
+                    path = *p;
+                    gtk_tree_path_free(p);
+                    return true;
+                }
+                return false;                
+            }
+            /** Converts widget coordinates to coordinates for the bin_window.
+            This method converts widget coordinates to coordinates for the bin_window as expected by e.g. IconView::PathAt().
+            \return a Point rapresenting bin_window X and Y coordinates.
+            */
+            Point ConvertWidget2BinCoords(int wx /**< X coordinate relative to the widget */,
+                                          int wy /**< Y coordinate relative to the widget */) const {
+                Point p;
+                gtk_icon_view_convert_widget_to_bin_window_coords(*this, wx, wy, &p.x, &p.y);
+                return p;
+            }
+
+            /** Sets the current keyboard focus to be at path, and selects it. 
+This is useful when you want to focus the user's attention on a particular item. If start_editing is true, then editing should be started in the specified cell.
+
+This function is often followed by Widget::GrabFocus (on the icon_view) in order to give keyboard focus to the widget. 
+\note Please note that editing can only happen when the widget is realized.
+            */
+            void Cursor(const TreePath &path /**< A path to the item to select */, 
+                        bool start_editing = false /**< true, if the specified cell should start being edited, defaults to false.*/) {
+                gtk_icon_view_set_cursor(*this, path, NULL, start_editing ? TRUE : FALSE);
+            }
+
+            /** Fills in path with the current cursor path. 
+            If the cursor isn't currently set, then it will return false.
+            */
+            bool Cursor(TreePath &path /**< Return location for the current cursor path, untouched if the method returned false */) {
+                GtkTreePath *p;
+                GtkCellRenderer *c;
+                gboolean rc = gtk_icon_view_get_cursor(*this, &p, &c);
+                if (rc  == FALSE || p == NULL) 
+                    return false;
+                path = *p;
+                gtk_tree_path_free(p);
+                return true;
+            }
+            /// Sets the selection mode of the icon_view.
+            void Mode(SelectionMode mode  /**< a SelectionMode valid value or a GtkSelectionMode value */) {
+                gtk_icon_view_set_selection_mode(*this, (GtkSelectionMode)mode);
+            }
+            /// Gets the selection mode of the icon_view.
+            SelectionMode Mode() const { return (SelectionMode) gtk_icon_view_get_selection_mode(*this); }
+            /** Set the maximum number of columns for the widget.
+            Sets the ::columns property which determines in how many columns the icons are arranged. If columns is -1, the number of columns will be chosen automatically to fill the available area.
+            */
+            void Columns(int columns /**< the number of columns, -1 to let GTK choose it */) { gtk_icon_view_set_columns(*this, columns); }
+            /// Returns the number of columns of the widget.
+            int Columns() const { return gtk_icon_view_get_columns(*this); }
+            /// Sets the ::item-width property which specifies the width to use for each item. If it is set to -1, the icon view will automatically determine a suitable item size.
+            void ItemWidth(int width /**< the width in pixels for each item */) { gtk_icon_view_set_item_width(*this, width); }
+            /// Returns the value of the ::item-width property (width in pixels of each item).
+            int ItemWidth() const { return gtk_icon_view_get_item_width(*this); }
+            /// Sets the ::spacing property which specifies the space which is inserted between the cells (i.e. the icon and the text) of an item.
+            void Spacing(int size /**< the space between cells */ ) { gtk_icon_view_set_spacing(*this, size); }
+            /// Returns the value of the ::spacing property.
+            int Spacing() const { return gtk_icon_view_get_spacing(*this); }
+            /// Sets the ::row-spacing property which specifies the space which is inserted between the rows of the icon view.
+            void RowSpacing(int size /**< the row spacing */) { gtk_icon_view_set_row_spacing(*this, size); }
+            /// Returns the value of the ::row-spacing property.
+            int RowSpacing() const { return gtk_icon_view_get_row_spacing(*this); }
+            /// Sets the ::column-spacing property which specifies the space which is inserted between the cloumns of the icon view.
+            void ColumnSpacing(int size /**< the row spacing */) { gtk_icon_view_set_column_spacing(*this, size); }
+            /// Returns the value of the ::column-spacing property.
+            int ColumnSpacing() const { return gtk_icon_view_get_column_spacing(*this); }
+            /// Sets the ::margin property which specifies the space which is inserted at the top, bottom, left and right of the icon view.
+            void Margin(int size) { gtk_icon_view_set_margin(*this, size); }
+            /// Returns the value of the ::margin property.
+            int Margin() const { return gtk_icon_view_get_margin(*this); }
+            /// Sets the "item-padding" property which specifies the padding around each of the icon view's items
+#if GTK_MINOR_VERSION > 16
+            void ItemPadding(int padding) { gtk_icon_view_set_item_padding(*this, padding); }
+            /// Returns the value of the ::item-padding property.
+            int ItemPadding() const { return gtk_icon_view_get_item_padding(*this); }
+#endif
+            /// Selects the item at path.
+            void Select(const TreePath &path) { gtk_icon_view_select_path(*this, path); }
+            /// Unselect the item at path
+            void Unselect(const TreePath &path) { gtk_icon_view_unselect_path(*this, path); }
+            /// Returns true if the icon pointed to by path is currently selected. If path does not point to a valid location, false is returned.
+            bool Selected(const TreePath &path) { return gtk_icon_view_path_is_selected(*this, path); }
+            /// Returns a RefVec containing a TreeRowReference for every item selected in the IconView
+            RefVec SelectedItems() const {
+                RefVec result;
+                if (GtkTreeModel *model = gtk_icon_view_get_model(*this)) {
+                    if (GList *list = gtk_icon_view_get_selected_items(*this)) {
+                        GList *l = list;
+                        while (l) {
+                            result.push_back(TreeRowReference(model, (GtkTreePath *)l->data));
+                            l = l->next;
+                        }
+                        g_list_foreach (list, (void (*)(void *,void *))gtk_tree_path_free, NULL);
+                        g_list_free (list);
+                    }
+                }
+                return result;
+            }
+            /// Selects all the icons. the object must have its selection mode set to SelectionMultiple.
+            void SelectAll() { gtk_icon_view_select_all(*this); }
+            /// Unselects all the icons.
+            void UnselectAll() { gtk_icon_view_unselect_all(*this); }
+            /// Activates the item determined by path.
+            void Activates(const TreePath &path) { gtk_icon_view_item_activated(*this, path); }
+            /** Moves the alignments of icon_view to the position specified by path. 
+The parameter row_align determines where the row is placed, and col_align determines where column is placed. Both are expected to be between 0.0 and 1.0. 0.0 means left/top alignment, 1.0 means right/bottom alignment, 0.5 means center.
+
+If the alignament values are not specified, the tree does the minimum amount of work to scroll the item onto the screen. This means that the item will be scrolled to the edge closest to its current position. If the item is currently visible on the screen, nothing is done.
+
+This function only works if the model is set, and path is a valid row on the model. If the model changes before the icon_view is realized, the centered path will be modified to reflect this change.
+
+\note if you specify row_align you must also specify col_align or your row_align will be ignored.
+*/
+            void ScrollTo(const TreePath &path /**< The path of the item to move to. */, 
+                          float row_align = -1.0 /**< The optional vertical alignment of the item specified by path. */,
+                          float col_align = -1.0 /**< The horizontal alignment of the item specified by path.*/) {
+                gtk_icon_view_scroll_to_path(*this, path, (row_align >= 0.0 && col_align >= 0.0), row_align, col_align);
+            }
+            /// Sets start_path and end_path to be the first and last visible path. Note that there may be invisible paths in between. Returns false if no visible path is found, in this case start_path and end_path content is undefined.
+            bool VisibleRange(TreePath &start_path, TreePath &end_path) {
+                GtkTreePath *s, *e;
+                if (gtk_icon_view_get_visible_range(*this, &s, &e)) {
+                    if (s) {
+                        start_path = *s;
+                        gtk_tree_path_free(s);
+                        if (e) {
+                            end_path = *e;
+                            gtk_tree_path_free(e);
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+#if GTK_MINOR_VERSION > 12
+            /// Sets the tip area of tooltip to be the area covered by the item at path. See also IconView::TooltipColumn() for a simpler alternative. See also Tooltip::Area().
+            void Tooltip(const TreePath &path, const gtk::Tooltip &tip) {
+                gtk_icon_view_set_tooltip_item(*this, tip, path); 
+            }
+#endif            
+            /*** Sets simple tooltip handling through icon view model.
+If you only plan to have simple (text-only) tooltips on full items, you can use this function to have IconView handle these automatically for you. column should be set to the column in icon_view's TreeModel containing the tooltip texts, or -1 to disable this feature.
+
+When enabled, "has-tooltip" will be set to TRUE and icon_view will connect a "query-tooltip" signal handler.
+            */
+            void TooltipColumn(int column) { gtk_icon_view_set_tooltip_column(*this, column); }
+            /// Returns the column of icon_view's model which is being used for displaying tooltips on icon_view's rows.
+            int TooltipColumn() const { return gtk_icon_view_get_tooltip_column(*this); }
+#if GTK_MINOR_VERSION > 20
+            /// Gets the row in which the item path is currently displayed. Row numbers start at 0.
+            int ItemRow(const TreePath &path) { return gtk_icon_view_get_item_row(*this, path); }
+            /// Gets the column in which the item path is currently displayed. Column numbers start at 0.
+            int ItemColumn(const TreePath &path) { return gtk_icon_view_get_item_column(*this, path); }
+#endif
+            /** This function is a convenience function to allow you to reorder models that support the TreeDragSourceIface and the TreeDragDestIface. Both TreeStore and ListStore support these. If reorderable is true, then the user can reorder the model by dragging and dropping rows. The developer can listen to these changes by connecting to the model's row_inserted and row_deleted signals. The reordering is implemented by setting up the icon view as a drag source and destination. Therefore, drag and drop can not be used in a reorderable view for any other purpose.
+
+This function does not give you any degree of control over the order -- any reordering is allowed. If more control is needed, you should probably handle drag and drop manually.
+            */
+            void Reorderable(bool flag) { return gtk_icon_view_set_reorderable(*this, flag); }
+            /// Retrieves whether the user can reorder the list via drag-and-drop. 
+            bool Reorderable() const { return gtk_icon_view_get_reorderable(*this); }
     };
 }
 

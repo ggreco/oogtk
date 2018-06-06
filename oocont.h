@@ -71,7 +71,14 @@ The border width of a container is the amount of space to leave around the outsi
              \return the size in pixel of the border width of the container.
              */
             int Border() const { return gtk_container_get_border_width(*this); }
+/** Removes a widget from a container.
+Widget must be inside container . Note that container will own a reference to widget , and that this may be the last reference held; so removing a widget from its container can destroy that widget. If you want to use widget again, you need to add a reference to it while it's not inside a container, using Object::Ref(). If you don't want to use widget again it's usually more efficient to simply destroy it directly using Widget::Destroy() since this will remove it from the container and help break any circular reference count cycles.
+    */
+            void Remove(const Widget &w) {
+                gtk_container_remove(*this, GTK_WIDGET(w.Obj()));
+            }
     };
+
 /** A container with just one child
 The Bin widget is a container with just one child. It is not very useful itself, but it is useful for deriving subclasses, since it provides common code needed for handling a single child widget.
 
@@ -119,6 +126,73 @@ int main() {
             void Child(const Widget &w ) { Add(w); }
     };
 
+/** Base class for widgets with two adjustable panes
+Paned is the base class for widgets with two panes, arranged either horizontally (HPaned) or vertically (VPaned). Child widgets are added to the panes of the widget with Paned::Pack1() and Paned:Pack2(). The division beween the two children is set by default from the size requests of the children, but it can be adjusted by the user.
+A paned widget draws a separator between the two child widgets and a small handle that the user can drag to adjust the division. It does not draw any relief around the children or around the separator. (The space in which the separator is called the gutter.) Often, it is useful to put each child inside a Frame with the shadow type set to ShadowType::ShadowIn so that the gutter appears as a ridge. No separator is drawn if one of the children is missing.
+Each child has two options that can be set, resize and shrink. If resize is true, then when the GtkPaned is resized, that child will expand or shrink along with the paned widget. If shrink is true, then when that child can be made smaller than its requisition by the user. Setting shrink to FALSE allows the application to set a minimum size. If resize is false for both children, then this is treated as if resize is true for both children.
+The application can set the position of the slider as if it were set by the user, by calling Paned::Position(int).
+*/
+    class Paned : public Container // COMPLETE API
+    {
+        public:
+/// DOXYS_OFF
+            operator  GtkPaned *() const { return GTK_PANED(Obj()); }
+/// DOXYS_ON
+            /// Adds a child to the top or left pane with default parameters. This is equivalent to Paned::Pack1 (child, FALSE, TRUE).
+            void Add1(const Widget &w /**< the child to add */) { Pack1(w, true, false); }
+             /// Adds a child to the top or left pane with default parameters. This is equivalent to Paned::Pack2 (child, FALSE, TRUE).
+            void Add2(const Widget &w /**< the child to add */) { Pack2(w, true, false); }
+
+            /// Adds a child to the top or left pane.
+            void Pack1(const Widget &w/**< the child to add */, 
+                       bool resize = true /**< should this child expand when the paned widget is resized, defaults to true. */,
+                       bool shrink = false /**< can this child be made smaller than its requisition, defaults to false. */) { gtk_paned_pack1(*this, w, resize, shrink); }
+             /// Adds a child to the bottom or right pane.
+            void Pack2(const Widget &w/**< the child to add */, 
+                       bool resize = true /**< should this child expand when the paned widget is resized, defaults to true. */,
+                       bool shrink = false/**< can this child be made smaller than its requisition, defaults to false. */) { gtk_paned_pack2(*this, w, resize, shrink); }
+
+            /// Obtains the first child of the paned widget.
+            /// \return first child, or nullptr if not set.
+            Widget *Child1() { return dynamic_cast<Widget *>(Object::Find((GObject *)gtk_paned_get_child1(*this))); }
+            /// Obtains the second child of the paned widget.
+            /// \return second child, or nullptr if not set.
+            Widget *Child2() { return dynamic_cast<Widget *>(Object::Find((GObject *)gtk_paned_get_child2(*this))); }
+
+            /// Sets the position of the divider between the two panes.
+            void Position(int pos/**< pixel position of divider, a negative value means that the position is unset. */) { gtk_paned_set_position(*this, pos); }
+            ///Obtains the position of the divider between the two panes.
+            /// \return position of the divider
+            int Position() const { return gtk_paned_get_position(*this); }
+    };
+
+    /// The HPaned widget is a container widget with two children arranged horizontally. The division between the two panes is adjustable by the user by dragging a handle. See Paned for details.
+    class HPaned : public Paned // COMPLETE API
+    {
+        public:
+            /// DOXYS_OFF
+            HPaned(GObject *obj) { Init(obj); }
+            /// DOXYS_ON
+            /// Create a new HPaned, see Paned for details. 
+            HPaned() { 
+                Init(gtk_hpaned_new());
+                Internal(true);
+            }
+    };
+ /// The VPaned widget is a container widget with two children arranged vertically. The division between the two panes is adjustable by the user by dragging a handle. See Paned for details.
+    class VPaned : public Paned // COMPLETE API
+    {
+        public:
+            /// DOXYS_OFF
+            VPaned(GObject *obj) { Init(obj); }
+            /// DOXYS_ON
+            /// Create a new HPaned, see Paned for details. 
+            VPaned() { 
+                Init(gtk_vpaned_new());
+                Internal(true);
+            }
+    };
+
 /// Abstract base class for MenuItem.
     class Item : public Bin // COMPLETE API
     {
@@ -142,6 +216,7 @@ The EventBox widget is a subclass of Bin which also has its own window. It is us
         public:
 /// DOXYS_OFF
             operator  GtkEventBox *() const { return GTK_EVENT_BOX(Obj()); }
+            EventBox(GObject *obj) { Init(obj); }
 /// DOXYS_ON
 /// Creates a new event box without child widget.
             EventBox() {
@@ -593,6 +668,30 @@ The spacing between buttons can be set with Box::Spacing(). The arrangement and 
             }
     };
 
+/** An alignment control widget
+The Alignment widget controls the alignment and size of its child widget. It has four settings: xscale, yscale, xalign, and yalign.
+
+The scale settings are used to specify how much the child widget should expand to fill the space allocated to the Alignment. The values can range from 0 (meaning the child doesn't expand at all) to 1 (meaning the child expands to fill all of the available space).
+
+The align settings are used to place the child widget within the available area. The values range from 0 (top or left) to 1 (bottom or right). Of course, if the scale settings are both set to 1, the alignment settings have no effect.
+*/
+    class Alignment : public Bin { // COMPLETE API
+        public:
+/// DOXYS_OFF             
+            operator  GtkAlignment *() const { return GTK_ALIGNMENT(Obj()); }
+
+            Alignment(GObject *obj) { Init(obj); }
+/// DOXYS_ON
+            /// Creates a new Alignment object.
+            Alignment(float xalign /**< the horizontal alignment of the child widget, from 0 (left) to 1 (right). */,
+                      float yalign /**< the vertical alignment of the child widget, from 0 (top) to 1 (bottom).*/,
+                      float xscale /**< the amount that the child widget expands horizontally to fill up unused space, from 0 to 1. A value of 0 indicates that the child widget should never expand. A value of 1 indicates that the child widget will expand to fill all of the space allocated for the GtkAlignment. */,
+                      float yscale /**< the amount that the child widget expands vertically to fill up unused space, from 0 to 1. The values are similar to xscale.) */) {
+                Init(gtk_alignment_new(xalign, yalign, xscale, yscale));
+                Internal(true);
+            }
+    };
+
 /** A tabbed notebook container
 The Notebook widget is a Container whose children are pages that can be switched between using tab labels along one edge.
 
@@ -762,11 +861,18 @@ If you need to change a table's size after it has been created, this method allo
                         int columns /**< The new number of columns. */
                         ) { gtk_table_resize(*this, rows, columns); }
 
+            /// Returns the number of rows and columns in the table.
+            /// \return a Point cointaining the number of columns in Point:x and the number of rows in Point:y
+            Point Size() const { guint r, c; gtk_table_get_size(*this, &r, &c); return Point(c,r); } 
+
             void Spacing(int space) {
                 RowSpacing(space);
                 ColSpacing(space);
             }
-            void RowSpacing(int space, int row = -1) {
+
+            //Sets the space between two columns or every column in table equal to spacing.
+            void RowSpacing(int space/**<number of pixels that the spacing should take up.*/,
+                            int row = -1 /**<row number whose spacing will be changed, if not specified the spacing is applied to all rows */) {
                 if (row > -1)
                     gtk_table_set_row_spacing(*this, row, space);
                 else
@@ -797,7 +903,9 @@ The number of 'cells' that a widget will occupy is specified by left_attach, rig
                         (GtkAttachOptions)xoptions, (GtkAttachOptions)yoptions, xpadding, ypadding);
             }
 
-            void ColSpacing(int space, int column = -1) {
+            //Sets the space between two rows or every row in table equal to spacing.            
+            void ColSpacing(int space/**<number of pixels that the spacing should take up.*/, 
+                            int column = -1/**<column number whose spacing will be changed, if not specified the spacing is applied to all columns */) {
                 if (column > -1)
                     gtk_table_set_col_spacing(*this, column, space);
                 else

@@ -8,6 +8,30 @@
 
 namespace gtk
 {
+    inline std::string escape(const std::string &src) {
+        std::string res;
+        if (gchar *s = g_uri_escape_string(src.c_str(), NULL, TRUE)) {
+            res = s;
+            g_free(s);
+        }
+        return res;
+    }
+    inline std::string escape_markup(const std::string &src) {
+        std::string res;
+        if (gchar *s = g_markup_escape_text(&src[0], src.length())) {
+            res = s;
+            g_free(s);
+        }
+        return res;
+    }
+    inline std::string unescape(const std::string &src) {
+        std::string res;
+        if (gchar *s = g_uri_unescape_string(src.c_str(), NULL)) {
+            res = s;
+            g_free(s);
+        }
+        return res;
+    }
     /** Convert GTK standard enums to oogtk ones and back. 
 This is an helper class to allow oogtk functions to accept both C style GTK+ enums and
 oogtk C++ enums.
@@ -30,38 +54,76 @@ oogtk C++ enums.
     };
 
 /// DOXYS_OFF
-    class AbstractCbk
-    {
-        public:
-            virtual ~AbstractCbk() {}
-
-            virtual bool notify(GtkWidget *w = NULL, GdkEvent *e = NULL) const = 0;
-
-            static gint real_callback_0(AbstractCbk *ce) {
-                return ce->notify();
-            }
-            static gint real_callback_1(GtkWidget *w, AbstractCbk *ce) {
-                return ce->notify(w);
-            }
-            static gint real_callback_2(GtkWidget *w, GdkEvent *e, AbstractCbk *ce) {
-                return ce->notify(w, e);
-            }
-            static gint real_callback_3(GtkWidget *w, GdkEvent *e, void *u1, AbstractCbk *ce) {
-                return ce->notify(w, e);
-            }
-            static gint real_callback_4(GtkWidget *w, GdkEvent *e, void *u1, void *u2, AbstractCbk *ce) {
-                return ce->notify(w, e);
-            }
+    struct SelectionData;
+    class Widget;
+    struct FakeType {
     };
 
-    class Widget;
+
+    struct AbstractDragCbk
+    {
+        virtual ~AbstractDragCbk() {}
+        virtual bool notify(GtkWidget *w, SelectionData *e) const = 0;
+
+        static void real_callback_received(GtkWidget *w, GdkDragContext *c, gint x, gint y, SelectionData *d, guint i, guint t, AbstractDragCbk *b) {
+            if (b) b->notify(w, d);
+            gtk_drag_finish(c, TRUE, FALSE, t);
+        }
+        static void real_callback_get(GtkWidget *w, void *u1, SelectionData *d, guint i, guint t, AbstractDragCbk *b) {
+            if (b) b->notify(w, d);
+        }
+    };
+    template <typename T, typename J = FakeType>
+    class CbkDrag : public AbstractDragCbk
+    {
+        public:
+            CbkDrag( T* obj, void (T::*fnc)(Widget &, SelectionData &))
+                : myObj(obj), mywFnc0(fnc), mywFnc1(NULL) {}
+            CbkDrag( T* obj, void (T::*fnc)(Widget &, SelectionData &, J), J a1)
+                : myObj(obj), mywFnc1(fnc), ma1(a1) {}
+            
+        private:    
+            T*  myObj;
+            void (T::*mywFnc0)(Widget &, SelectionData &);
+            void (T::*mywFnc1)(Widget &, SelectionData &, J);
+            J ma1;
+
+            virtual bool notify(GtkWidget *w, SelectionData *e) const;
+    };
+
+    struct AbstractCbk
+    {
+        virtual ~AbstractCbk() {}
+
+        virtual bool notify(GtkWidget *w = NULL, GdkEvent *e = NULL) const = 0;
+
+        static gint real_callback_0(AbstractCbk *ce) {
+            return ce->notify();
+        }
+        static gint real_callback_1(GtkWidget *w, AbstractCbk *ce) {
+            return ce->notify(w);
+        }
+        static gint real_callback_2(GtkWidget *w, GdkEvent *e, AbstractCbk *ce) {
+            return ce->notify(w, e);
+        }
+        static gint real_callback_3(GtkWidget *w, GdkEvent *e, void *u1, AbstractCbk *ce) {
+            return ce->notify(w, e);
+        }
+        static gint real_callback_4(GtkWidget *w, GdkEvent *e, void *u1, void *u2, AbstractCbk *ce) {
+            return ce->notify(w, e);
+        }
+        static gint real_callback_5(GtkWidget *w, GdkDragContext *c, void *u1, void *u2, void *u3, AbstractCbk *ce) {
+            return ce->notify(w, (GdkEvent*)c);
+        }
+        static gint real_callback_7(GtkWidget *w, GdkDragContext *c, void *u1, void *u2, void *u3, void *u4, void *u5, AbstractCbk *ce) {
+            return ce->notify(w, (GdkEvent*)c);
+        }
+    };
+
     struct Event;
 
     struct FakeTypeBase {
     };
-    struct FakeType {
-    };
-
     typedef int SockFd;
 
     template <typename T, typename R, typename A = FakeTypeBase, typename J = FakeType> struct ReturnType {
@@ -266,6 +328,12 @@ oogtk C++ enums.
                         case 3:
                             cbk = GCallback(AbstractCbk::real_callback_4);
                             break;
+                        case 4:
+                            cbk = GCallback(AbstractCbk::real_callback_5);
+                            break;
+                        case 6:
+                            cbk = GCallback(AbstractCbk::real_callback_7);
+                            break;
                         default:
                             throw std::runtime_error(std::string("Unhandled signal in Connect: ") + signal);
                     }
@@ -314,6 +382,10 @@ oogtk C++ enums.
             void Set(const char *property, gfloat value) {
                 g_object_set(obj_, property, value, NULL);
             }
+            void Set(const char *property, bool value) {
+                gboolean val = value;
+                g_object_set(obj_, property, val, NULL);
+            }
             void Set(const char *property, double value) {
                 gfloat temp = value;
                 g_object_set(obj_, property, temp, NULL);
@@ -340,6 +412,11 @@ oogtk C++ enums.
             void Get(const char *property, int &value) {
                 g_object_get(obj_, property, &value, NULL);
             }
+            void Get(const char *property, bool &value) {
+                gboolean val;
+                g_object_get(obj_, property, &val, NULL);
+                value = val;
+            }
             void Get(const char *property, double &value) {
                 gfloat temp;
                 g_object_get(obj_, property, &temp, NULL);
@@ -352,6 +429,18 @@ oogtk C++ enums.
                 for (PropertyIt it = props.begin(); it != props.end(); ++it)
                     (*it)->Set(this);
             }
+            void SetData(const char *key, int data) {
+                g_object_set_data(obj_, key, GINT_TO_POINTER(data));
+            }
+            void SetData(const char *key, void *data) {
+                g_object_set_data(obj_, key, data);
+            }
+            void GetData(const char *key, int &data) {
+                data = GPOINTER_TO_INT(g_object_get_data(obj_, key));
+            }
+            void GetData(const char *key, void *&data) {
+                data = g_object_get_data(obj_, key);
+            }
         protected:
             void Set(GObject *obj) {
                 obj_ = obj; 
@@ -360,7 +449,7 @@ oogtk C++ enums.
             static Object *ToObject(void *obj) { return (Object *)g_object_get_data(G_OBJECT(obj), "object"); }
             GObject *obj_;
             ObjectType type_;
-            int id_;
+            long id_;
 
             static void purge(GObject *obj, Object *d) {
 #ifdef OOGTK_DEBUG
@@ -395,9 +484,11 @@ oogtk C++ enums.
 
     inline void Object::
     Init(void *obj) {
-        if (obj) {
+        if (obj) {            
             obj_ = (GObject *)obj;
-            g_object_ref_sink(obj_); // If an object has a floating reference it should be sinked!
+            // we want only to sink references, not to increment them
+            if (g_object_is_floating(obj_))
+                    g_object_ref_sink(obj_); // If an object has a floating reference it should be sinked!
 
             g_object_set_data(obj_, "object", this);
             add_destroy_cbk();
@@ -417,56 +508,6 @@ oogtk C++ enums.
             g_object_steal_data(obj_, "object");
         }
         obj_ = NULL;
-    }
-
-    template <typename T,typename R, typename J>
-    inline bool CbkEvent<T,R,J>::
-    notify(GtkWidget *w, GdkEvent *e) const
-    { 
-        switch (type) {
-            case NoParam:
-                {
-                   ReturnType<T, R, FakeTypeBase, J> rtype;
-    
-                   if (myFnc0)
-                        return rtype.notify(myFnc0, myObj, rccode);
-                   else
-                        return rtype.notify(ma1, myFnc1, myObj, rccode);
-                }
-            case HasWidget:
-                if (Widget *ww = dynamic_cast<Widget *>(Object::Find((GObject *)w))) {
-                    ReturnType<T, R, Widget &, J> rtype;
-
-                    if (mywFnc0)
-                        return rtype.notify(*ww, mywFnc0, myObj, rccode);
-                    else
-                        return rtype.notify(*ww, ma1, mywFnc1, myObj, rccode);
-                }
-                else
-                    throw std::runtime_error("Callback asking for a widget with widget NULL!");
-            case HasSocket:
-                {
-                    ReturnType<T, R, SockFd, J> rtype;
-                    SockFd fd = g_io_channel_unix_get_fd((GIOChannel*)w);
-
-                    if (mysFnc0)
-                        return rtype.notify(fd, mysFnc0, myObj, rccode);
-                    else
-                        return rtype.notify(fd, ma1, mysFnc1, myObj, rccode);
-                }
-            case HasEvent:
-                if (Event *ee = (Event *)e) {
-                    ReturnType<T, R, Event &, J> rtype;
-                    if (myeFnc0)
-                        return rtype.notify(*ee, myeFnc0, myObj, rccode);
-                    else
-                        return rtype.notify(*ee, ma1, myeFnc1, myObj, rccode);
-                }
-                else
-                    throw std::runtime_error("Callback asking for an event with event NULL!");
-            default:
-                    throw std::runtime_error("Callback asking for an event with unknown type!");
-        }
     }
 }
 #endif

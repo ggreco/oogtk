@@ -247,8 +247,17 @@ Emits the "insert-text" signal; insertion actually occurs in the default handler
             }
             
             void Clear() { TextRange r = Bounds(); Delete(r); }
-
-            std::string Get(const TextRange &range, bool include_hidden = false) {
+            /// Gets the entire contents of the textbuffer
+            std::string Get() const {
+                std::string res;
+                TextRange r = Bounds();
+                if (gchar *t = gtk_text_buffer_get_text(*this, r.first, r.second, FALSE)) {
+                    res = t;
+                    g_free(t);
+                }
+                return res;
+            }
+            std::string Get(const TextRange &range, bool include_hidden = false) const {
                 std::string res;
                 if (gchar *t = gtk_text_buffer_get_text(*this, range.first, range.second,
                                     include_hidden)) {
@@ -311,9 +320,9 @@ Emits the "insert-text" signal; insertion actually occurs in the default handler
             }
 
             // getting new iterators
-            TextIter Begin() { TextIter it; gtk_text_buffer_get_start_iter(*this, it); return it; }
-            TextIter End() { TextIter it; gtk_text_buffer_get_end_iter(*this, it); return it; }
-            TextRange Bounds() { TextRange r; gtk_text_buffer_get_bounds(*this, r.first, r.second); return r; }
+            TextIter Begin() const { TextIter it; gtk_text_buffer_get_start_iter(*this, it); return it; }
+            TextIter End() const { TextIter it; gtk_text_buffer_get_end_iter(*this, it); return it; }
+            TextRange Bounds() const { TextRange r; gtk_text_buffer_get_bounds(*this, r.first, r.second); return r; }
 
             TextMark *Cursor() { return dynamic_cast<TextMark *>(Object::Find((GObject *)
                                         gtk_text_buffer_get_insert(*this))); }
