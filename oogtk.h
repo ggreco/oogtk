@@ -18,6 +18,11 @@
 #include "oogdk.h"
 #include <mutex>
 
+
+struct _GtkSelectionData {
+    unsigned char opaque[0];
+};
+
 namespace gtk
 {
     class Widget;
@@ -136,31 +141,6 @@ namespace gtk
 /// DOXYS_ON
     };
 
-
-  /// Tells about certain properties of the widget.
-    enum WidgetFlags
-    {
-        TopLevel =  GTK_TOPLEVEL /**< widgets without a real parent, as there are Windows and Menus have this flag set throughout their lifetime. Toplevel widgets always contain their own GdkWindow. */,
-        NoWindow =  GTK_NO_WINDOW /**< indicative for a widget that does not provide its own GdkWindow. Visible action (e.g. drawing) is performed on the parent's GdkWindow.  */,
-        Realized =  GTK_REALIZED /**< Set by Widget::Realize(), unset by Widget::Unrealize(). A realized widget has an associated GdkWindow. */,
-        Mapped =  GTK_MAPPED /**< Set by Widget::Map(), unset by Widget::Unmap(). Only realized widgets can be mapped. It means that gdk_window_show() has been called on the widgets window(s). */,
-        Visible =  GTK_VISIBLE /**< Set by Widget:Show(), unset by Widget:Hide(). Implies that a widget will be mapped as soon as its parent is mapped. */,
-        WidgetSensitive =  GTK_SENSITIVE /**< Set and unset by Widget::Sensitive(bool). The sensitivity of a widget determines whether it will receive certain events (e.g. button or key presses). One premise for the widget's sensitivity is to have this flag set. */,
-        ParentSensitive =  GTK_PARENT_SENSITIVE /**< Set and unset by Widget::Sensitive(bool) operations on the parents of the widget. This is the second premise for the widget's sensitivity. Once it has Sensitive and ParentSensitive set, its state is effectively sensitive. This is expressed (and can be examined) by the Widget::IsSensitive() method. */,
-        CanFocus =  GTK_CAN_FOCUS /**< Determines whether a widget is able to handle focus grabs. */,
-        HasFocus =  GTK_HAS_FOCUS /**< Set by Widget::GrabFocus() for widgets that also have GTK_CAN_FOCUS set. The flag will be unset once another widget grabs the focus. */,
-        CanDefault =  GTK_CAN_DEFAULT /**<	 The widget is allowed to receive the default action via Widget::GrabDefault().  */,
-        HasDefault =  GTK_HAS_DEFAULT /**< 	 The widget currently is receiving the default action. */,
-        HasGrab =  GTK_HAS_GRAB /**< Set by gtk_grab_add(), unset by gtk_grab_remove(). It means that the widget is in the grab_widgets stack, and will be the preferred one for receiving events other than ones of cosmetic value. */,
-        WidgetRcStyle =  GTK_RC_STYLE /**< Indicates that the widget's style has been looked up through the rc mechanism. It does not imply that the widget actually had a style defined through the rc mechanism. */,
-        CompositeChild =  GTK_COMPOSITE_CHILD /**< Indicates that the widget is a composite child of its parent; see gtk_widget_push_composite_child(), gtk_widget_pop_composite_child(). */,
-        NoReparent =  GTK_NO_REPARENT /**< Unused since before GTK+ 1.2, will be removed in a future version. */,
-        AppPaintable = GTK_APP_PAINTABLE /**< Set and unset by Widget::AppPaintable(bool). Must be set on widgets whose window the application directly draws on, in order to keep GTK+ from overwriting the drawn stuff.  */,
-        ReceiveDefault =  GTK_RECEIVES_DEFAULT /**< The widget when focused will receive the default action and have GTK_HAS_DEFAULT set even if there is a different widget set as default. */,
-        DoubleBuffered =  GTK_DOUBLE_BUFFERED /**< Set and unset by Widget::DoubleBuffered(bool). Indicates that exposes done on the widget should be double-buffered. */,
-        NoShowAll =  GTK_NO_SHOW_ALL /**< */
-    };
-
 // only in GTK 2.12+
 #if GTK_MINOR_VERSION > 12
 
@@ -218,11 +198,7 @@ Widget introduces to the hiearchy style properties - these are basically object 
         public:
 /// DOXYS_OFF
             operator  GtkWidget *() const { return GTK_WIDGET(obj_); }
-#if GTK_MINOR_VERSION > 15
-            operator  Drawable *() const { return GDK_DRAWABLE(gtk_widget_get_window(GTK_WIDGET(obj_))); }
-#else
-            operator  Drawable *() const { return GDK_DRAWABLE((GTK_WIDGET(obj_)->window)); }
-#endif
+            operator  GdkWindow *() const { return GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(obj_))); }
 /// DOXYS_ON
             Widget &Ref() { g_object_ref(obj_); return *this; }
             /// Sets text as the contents of the tooltip. This function will take care of setting GtkWidget:has-tooltip to TRUE and of the default handler for the GtkWidget::query-tooltip signal.
@@ -301,8 +277,11 @@ Widgets can't actually be allocated a size less than 1 by 1, but you can pass 0,
             // returns a Point containing width and height for the CURRENT size of the widget
           //  Point Allocation() const { return Point(GTK_WIDGET(Obj())->allocation.width, GTK_WIDGET(Obj())->allocation.height); }
             Rect Allocation() const {
-                if (const GtkWidget *w = GTK_WIDGET(Obj()))
-                    return Rect(w->allocation.x, w->allocation.y, w->allocation.width,w->allocation.height);
+                if (const GtkWidget *w = GTK_WIDGET(Obj())) {
+                    GtkAllocation allocation;
+                    gtk_widget_get_allocation(const_cast<GtkWidget*>(w), &allocation);
+                    return Rect(allocation.x, allocation.y, allocation.width, allocation.height);
+                }
                 else
                     return Rect(0,0,0,0);
             }
@@ -407,18 +386,20 @@ This function is only useful in widget implementations. Causes a widget to be un
             /** Returns the sensitivity state of a widget
             \return true if the widget is sensitive.
             */
-            bool IsSensitive() const { return GTK_WIDGET_IS_SENSITIVE(GTK_WIDGET(Obj())); }
+            bool IsSensitive() const { return gtk_widget_is_sensitive(*this); }
             /** Returns the widget focus.
             \return true if the widget has focus
             */
-            bool HasFocus() const { return GTK_WIDGET_HAS_FOCUS(GTK_WIDGET(Obj())); }
+            bool HasFocus() const { return gtk_widget_has_focus(*this); }
 
+#if 0
             /// Sets Pixbuf as background image for this widget
             void BackImage(const Pixbuf &pix) {
                 GtkStyle *s = gtk_style_new();
                 s->bg_pixmap[0] = pix.Pixmap();
                 gtk_widget_set_style(*this, s);
             }
+
             /** Returns the active WidgetFlags for the widget.
             \return a bitmask of WidgetFlags
             */
@@ -427,6 +408,7 @@ This function is only useful in widget implementations. Causes a widget to be un
             void SetFlags(uint32_t flags /**< flags to be set */) const { GTK_WIDGET_SET_FLAGS(GTK_WIDGET(Obj()), flags); }
             /// Unsets one or more WidgetFlags for the widget.
             void UnsetFlags(uint32_t flags /**< flags to be unset */) const { GTK_WIDGET_SET_FLAGS(GTK_WIDGET(Obj()), flags); }
+#endif
             /** Activates a widget.
 For widgets that can be "activated" (buttons, menu items, etc.) this function activates them.
 Activation is what happens when you press Enter on a widget during key navigation. If widget isn't activatable, the function returns false.
@@ -592,13 +574,13 @@ The horizontal and vertical alignment attributes enable the widget to be positio
     enum ImageType
     {
         ImageEmpty = GTK_IMAGE_EMPTY /**< there is no image displayed by the widget */,
-        ImagePixmap = GTK_IMAGE_PIXMAP /**< the widget contains a GdkPixmap */,
-        ImageImage = GTK_IMAGE_IMAGE /**< 	the widget contains a GdkImage */,
         ImagePixbuf = GTK_IMAGE_PIXBUF /**< 	the widget contains a Pixbuf */,
         ImageStock = GTK_IMAGE_STOCK /**< 	the widget contains a stock icon name */,
         ImageIconSet = GTK_IMAGE_ICON_SET /**< 	the widget contains a GtkIconSet */,
         ImageAnimation = GTK_IMAGE_ANIMATION /**< the widget contains a PixbufAnimation */,
-        ImageIconName = GTK_IMAGE_ICON_NAME /**< 	the widget contains a named icon. This image type was added in GTK+ 2.6 */
+        ImageIconName = GTK_IMAGE_ICON_NAME /**< 	the widget contains a named icon. This image type was added in GTK+ 2.6 */,
+        ImageGIcon = GTK_IMAGE_GICON /**< the widget contains a GIcon. This image type was added in GTK+ 2.14 */,
+        ImageSurface = GTK_IMAGE_SURFACE /**< the widget contains a cairo_surface_t. This image type was added in GTK+ 3.10 */
     };
 
     /** A widget displaying an image
@@ -1082,13 +1064,11 @@ The Entry widget is a single line text entry widget. A fairly large set of key b
                 }
 
                 if (!result.empty()) {
-                    gtk_signal_handler_block_by_func (GTK_OBJECT (editable),
-                            GTK_SIGNAL_FUNC (insert_filtered_handler), user_data);
+                    g_signal_handlers_block_by_func (editable, (void*)insert_filtered_handler, user_data);
                     gtk_editable_insert_text (editable, result.c_str(), result.length(), position);
-                    gtk_signal_handler_unblock_by_func (GTK_OBJECT (editable),
-                            GTK_SIGNAL_FUNC (insert_filtered_handler), user_data);
+                    g_signal_handlers_unblock_by_func (editable, (void*)insert_filtered_handler, user_data);
                 }
-                gtk_signal_emit_stop_by_name (GTK_OBJECT (editable), "insert_text");
+                g_signal_stop_emission_by_name (G_OBJECT (editable), "insert_text");
             }
             std::string m_filter;
         public:
@@ -1099,12 +1079,10 @@ The Entry widget is a single line text entry widget. A fairly large set of key b
         public:
             /// Creates a new entry with an optional max length in characters.
             Entry(int maxlen = -1) {
-                if (maxlen != -1) {
-                    Init(gtk_entry_new_with_max_length(maxlen));
-                }
-                else
-                    Init(gtk_entry_new());
+                Init(gtk_entry_new());
                 Internal(true);
+                if (maxlen != -1)
+                    gtk_entry_set_max_width_chars(*this, maxlen);
             }
             /** Sets the text in the widget to the given value, every streamable type is accepted.
             The new value will replace the current contents.
@@ -1263,15 +1241,6 @@ If setting is true, pressing Enter in the entry will activate the default widget
 
     };
 
-/// An enumeration representing possible orientations and growth directions for the visible progress bar.
-    enum ProgressBarOrientation
-    {
-      ProgressLeftToRight = GTK_PROGRESS_LEFT_TO_RIGHT /**< A horizontal progress bar growing from left to right. */,
-      ProgressRightToLeft = GTK_PROGRESS_RIGHT_TO_LEFT /**< A horizontal progress bar growing from right to left.  */,
-      ProgressBottomToTop = GTK_PROGRESS_BOTTOM_TO_TOP /**< A vertical progress bar growing from bottom to top. */,
-      ProgressTopToBottom = GTK_PROGRESS_TOP_TO_BOTTOM /**< A vertical progress bar growing from top to bottom.  */
-    };
-
     enum SocketCondition {
         SocketRead = G_IO_IN|G_IO_HUP 	/**< There is data to read. */,
         SocketWrite = G_IO_OUT 	/**< Data can be written (without blocking). */,
@@ -1318,8 +1287,8 @@ Causes the progress bar to enter "activity mode," where a block bounces back and
             /// Sets the fraction of total progress bar length to move the bouncing block for each call to ProgressBar::Pulse().
             void PulseStep(double value /**< fraction between 0.0 and 1.0 */) { gtk_progress_bar_set_pulse_step(*this, value); }
             /// Causes the progress bar to switch to a different orientation (left-to-right, right-to-left, top-to-bottom, or bottom-to-top).
-            void Orientation(ProgressBarOrientation mode /**< orientation of the progress bar */) {
-                gtk_progress_bar_set_orientation(*this, (GtkProgressBarOrientation)mode);
+            void Inverted(bool flag /**< orientation of the progress bar, false for left to right, true for right to left */) {
+                gtk_progress_bar_set_inverted(*this, flag);
             }
             /** Retrieves the text displayed superimposed on the progress bar.
             This method returns the text displayed superimposed on the progress bar, if any, otherwise it returns an empty string. The return value is a copy to the text, so will not become invalid (nor change) if you change the text in the progress bar.
@@ -1334,8 +1303,8 @@ Causes the progress bar to enter "activity mode," where a block bounces back and
             */
             double PulseStep() const { return gtk_progress_bar_get_pulse_step(*this); }
             /// Retrieves the current progress bar orientation.
-            ProgressBarOrientation Orientation() const {
-                return (ProgressBarOrientation)gtk_progress_bar_get_orientation(*this);
+            bool Inverted() const {
+                return gtk_progress_bar_get_inverted(*this);
             }
     };
 
@@ -2066,7 +2035,7 @@ namespace gtk {
             } else if (GTK_IS_CLIPBOARD(o)) {
                 return new Clipboard(o);
             } else
-                std::cerr << "Undefined type " << g_type_name(GTK_OBJECT_TYPE(o)) << '\n';
+                std::cerr << "Undefined type " << g_type_name(G_OBJECT_TYPE(o)) << '\n';
         }
 
         return NULL;

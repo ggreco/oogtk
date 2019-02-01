@@ -1,8 +1,10 @@
 #ifndef OOOBJ_H
 #define OOOBJ_H
 
+#include <gtk/gtk.h>
 #include <stdexcept>
 #include <vector>
+#include <string>
 #include <string.h>
 #include "inline_containers.h"
 
@@ -32,7 +34,7 @@ namespace gtk
         }
         return res;
     }
-    /** Convert GTK standard enums to oogtk ones and back. 
+    /** Convert GTK standard enums to oogtk ones and back.
 This is an helper class to allow oogtk functions to accept both C style GTK+ enums and
 oogtk C++ enums.
     */
@@ -81,8 +83,8 @@ oogtk C++ enums.
                 : myObj(obj), mywFnc0(fnc), mywFnc1(NULL) {}
             CbkDrag( T* obj, void (T::*fnc)(Widget &, SelectionData &, J), J a1)
                 : myObj(obj), mywFnc1(fnc), ma1(a1) {}
-            
-        private:    
+
+        private:
             T*  myObj;
             void (T::*mywFnc0)(Widget &, SelectionData &);
             void (T::*mywFnc1)(Widget &, SelectionData &, J);
@@ -127,34 +129,34 @@ oogtk C++ enums.
     typedef int SockFd;
 
     template <typename T, typename R, typename A = FakeTypeBase, typename J = FakeType> struct ReturnType {
-       bool notify(R (T::*fnc)(void), T *obj, bool rc) const { 
+       bool notify(R (T::*fnc)(void), T *obj, bool rc) const {
             return (obj->*fnc)();
        }
-       bool notify(J arg, R (T::*fnc)(J), T *obj, bool rc) const { 
+       bool notify(J arg, R (T::*fnc)(J), T *obj, bool rc) const {
             return (obj->*fnc)(arg);
        }
-       bool notify(A arg, R (T::*fnc)(A), T *obj, bool rc) const { 
+       bool notify(A arg, R (T::*fnc)(A), T *obj, bool rc) const {
             return (obj->*fnc)(arg);
        }
-       bool notify(A w, J arg, R (T::*fnc)(A, J), T *obj, bool rc) const { 
+       bool notify(A w, J arg, R (T::*fnc)(A, J), T *obj, bool rc) const {
             return (obj->*fnc)(w,arg);
        }
     };
 
     template <typename T, typename A, typename J> struct ReturnType<T, void, A, J> {
-      bool notify(void (T::*fnc)(void), T *obj, bool rc) const { 
+      bool notify(void (T::*fnc)(void), T *obj, bool rc) const {
             (obj->*fnc)();
             return rc;
        }
-       bool notify(J arg, void (T::*fnc)(J), T *obj, bool rc) const { 
+       bool notify(J arg, void (T::*fnc)(J), T *obj, bool rc) const {
             (obj->*fnc)(arg);
             return rc;
        }
-       bool notify(A arg, void (T::*fnc)(A), T *obj, bool rc) const { 
+       bool notify(A arg, void (T::*fnc)(A), T *obj, bool rc) const {
             (obj->*fnc)(arg);
             return rc;
        }
-       bool notify(A w, J arg, void (T::*fnc)(A, J), T *obj, bool rc) const { 
+       bool notify(A w, J arg, void (T::*fnc)(A, J), T *obj, bool rc) const {
             (obj->*fnc)(w, arg);
             return rc;
        }
@@ -163,26 +165,26 @@ oogtk C++ enums.
     // I've had to add those two partial specialization to cover the cases where
     // the args of the method are of the same type.
     template <typename T, typename R, typename A> struct ReturnType<T, R, A, A> {
-       bool notify(R (T::*fnc)(void), T *obj, bool rc) const { 
+       bool notify(R (T::*fnc)(void), T *obj, bool rc) const {
             return (obj->*fnc)();
        }
-       bool notify(A arg, R (T::*fnc)(A), T *obj, bool rc) const { 
+       bool notify(A arg, R (T::*fnc)(A), T *obj, bool rc) const {
             return (obj->*fnc)(arg);
        }
-       bool notify(A w, A arg, R (T::*fnc)(A, A), T *obj, bool rc) const { 
+       bool notify(A w, A arg, R (T::*fnc)(A, A), T *obj, bool rc) const {
             return (obj->*fnc)(w,arg);
        }
     };
     template <typename T, typename A> struct ReturnType<T, void, A, A> {
-      bool notify(void (T::*fnc)(void), T *obj, bool rc) const { 
+      bool notify(void (T::*fnc)(void), T *obj, bool rc) const {
             (obj->*fnc)();
             return rc;
        }
-       bool notify(A arg, void (T::*fnc)(A), T *obj, bool rc) const { 
+       bool notify(A arg, void (T::*fnc)(A), T *obj, bool rc) const {
             (obj->*fnc)(arg);
             return rc;
        }
-       bool notify(A w, A arg, void (T::*fnc)(A, A), T *obj, bool rc) const { 
+       bool notify(A w, A arg, void (T::*fnc)(A, A), T *obj, bool rc) const {
             (obj->*fnc)(w, arg);
             return rc;
        }
@@ -214,7 +216,7 @@ oogtk C++ enums.
                 : myObj(obj), mysFnc0(NULL), mysFnc1(fnc), ma1(a1), rccode(rc), type(HasSocket) {}
 
 
-        private:    
+        private:
             T*  myObj ;
             R (T::*myFnc0)();
             R (T::*myFnc1)(J);
@@ -235,7 +237,7 @@ oogtk C++ enums.
 /// DOXYS_ON
 
     /// Base class for Object property handling.
-    class PropertyBase 
+    class PropertyBase
     {
         public:
             PropertyBase(const std::string &key) : keyword_(key) {}
@@ -275,7 +277,7 @@ oogtk C++ enums.
                 if (obj_) {
 #ifdef OOGTK_DEBUG
                 std::cerr << "Destructor for " << (void *)obj_ << " type:"
-                          << g_type_name(GTK_OBJECT_TYPE(obj_))  
+                          << g_type_name(GTK_OBJECT_TYPE(obj_))
                           << " references: " << obj_->ref_count << std::endl;
 #endif
 
@@ -343,7 +345,7 @@ oogtk C++ enums.
                     else
                         g_signal_connect(obj_, signal, cbk, e);
                 }
-                else 
+                else
                     throw std::runtime_error(std::string("Bad signal type for object: ") + signal);
 
                 events->push_back(e);
@@ -355,8 +357,8 @@ oogtk C++ enums.
             void callback(const char *signal, R (T::*cbk)(), T *classbase, bool returncode = true)
             { Connect(new CbkEvent<T,R>(classbase, cbk, returncode), signal); }
             template< typename T, typename R, typename J>
-            void callback(const char *signal, R (T::*cbk)(J), T *classbase, J data, 
-                          bool returncode = true) 
+            void callback(const char *signal, R (T::*cbk)(J), T *classbase, J data,
+                          bool returncode = true)
             { Connect(new CbkEvent<T,R,J>(classbase, cbk, data, returncode), signal); }
 
             // widget callbacks...
@@ -364,8 +366,8 @@ oogtk C++ enums.
             void callback(const char *signal, R (T::*cbk)(Widget &), T *classbase, bool returncode = true)
             { Connect(new CbkEvent<T,R>(classbase, cbk, returncode), signal); }
             template< typename T, typename R, typename J>
-            void callback(const char *signal, R (T::*cbk)(Widget &, J), T *classbase, J data, 
-                          bool returncode = true) 
+            void callback(const char *signal, R (T::*cbk)(Widget &, J), T *classbase, J data,
+                          bool returncode = true)
             { Connect(new CbkEvent<T,R,J>(classbase, cbk, data, returncode), signal); }
 
             // event callbacks...
@@ -373,12 +375,12 @@ oogtk C++ enums.
             void callback(const char *signal, R (T::*cbk)(Event &), T *classbase, bool returncode = true)
             { Connect(new CbkEvent<T,R>(classbase, cbk, returncode), signal); }
             template< typename T, typename R, typename J>
-            void callback(const char *signal, R (T::*cbk)(Event &, J), T *classbase, J data, 
-                          bool returncode = true) 
+            void callback(const char *signal, R (T::*cbk)(Event &, J), T *classbase, J data,
+                          bool returncode = true)
             { Connect(new CbkEvent<T,R,J>(classbase, cbk, data, returncode), signal); }
 
             void Dispose();
-            
+
             void Set(const char *property, gfloat value) {
                 g_object_set(obj_, property, value, NULL);
             }
@@ -399,30 +401,30 @@ oogtk C++ enums.
             void Set(const char *property, void *value) {
                 g_object_set(obj_, property, value, NULL);
             };
-            void Get(const char *property, std::string &value) {
+            void Get(const char *property, std::string &value) const {
                 gchar *v = NULL;   g_object_get(obj_, property, &v, NULL);
-                if (v) { 
+                if (v) {
                     value = v;
                     g_free(v);
                 }
             }
-            void Get(const char *property, void *&value) {
+            void Get(const char *property, void *&value) const {
                 g_object_get(obj_, property, &value, NULL);
             }
-            void Get(const char *property, int &value) {
+            void Get(const char *property, int &value) const {
                 g_object_get(obj_, property, &value, NULL);
             }
-            void Get(const char *property, bool &value) {
+            void Get(const char *property, bool &value) const {
                 gboolean val;
                 g_object_get(obj_, property, &val, NULL);
                 value = val;
             }
-            void Get(const char *property, double &value) {
+            void Get(const char *property, double &value) const {
                 gfloat temp;
                 g_object_get(obj_, property, &temp, NULL);
                 value = temp;
             }
-            void Get(const char *property, gfloat &value) {
+            void Get(const char *property, gfloat &value) const {
                 g_object_get(obj_, property, &value, NULL);
             }
             void Set(const PropertyList &props) {
@@ -443,7 +445,7 @@ oogtk C++ enums.
             }
         protected:
             void Set(GObject *obj) {
-                obj_ = obj; 
+                obj_ = obj;
                 g_object_set_data(obj_, "object", this);
             }
             static Object *ToObject(void *obj) { return (Object *)g_object_get_data(G_OBJECT(obj), "object"); }
@@ -460,13 +462,13 @@ oogtk C++ enums.
             }
         private:
             void add_destroy_cbk() {
-                if (GTK_IS_OBJECT(obj_))
+                if (G_IS_OBJECT(obj_))
                     id_ = g_signal_connect(obj_, "destroy", (void (*)())purge, this);
             }
     };
 
     /** Template class to handle arbitrary properties on Object instances.
-        You can pass a PropertyList to an object through 
+        You can pass a PropertyList to an object through
         Object::Set(const PropertyList &).
        */
     template <typename T>
@@ -484,7 +486,7 @@ oogtk C++ enums.
 
     inline void Object::
     Init(void *obj) {
-        if (obj) {            
+        if (obj) {
             obj_ = (GObject *)obj;
             // we want only to sink references, not to increment them
             if (g_object_is_floating(obj_))
@@ -500,7 +502,7 @@ oogtk C++ enums.
     inline void Object::
     Dispose() {
         if (type_ != ReferenceObj) {
-            if (CbkList *events = (CbkList *) 
+            if (CbkList *events = (CbkList *)
                     g_object_get_data(obj_, "events"))
                 delete events;
 

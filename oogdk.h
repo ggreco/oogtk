@@ -2,6 +2,7 @@
 #define OOGDK_H
 
 #include "ooobj.h"
+#include <sstream>
 
 namespace gtk
 {
@@ -328,8 +329,6 @@ a pointer to it or NULL otherwise.
         unsigned int Type() const { return type; }
     };
 
-    typedef GdkDrawable Drawable;
-
 /** Class that describes an image.
 
 The Pixbuf object contains information that describes an image in memory.
@@ -345,12 +344,14 @@ Image data in a pixbuf is stored in memory in uncompressed, packed format. Rows 
             Pixbuf(GObject *obj) { Init(obj); }
 /// DOXYS_ON
             /** Creates a new pixbuf from a drawable. */
+#if GTK_MAJOR_VERSION < 3
             Pixbuf(const Drawable &drawable) {
                 int w, h;
                 gdk_drawable_get_size(const_cast<Drawable*>(&drawable), &w, &h);
                 Init(gdk_pixbuf_get_from_drawable(NULL, const_cast<Drawable*>(&drawable), gdk_colormap_get_system(), 0, 0, 0, 0, w, h));
                 Internal(true);
             }
+#endif
             /** Creates a new pixbuf copying another pixbuf. */
             Pixbuf(const Pixbuf &rhs) {
                 Init(gdk_pixbuf_copy(rhs));
@@ -403,11 +404,13 @@ an unknown image format.
                 Init(gdk_pixbuf_new(GDK_COLORSPACE_RGB, alpha, depth, width, height));
                 Internal(true);
             }
+#if GTK_MAJOR_VERSION < 3
             GdkPixmap *Pixmap() const {
                 GdkPixmap *p = NULL;
                 gdk_pixbuf_render_pixmap_and_mask(*this, &p, NULL, 0);
                 return p;
             }
+#endif
             /// Creates an exact copy of the Pixmap and returns a reference to it.
             Pixbuf &Copy() const { Pixbuf *b = new Pixbuf((GObject *)gdk_pixbuf_copy(*this)); b->Internal(true); return *b; }
 
