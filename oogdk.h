@@ -5,6 +5,20 @@
 
 namespace gtk
 {
+    // convert an hex color in format #aabbcc (RR GG BB) to a double[3] color (0...1, 0...1, 0...1) suitable for cairo
+    inline bool hex_color(const std::string &src, double *dest) {
+        if (src[0] != '#' && src.length() != 7)
+            return false;
+        std::stringstream ss;
+        ss << std::hex << src.substr(1);
+        uint32_t l;
+        ss >> l;
+        dest[0] = ((double)(l >> 16)) / 255.0;
+        dest[1] = ((double)((l >> 8)&0xff)) / 255.0;
+        dest[2] = ((double)(l&0xff)) / 255.0;
+        return true;
+    }
+
     /// Used in DragContext to indicate what the destination should do with the dropped data.
     enum DragAction {
         ActionDefault = GDK_ACTION_DEFAULT /**< Means nothing, and should not be used. */,
@@ -46,13 +60,13 @@ Like the X Window System, GDK supports 8 modifier keys and 5 mouse buttons.
         /** Creates a new point with (0,0) coordinates */
         Point() : x(0), y(0) {}
         /** Creates a new point with specified coordinates */
-        Point(int xp /**< X coord for the new point */, 
+        Point(int xp /**< X coord for the new point */,
               int yp /**< Y coord for the new point */) : x(xp), y(yp) {}
         /** Returns point X coordinate */
         int X() const { return x; }
         /** Returns point Y coordinate */
         int Y() const { return y; }
-/// DOXYS_OFF        
+/// DOXYS_OFF
         int x, y;
 /// DOXYS_ON
     };
@@ -101,9 +115,9 @@ Align values goes from 0 to 1, where 0 is left, and 1 is right (and 0.5 is cente
 /** A simple object to represent a color */
     struct Color : public GdkColor
     {
-/// DOXYS_OFF        
+/// DOXYS_OFF
         operator const GdkColor *() const { return dynamic_cast<const GdkColor *>(this); }
-/// DOXYS_ON        
+/// DOXYS_ON
         /** Creates a new color from a color definition.
 
 The definition may be a string descripting the color (eg. "white") or
@@ -136,7 +150,7 @@ RGB48 values are used internally by GTK+.
         }
     };
 
-    class FontDesc 
+    class FontDesc
     {
         public:
             operator  PangoFontDescription *() const { return desc_; }
@@ -153,11 +167,11 @@ RGB48 values are used internally by GTK+.
             PangoFontDescription *desc_;
     };
 
-    /** A set of bit-flags to indicate which events a window is to receive. 
+    /** A set of bit-flags to indicate which events a window is to receive.
 
 Most of these masks map onto one or more of the EventType event types above.
 
-PointerMotionHintMask is a special mask which is used to reduce the number of MotionNotify events received. Normally a MotionNotify event is received each time the mouse moves. However, if the application spends a lot of time processing the event (updating the display, for example), it can lag behind the position of the mouse. When using PointerMotionHintMask, fewer MotionNotify events will be sent, some of which are marked as a hint (the is_hint member is true). To receive more motion events after a motion hint event, the application needs to asks for more, by calling gdk_event_request_motions(). 
+PointerMotionHintMask is a special mask which is used to reduce the number of MotionNotify events received. Normally a MotionNotify event is received each time the mouse moves. However, if the application spends a lot of time processing the event (updating the display, for example), it can lag behind the position of the mouse. When using PointerMotionHintMask, fewer MotionNotify events will be sent, some of which are marked as a hint (the is_hint member is true). To receive more motion events after a motion hint event, the application needs to asks for more, by calling gdk_event_request_motions().
 */
     enum EventMask {
         ExposureMask = GDK_EXPOSURE_MASK /**<	receive expose events */,
@@ -184,7 +198,7 @@ PointerMotionHintMask is a special mask which is used to reduce the number of Mo
         AllEventsMask = GDK_ALL_EVENTS_MASK /**<	the combination of all the above event masks. */
     };
 
-    ///  This enumeration describes the different interpolation modes that can be used with the scaling functions. InterpNearest is the fastest scaling method, but has horrible quality when scaling down. InterpBilinear is the best choice if you aren't sure what to choose, it has a good speed/quality balance. 
+    ///  This enumeration describes the different interpolation modes that can be used with the scaling functions. InterpNearest is the fastest scaling method, but has horrible quality when scaling down. InterpBilinear is the best choice if you aren't sure what to choose, it has a good speed/quality balance.
     enum InterpType {
 	    InterpNearest = GDK_INTERP_NEAREST /**< 	Nearest neighbor sampling; this is the fastest and lowest quality mode. Quality is normally unacceptable when scaling down, but may be OK when scaling up. */,
     	InterpTiles = GDK_INTERP_TILES /**< This is an accurate simulation of the PostScript image operator without any interpolation enabled. Each pixel is rendered as a tiny parallelogram of solid color, the edges of which are implemented with antialiasing. It resembles nearest neighbor for enlargement, and bilinear for reduction. */,
@@ -203,18 +217,18 @@ PointerMotionHintMask is a special mask which is used to reduce the number of Mo
     };
 
     struct EventButton : public GdkEventButton {
-        bool IsDoubleClick() const { 
+        bool IsDoubleClick() const {
             return (type == GDK_2BUTTON_PRESS ||
                     type == GDK_3BUTTON_PRESS);
         }
         bool IsLeft() const { return button == 1; }
         bool IsMiddle() const { return button == 2; }
-        bool IsRight() const { 
+        bool IsRight() const {
 #ifdef __APPLE__
             if ((state & GDK_CONTROL_MASK) && button == 1)
                 return true;
 #endif
-            return button == 3; 
+            return button == 3;
         }
         int Button() const { return button; }
         bool IsPress()   const { return type == GDK_BUTTON_PRESS; }
@@ -308,17 +322,17 @@ a pointer to it or NULL otherwise.
             else
                 return NULL;
         }
-/// Returns the GdkWindow that has generated this event        
+/// Returns the GdkWindow that has generated this event
         GdkWindow *Window() const { return window; }
 /// Returns the event type.
         unsigned int Type() const { return type; }
     };
 
     typedef GdkDrawable Drawable;
-    
+
 /** Class that describes an image.
 
-The Pixbuf object contains information that describes an image in memory. 
+The Pixbuf object contains information that describes an image in memory.
 
 Image data in a pixbuf is stored in memory in uncompressed, packed format. Rows in the image are stored top to bottom, and in each row pixels are stored from left to right. There may be padding at the end of a row. The "rowstride" value of a pixbuf, as returned by Pixbuf::Rowstride(), indicates the number of bytes between rows.
 */
@@ -326,7 +340,7 @@ Image data in a pixbuf is stored in memory in uncompressed, packed format. Rows 
     class Pixbuf : public Object
     {
         public:
-/// DOXYS_OFF            
+/// DOXYS_OFF
             operator  GdkPixbuf *() const { return GDK_PIXBUF(Obj()); }
             Pixbuf(GObject *obj) { Init(obj); }
 /// DOXYS_ON
@@ -349,7 +363,7 @@ an exception (std::runtime_error) is thrown. So it's a good policy to wrap your 
 in a try / catch block
 */
             Pixbuf(const std::string &name) {
-                if (GdkPixbuf *b = gdk_pixbuf_new_from_file(name.c_str(), NULL)) 
+                if (GdkPixbuf *b = gdk_pixbuf_new_from_file(name.c_str(), NULL))
                     Init(b);
                 else
                     throw std::runtime_error("Unable to load file " + name);
@@ -362,11 +376,11 @@ This call can thrown an exception (std::runtime_error) if the memory block conta
 an unknown image format.
 
 \note If you use this method in your code you should link your code with gio-2.0, so this method is not available if GTK version is below 2.16.
-*/           
+*/
 #if GTK_MINOR_VERSION > 15
             Pixbuf(int len, const char *data) {
                 GInputStream *s = g_memory_input_stream_new_from_data (data, len, NULL);
-                if (!s) 
+                if (!s)
                     throw std::runtime_error("Unable to allocate input stream");
 
                 GdkPixbuf *b = gdk_pixbuf_new_from_stream(s, NULL, NULL);
@@ -375,39 +389,39 @@ an unknown image format.
 
                 if (!b)
                     throw std::runtime_error("Unable to allocate input stream");
-                
+
                 Init(b);
 
                 Internal(true);
             }
 #endif
-/// Create a new empty pixbuf.            
+/// Create a new empty pixbuf.
             Pixbuf(int width /**< The width of the image in pixels */,
-                   int height /**< The height of the image in pixels */, 
-                   int depth = 32 /**< the depth of the pixmap in bits */, 
+                   int height /**< The height of the image in pixels */,
+                   int depth = 32 /**< the depth of the pixmap in bits */,
                    int alpha = true /**< If the pixmap has or not an alpha channel, defaults to true*/) {
                 Init(gdk_pixbuf_new(GDK_COLORSPACE_RGB, alpha, depth, width, height));
                 Internal(true);
             }
-            GdkPixmap *Pixmap() const { 
+            GdkPixmap *Pixmap() const {
                 GdkPixmap *p = NULL;
                 gdk_pixbuf_render_pixmap_and_mask(*this, &p, NULL, 0);
                 return p;
             }
-            /// Creates an exact copy of the Pixmap and returns a reference to it. 
+            /// Creates an exact copy of the Pixmap and returns a reference to it.
             Pixbuf &Copy() const { Pixbuf *b = new Pixbuf((GObject *)gdk_pixbuf_copy(*this)); b->Internal(true); return *b; }
 
             /// Creates a new pixmap from a Rect of the actual object and returns a reference to it.
             Pixbuf &Sub(const Rect &area) {
                 Pixbuf *b = new Pixbuf((GObject *)
-                        gdk_pixbuf_new_subpixbuf(*this, area.x, area.y, 
-                                                 area.width, area.height)); 
-                b->Internal(true); 
+                        gdk_pixbuf_new_subpixbuf(*this, area.x, area.y,
+                                                 area.width, area.height));
+                b->Internal(true);
                 return *b;
             }
 
             // Save the pixmap to a buffer in the specified format
-            bool Save(std::string &dest /**< A string that will contain the BINARY image */, 
+            bool Save(std::string &dest /**< A string that will contain the BINARY image */,
                       const std::string &format = "png" /**< Destination image format, defaults to png, available formats: png, jpeg, bmp, ico */) {
                 gboolean rc;
                 gchar *buffer;
@@ -437,14 +451,14 @@ an unknown image format.
             }
 
             /// Scale the pixmap to a destination Pixmap object.
-            void Scale(Pixbuf &dest /**< the GdkPixbuf into which to render the results  */, 
-                       Rect &destarea /**< A rectangle specifying the destination region to render*/, 
-                       double scale_x /**< the scale factor in the X direction  */, 
-                       double scale_y /**< the scale factor in the Y direction */, 
+            void Scale(Pixbuf &dest /**< the GdkPixbuf into which to render the results  */,
+                       Rect &destarea /**< A rectangle specifying the destination region to render*/,
+                       double scale_x /**< the scale factor in the X direction  */,
+                       double scale_y /**< the scale factor in the Y direction */,
                        InterpType interpolation = InterpNearest /**< the interpolation type for the transformation. */,
-                       double offset_x = 0.0  /**< the offset in the X direction, currently rounded to an integer */, 
+                       double offset_x = 0.0  /**< the offset in the X direction, currently rounded to an integer */,
                        double offset_y = 0.0  /**< 	 the offset in the Y direction, currently rounded to an integer */) {
-                gdk_pixbuf_scale(*this, dest, destarea.x, destarea.y, 
+                gdk_pixbuf_scale(*this, dest, destarea.x, destarea.y,
                                               destarea.width, destarea.height,
                                  offset_x, offset_y, scale_x, scale_y,
                                  (GdkInterpType)interpolation);
@@ -462,10 +476,10 @@ an unknown image format.
             Point Size() const { return Point(width(), height()); }
 
             /// Copy an area of the Pixmap to a destination object.
-            void CopyArea(const Rect &area /**< A rectangle rapresenting the source Pixmap area to copy */, 
-                          Pixbuf &dest /**< The destination Pixmap for the operation */, 
+            void CopyArea(const Rect &area /**< A rectangle rapresenting the source Pixmap area to copy */,
+                          Pixbuf &dest /**< The destination Pixmap for the operation */,
                           const Point &position /**< The position where to copy the source rectangle in the destination Pixmap */) {
-                gdk_pixbuf_copy_area(*this, area.x, area.y, 
+                gdk_pixbuf_copy_area(*this, area.x, area.y,
                                             area.width, area.height,
                                       dest, position.x, position.y);
             }
@@ -475,7 +489,7 @@ an unknown image format.
             /// Flips a pixmap.
             void Flip(bool horizontal = true) { gdk_pixbuf_flip(*this, horizontal); }
 
-/** Saves pixbuf to a file in format type. 
+/** Saves pixbuf to a file in format type.
 
 By default, "jpeg", "png", "ico" and "bmp" are possible file formats to save in, but more formats may be installed. If "type" is not specified the image is saved as PNG.
 

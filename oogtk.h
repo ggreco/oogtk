@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <stdint.h>
 #include "oogdk.h"
+#include <mutex>
 
 namespace gtk
 {
@@ -1032,6 +1033,10 @@ The characters that are selected are those characters at positions from start_po
                     ) {
                 gtk_editable_select_region(GTK_EDITABLE(Obj()), start_pos, end_pos);
             }
+            /** Unselect the text. */
+            void Unselect() {
+                gtk_editable_select_region(GTK_EDITABLE(Obj()), 0, 0);
+            }
             /** Gets the current selection bounds, if there is a selection.
              \return true if there is a selection and the argument has been filled.
              */
@@ -1610,6 +1615,8 @@ can pass a pointer to an object or a simple object, also if not PoD).
             }
 
             void DelSource(CbkId id) {
+                std::unique_lock<std::mutex> lock(mtx());
+
                 CbkIt it = Callbacks().find(id);
 
                 if (it != Callbacks().end()) {
@@ -1631,10 +1638,12 @@ can pass a pointer to an object or a simple object, also if not PoD).
 
 
         private:
+            static std::mutex &mtx() { static std::mutex m; return m; }
             static CbkMap &Callbacks() { static CbkMap objects; return objects; }
             static ChannelMap &Channels() { static ChannelMap channels; return channels; }
 
             CbkId AddKeySnooper(AbstractCbk *cbk) {
+                std::unique_lock<std::mutex> lock(mtx());
                 int id = gtk_key_snooper_install((gint (*)(GtkWidget*, GdkEventKey*, void*))
                                                  AbstractCbk::real_callback_2, cbk);
                 Callbacks().insert(CbkMap::value_type(id, cbk));
@@ -1642,17 +1651,21 @@ can pass a pointer to an object or a simple object, also if not PoD).
             }
 
             CbkId AddIdle(AbstractCbk *cbk) {
+                std::unique_lock<std::mutex> lock(mtx());
                 int id = g_idle_add((gboolean (*)(void*))AbstractCbk::real_callback_0, cbk);
                 Callbacks().insert(CbkMap::value_type(id, cbk));
                 return id;
             }
             CbkId AddTimer(AbstractCbk *cbk, int msec) {
+                std::unique_lock<std::mutex> lock(mtx());
                 int id = g_timeout_add(msec, (gboolean (*)(void*))AbstractCbk::real_callback_0, cbk);
                 Callbacks().insert(CbkMap::value_type(id, cbk));
                 return id;
             }
 
             CbkId AddSocket(AbstractCbk *cbk, SockFd fd, SocketCondition cond) {
+                std::unique_lock<std::mutex> lock(mtx());
+
                 GIOChannel *ch = FindChannel(fd);
 
                 if (!ch) {
@@ -1672,6 +1685,8 @@ can pass a pointer to an object or a simple object, also if not PoD).
                 return id;
             }
             GIOChannel *FindChannel(SockFd fd) {
+                std::unique_lock<std::mutex> lock(mtx());
+
                 for (ChannelIt it = Channels().begin(); it != Channels().end(); ++it)
                     if (fd == g_io_channel_unix_get_fd((it->second)))
                         return it->second;
@@ -2048,7 +2063,9 @@ namespace gtk {
                 return new HSeparator(o);
             } else if (GTK_IS_VSEPARATOR(o)) {
                 return new VSeparator(o);
-            }else
+            } else if (GTK_IS_CLIPBOARD(o)) {
+                return new Clipboard(o);
+            } else
                 std::cerr << "Undefined type " << g_type_name(GTK_OBJECT_TYPE(o)) << '\n';
         }
 
