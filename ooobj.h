@@ -277,7 +277,7 @@ oogtk C++ enums.
                 if (obj_) {
 #ifdef OOGTK_DEBUG
                 std::cerr << "Destructor for " << (void *)obj_ << " type:"
-                          << g_type_name(GTK_OBJECT_TYPE(obj_))
+                          << g_type_name(G_OBJECT_TYPE(obj_))
                           << " references: " << obj_->ref_count << std::endl;
 #endif
 
@@ -456,7 +456,7 @@ oogtk C++ enums.
             static void purge(GObject *obj, Object *d) {
 #ifdef OOGTK_DEBUG
                 std::cerr << "Purge called for " << (void *)obj << " type:"
-                          << g_type_name(GTK_OBJECT_TYPE(obj)) << std::endl;
+                          << g_type_name(G_OBJECT_TYPE(obj)) << std::endl;
 #endif
                 d->Dispose();
             }
