@@ -1,3 +1,14 @@
 *.dYSM
 .vscode
-
+testbuilder
+testbutton
+testcbks
+testdialog
+testinline
+testnoapp
+testobjects
+testsocket
+testtext
+testtree
+testuimanager
+testwrapper
