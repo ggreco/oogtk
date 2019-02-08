@@ -500,7 +500,7 @@ All children are allocated the same height.
             }
             /** Creates a new homogeneous HBox, with no spacing and two children. */
             HBox(const Widget &w1, const Widget &w2) {
-                Init(gtk_hbox_new(false, 0)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
             }
@@ -665,30 +665,6 @@ The spacing between buttons can be set with Box::Spacing(). The arrangement and 
             }
     };
 
-/** An alignment control widget
-The Alignment widget controls the alignment and size of its child widget. It has four settings: xscale, yscale, xalign, and yalign.
-
-The scale settings are used to specify how much the child widget should expand to fill the space allocated to the Alignment. The values can range from 0 (meaning the child doesn't expand at all) to 1 (meaning the child expands to fill all of the available space).
-
-The align settings are used to place the child widget within the available area. The values range from 0 (top or left) to 1 (bottom or right). Of course, if the scale settings are both set to 1, the alignment settings have no effect.
-*/
-    class Alignment : public Bin { // COMPLETE API
-        public:
-/// DOXYS_OFF
-            operator  GtkAlignment *() const { return GTK_ALIGNMENT(Obj()); }
-
-            Alignment(GObject *obj) { Init(obj); }
-/// DOXYS_ON
-            /// Creates a new Alignment object.
-            Alignment(float xalign /**< the horizontal alignment of the child widget, from 0 (left) to 1 (right). */,
-                      float yalign /**< the vertical alignment of the child widget, from 0 (top) to 1 (bottom).*/,
-                      float xscale /**< the amount that the child widget expands horizontally to fill up unused space, from 0 to 1. A value of 0 indicates that the child widget should never expand. A value of 1 indicates that the child widget will expand to fill all of the space allocated for the GtkAlignment. */,
-                      float yscale /**< the amount that the child widget expands vertically to fill up unused space, from 0 to 1. The values are similar to xscale.) */) {
-                Init(gtk_alignment_new(xalign, yalign, xscale, yscale));
-                Internal(true);
-            }
-    };
-
 /** A tabbed notebook container
 The Notebook widget is a Container whose children are pages that can be switched between using tab labels along one edge.
 
@@ -820,66 +796,48 @@ This member returns a reference to the Widget of the active page of the Notebook
         return (AttachOptions)(((int)a)|((int)b));
     }
 
-/** The Table object allow the programmer to arrange widgets in rows and columns, making it easy to align many widgets next to each other, horizontally and vertically.
+    /// Describes which edge of a widget a certain feature is positioned at, e.g. the tabs of a gtk::Notebook, the handle of a gtk::HandleBox or the label of a gtk::Scale.
+    enum PositionType
+    {
+      PosLeft = GTK_POS_LEFT /**< The feature is at the left edge. */,
+      PosRight = GTK_POS_RIGHT /**< The feature is at the right edge. */,
+      PosTop = GTK_POS_TOP /**< The feature is at the top edge.*/,
+      PosBottom = GTK_POS_BOTTOM /**< The feature is at the bottom edge. */
+    };
 
-The size of a table can later be changed with Table::Resize().
+/** Grid is a container which arranges its child widgets in rows and columns, with arbitrary positions and horizontal/vertical spans.
 
-Widgets can be added to a table using Table::Attach().
+Children are added using Grid::Attach(). They can span multiple rows or columns. It is also possible to add a child next to an existing child, using Grid::AttachNextTo(). The behaviour of Grid when several children occupy the same grid cell is undefined.
 
-To alter the space next to a specific row, use Table::RowSpacing(int, int), and for a column, Table::ColSpacing(int, int).
-
-The gaps between all rows or columns can be changed by calling Table::RowSpacing(int, int) or Table::ColSpacing(int, int) respectively without specifying the row parameter, you can also change row and columns spacing at once with a call to Table::Spacing(int).
-
-Table::Homogeneous(bool), can be used to set whether all cells in the table will resize themselves to the size of the largest widget in the table.
+Grid can be used like a Box by just using Container::Add(), which will place children next to each other in the direction determined by the “orientation” property. However, if all you want is a single row or column, then Box is the preferred widget.
 */
-    class Table : public Container { // COMPLETE API
+    class Grid : public Container { // COMPLETE API
         public:
 /// DOXYS_OFF
-            operator  GtkTable *() const { return GTK_TABLE(Obj()); }
+            operator  GtkGrid *() const { return GTK_GRID(Obj()); }
 
-            Table(GObject *obj) { Init(obj); }
+            Grid(GObject *obj) { Init(obj); }
 /// DOXYS_ON
-/** Create a new table widget.
-
-An initial size must be given by specifying how many rows and columns the table should have, although this can be changed later with Table::Resize(). rows and columns must both be in the range 0 .. 65535.
-*/
-            Table(int rows /**< The number of rows the new table should have. */,
-                  int columns /**< The number of columns the new table should have. */,
-                  bool homogeneous = false /**< If set to TRUE, all table cells are resized to the size of the cell containing the largest widget, defaults to false. */) {
-                Init(gtk_table_new(rows, columns, homogeneous));
+/// Creates a new grid widget.
+            Grid(bool homogeneous = false /**< If set to TRUE, all table cells are resized to the size of the cell containing the largest widget, defaults to false. */) {
+                Init(gtk_grid_new());
+                gtk_grid_set_row_homogeneous(*this, homogeneous);
+                gtk_grid_set_column_homogeneous(*this, homogeneous);
                 Internal(true);
             }
-
-/** Change the size of a Table.
-
-If you need to change a table's size after it has been created, this method allows you to do so.
-*/
-            void Resize(int rows /**< The new number of rows. */,
-                        int columns /**< The new number of columns. */
-                        ) { gtk_table_resize(*this, rows, columns); }
-
-            /// Returns the number of rows and columns in the table.
-            /// \return a Point cointaining the number of columns in Point:x and the number of rows in Point:y
-            Point Size() const { guint r, c; gtk_table_get_size(*this, &r, &c); return Point(c,r); }
 
             void Spacing(int space) {
                 RowSpacing(space);
                 ColSpacing(space);
             }
 
-            //Sets the space between two columns or every column in table equal to spacing.
-            void RowSpacing(int space/**<number of pixels that the spacing should take up.*/,
-                            int row = -1 /**<row number whose spacing will be changed, if not specified the spacing is applied to all rows */) {
-                if (row > -1)
-                    gtk_table_set_row_spacing(*this, row, space);
-                else
-                    gtk_table_set_row_spacings(*this, space);
+            /// Sets the amount of space between rows of grid .
+            void RowSpacing(int space/**<number of pixels that the spacing should take up.*/) {
+                gtk_grid_set_row_spacing(*this, space);
             }
-            int RowSpacing(int row = -1) const {
-                if (row == -1)
-                    return gtk_table_get_default_row_spacing(*this);
-                else
-                    return gtk_table_get_row_spacing(*this, row);
+            /// Returns the amount of space between the rows of grid .
+            int RowSpacing() const {
+                return gtk_grid_get_row_spacing(*this);
             }
 /** Adds a widget to a table.
 
@@ -889,39 +847,63 @@ The number of 'cells' that a widget will occupy is specified by left_attach, rig
                         int left /**< the column number to attach the left side of a child widget to.  */,
                         int top /**< the row number to attach the top of a child widget to. */,
                         int right = -1 /**< the column number to attach the right side of a child widget to, if not specified or -1 defaults to left + 1. */,
-                        int bottom = -1 /**< 	the row number to attach the bottom of a child widget to, if not specified or -1 defaults to top + 1 */,
-                        AttachOptions xoptions = (Expand|Fill) /**< Used to specify the properties of the child widget when the table is resized, defaults to AttachOptions::Expand and AttachOptions::Fill. */,
-                        AttachOptions yoptions = (Expand|Fill) /**< The same as xoptions, except this field determines behaviour of vertical resizing, defaults to AttachOptions::Expand and AttachOptions::Fill.*/,
-                        int xpadding = 0 /**< An integer value specifying the padding on the left and right of the widget being added to the table. */,
-                        int ypadding = 0 /**< The amount of padding above and below the child widget. */
-                        ) {
-                gtk_table_attach(*this, child,
-                        left, right != -1 ? right : left + 1, top, bottom != -1 ? bottom : top + 1,
-                        (GtkAttachOptions)xoptions, (GtkAttachOptions)yoptions, xpadding, ypadding);
+                        int bottom = -1 /**< 	the row number to attach the bottom of a child widget to, if not specified or -1 defaults to top + 1 */) {
+                gtk_grid_attach(*this, child,
+                        left, right != -1 ? right : left + 1, top, bottom != -1 ? bottom : top + 1);
             }
 
             //Sets the space between two rows or every row in table equal to spacing.
-            void ColSpacing(int space/**<number of pixels that the spacing should take up.*/,
-                            int column = -1/**<column number whose spacing will be changed, if not specified the spacing is applied to all columns */) {
-                if (column > -1)
-                    gtk_table_set_col_spacing(*this, column, space);
-                else
-                    gtk_table_set_col_spacings(*this, space);
+            void ColSpacing(int space/**<number of pixels that the spacing should take up.*/) {
+                gtk_grid_set_column_spacing(*this, space);
             }
-            int ColSpacing(int column = -1) const {
-                if (column == -1)
-                    return gtk_table_get_default_col_spacing(*this);
-                else
-                    return gtk_table_get_col_spacing(*this, column);
+            int ColSpacing() const {
+                return gtk_grid_get_column_spacing(*this);
             }
 
-            /// Changes the homogenous property of table cells, ie. whether all cells are an equal size or not.
-            void Homogeneous(bool flag /**< Set to true to ensure all table cells are the same size. Set to false if this is not your desired behaviour. */
-                    ) { gtk_table_set_homogeneous(*this, flag); }
-            /// Returns whether the table cells are all constrained to the same width and height.
-            /// \sa Table::Homogeneous(bool)
-            /// \return true if the cells are all constrained to the same size
-            bool Homogeneous() const { return gtk_table_get_homogeneous(*this); }
+            /// Changes the homogenous property of grid cells, ie. whether all cells are an equal size or not.
+            void Homogeneous(bool homogeneous /**< Set to true to ensure all table cells are the same size. Set to false if this is not your desired behaviour. */
+                    ) {
+                gtk_grid_set_row_homogeneous(*this, homogeneous);
+                gtk_grid_set_column_homogeneous(*this, homogeneous);
+            }
+            /// Returns whether the grid cells are all constrained to the same height.
+            /// \return true if the cells are all constrained to the same height
+            bool RowHomogeneous() const {
+                return gtk_grid_get_row_homogeneous(*this);
+            }
+            /// Returns whether the grid cells are all constrained to the same width.
+            /// \return true if the cells are all constrained to the same width
+            bool ColumnHomogeneous() const {
+                return gtk_grid_get_column_homogeneous(*this);
+            }
+            /// Gets the child of grid whose area covers the grid cell whose upper left corner is at left , top
+            Widget *ChildAt(int left, int top) {
+                if (GObject *w = (GObject*)gtk_grid_get_child_at(*this, left, top))
+                    return dynamic_cast<Widget *>(Find(w));
+                return nullptr;
+            }
+            /// Inserts a row at the specified position.
+            void InsertRow(int pos) { gtk_grid_insert_row(*this, pos); }
+            /// Inserts a column at the specified position.
+            void InsertColumn(int pos) { gtk_grid_insert_column(*this, pos); }
+            /// Removes a row from the grid.
+            void RemoveRow(int pos) { gtk_grid_remove_row(*this, pos); }
+            /// Removes a column from the grid.
+            void RemoveColumn(int pos) { gtk_grid_remove_column(*this, pos); }
+            /** Adds a widget to the grid.
+
+The widget is placed next to sibling , on the side determined by side . When sibling is NULL, the widget is placed in row (for left or right placement) or column 0 (for top or bottom placement), at the end indicated by side .
+
+Attaching widgets labeled [1], [2], [3] with sibling == NULL and side == GTK_POS_LEFT yields a layout of 3[1].
+            */
+           void AttachNextTo(const Widget &child /**< the widget to add */,
+                             const Widget *sibling /**< the child of grid that child will be placed next to, or nullptr to place child at the beginning or end. */,
+                             PositionType side /**< the side of sibling that child is positioned next to */,
+                             int width /**< the number of columns that child will span */,
+                             int height /**< the number of rows that child will span */
+                             ) {
+                gtk_grid_attach_next_to(*this, child, sibling ? GTK_WIDGET(sibling->Obj()) : nullptr, (GtkPositionType)side, width, height);
+            }
     };
 
     enum ShadowType

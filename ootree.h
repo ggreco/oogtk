@@ -1225,8 +1225,6 @@ This API appends a new TreeViewColumn to the TreeView, the column is in text for
             void HeadersClickable(bool flag) const { gtk_tree_view_set_headers_clickable(*this, flag); }
             bool HeadersVisible() const { return gtk_tree_view_get_headers_visible(*this); }
             void HeadersVisible(bool flag) const { gtk_tree_view_set_headers_visible(*this, flag); }
-            bool RulesHint() const { return gtk_tree_view_get_rules_hint(*this); }
-            void RulesHint(bool flag) { gtk_tree_view_set_rules_hint(*this, flag); }
 
             int  LevelIndentation() const { return gtk_tree_view_get_level_indentation(*this); }
             void LevelIndentation(int pixels) { gtk_tree_view_set_level_indentation(*this, pixels); }
@@ -1495,9 +1493,6 @@ This function is mostly intended for use by accessibility technologies; applicat
 This function is mostly intended for use by accessibility technologies; applications should have little use for it.
 */
             void Popdown() { gtk_combo_box_popdown(*this); }
-
-            bool FocusOnClick() const { return gtk_combo_box_get_focus_on_click(*this); }
-            void FocusOnClick(bool flag) { gtk_combo_box_set_focus_on_click(*this, flag); }
 
             void AddTextColumn(int id, bool expand = true) {
                 CellRendererText txt;

@@ -286,46 +286,6 @@ The SeparatorMenuItem is a separator used to group items within a menu. It displ
             }
     };
 
-    /** A menu item with an icon.
-A ImageMenuItem is a menu item which has an icon next to the text label.
-
-Note that the user can disable display of menu icons, so make sure to still fill in the text label.
-     */
-    class ImageMenuItem : public MenuItem
-    {
-        public:
-/// DOXYS_OFF
-            operator GtkImageMenuItem *() const { return GTK_IMAGE_MENU_ITEM(Obj()); }
-            ImageMenuItem(GObject *obj) : MenuItem(DerivedType()) { Init(obj); }
-/// DOXYS_ON
-/** Create a new ImageMenuItem, stock_id may be the ID of a stock item (for instance GTK_STOCK_OK or GTK_STOCK_APPLY), or a label for the item, you may also construct the object without parameters and add a label and an image yourself.
- */
-            ImageMenuItem(const std::string &stock_id = "") : MenuItem(DerivedType()) {
-                GtkStockItem item;
-                if (!stock_id.empty()) {
-                    if (gtk_stock_lookup(stock_id.c_str(), &item))
-                        Init(gtk_image_menu_item_new_from_stock(stock_id.c_str(), NULL));
-                    else
-                        Init(gtk_image_menu_item_new_with_label(stock_id.c_str()));
-                }
-                else
-                    Init(gtk_image_menu_item_new());
-                Internal(true);
-            }
-            /** Sets the image of image_menu_item to the given widget. Note that it depends on the show-menu-images setting whether the image will be displayed or not.
-             */
-            void Set(Widget &image /**< a widget to set as the image for the menu item. */) {
-                gtk_image_menu_item_set_image(*this, image);
-            }
-            /** Gets the widget that is currently set as the image of image_menu_item.
-            \return the widget set as image of image_menu_item, NULL if none.
-            */
-            Widget *Get() {
-                return dynamic_cast<Widget *>(
-                        Object::Find((GObject *)gtk_image_menu_item_get_image(*this)));
-            }
-    };
-
     /** A menu item with a check box
 A CheckMenuItem is a menu item that maintains the state of a boolean value in addition to a MenuItem's usual role in activating application code.
 

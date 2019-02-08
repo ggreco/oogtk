@@ -392,6 +392,11 @@ This function is only useful in widget implementations. Causes a widget to be un
             */
             bool HasFocus() const { return gtk_widget_has_focus(*this); }
 
+            /// Returns whether the widget should grab focus when it is clicked with the mouse.
+            bool FocusOnClick() const { return gtk_widget_get_focus_on_click(*this); }
+            /** Sets whether the widget should grab focus when it is clicked with the mouse.
+             * Making mouse clicks not grab focus is useful in places like toolbars where you don’t want the keyboard focus removed from the main area of the application. */
+            void FocusOnClick(bool flag /**< whether the widget should grab focus when clicked with the mouse */) { gtk_widget_set_focus_on_click(*this, flag); }
 #if 0
             /// Sets Pixbuf as background image for this widget
             void BackImage(const Pixbuf &pix) {
@@ -1925,8 +1930,6 @@ namespace gtk {
                 return new Window(o);
             } else if (GTK_IS_CHECK_MENU_ITEM(o)) { // menu handling
                 return new CheckMenuItem(o);
-            } else if (GTK_IS_IMAGE_MENU_ITEM(o)) {
-                return new ImageMenuItem(o);
             } else if (GTK_IS_SEPARATOR_MENU_ITEM(o)) {
                 return new SeparatorMenuItem(o);
             } else if (GTK_IS_MENU_ITEM(o)) {
@@ -2032,8 +2035,8 @@ namespace gtk {
 #endif
             } else if (GTK_IS_DRAWING_AREA(o)) {
                 return new DrawingArea(o);
-            } else if (GTK_IS_TABLE(o)) {
-                return new Table(o);
+            } else if (GTK_IS_GRID(o)) {
+                return new Grid(o);
             } else if (GTK_IS_LABEL(o)) {
                 return new Label(o);
             } else if (GTK_IS_FILE_FILTER(o)) { // file filter for FileChooser widget
@@ -2047,8 +2050,6 @@ namespace gtk {
                     return new HPaned(o);
                 else
                     return new VPaned(o);
-            } else if (GTK_IS_ALIGNMENT(o)) {
-                return new Alignment(o);
             } else if (GTK_IS_ACTION_GROUP(o)) {
                 return new ActionGroup(o);
             } else if (GTK_IS_ACTION(o)) {

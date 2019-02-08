@@ -12,15 +12,6 @@ namespace gtk {
         ReliefNone = GTK_RELIEF_NONE /**< No relief. */
     };
 
-    /// Describes which edge of a widget a certain feature is positioned at, e.g. the tabs of a gtk::Notebook, the handle of a gtk::HandleBox or the label of a gtk::Scale.
-    enum PositionType
-    {
-      PosLeft = GTK_POS_LEFT /**< The feature is at the left edge. */,
-      PosRight = GTK_POS_RIGHT /**< The feature is at the right edge. */,
-      PosTop = GTK_POS_TOP /**< The feature is at the top edge.*/,
-      PosBottom = GTK_POS_BOTTOM /**< The feature is at the bottom edge. */
-    };
-
 /** Range is the common base class for widgets which visualize an adjustment, e.g scales or scrollbars.
 
 Apart from signals for monitoring the parameters of the adjustment, Range provides properties and methods for influencing the sensitivity of the "steppers". It also provides properties and methods for setting a "fill level" on range widgets. See Range::FillLevel(double).
@@ -77,9 +68,12 @@ The step size is used when the user clicks the Scrollbar arrows or moves Scale v
                 gtk_range_get_slider_range(*this, &slider_start, &slider_end);
             }
             /// Sets the minimum size of the range's slider.
-            void MinSliderSize(int min_size /**< The slider minimum size in pixels */) { gtk_range_set_min_slider_size(*this, min_size); }
+            void MinSliderSize(int min_size /**< The slider minimum size in pixels */) {
+                Set("min-width", min_size);
+                Set("min-height", min_size);
+            }
             /// This function is useful mainly for Range subclasses. See Range::MinSliderSize(int) for more info.
-            int MinSliderSize() const { return gtk_range_get_min_slider_size (*this); }
+            int MinSliderSize() const { int width; Get("min-width", width); return width; }
             /// Gets the value set by Range::Flippable(bool).
             bool Flippable() const { return gtk_range_get_flippable(*this); }
             /// If a range is flippable, it will switch its direction if it is horizontal and its direction is GTK_TEXT_DIR_RTL.
