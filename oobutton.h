@@ -15,19 +15,19 @@ namespace gtk {
     /// Describes which edge of a widget a certain feature is positioned at, e.g. the tabs of a gtk::Notebook, the handle of a gtk::HandleBox or the label of a gtk::Scale.
     enum PositionType
     {
-      PosLeft = GTK_POS_LEFT /**< The feature is at the left edge. */, 
-      PosRight = GTK_POS_RIGHT /**< The feature is at the right edge. */, 
+      PosLeft = GTK_POS_LEFT /**< The feature is at the left edge. */,
+      PosRight = GTK_POS_RIGHT /**< The feature is at the right edge. */,
       PosTop = GTK_POS_TOP /**< The feature is at the top edge.*/,
       PosBottom = GTK_POS_BOTTOM /**< The feature is at the bottom edge. */
     };
 
 /** Range is the common base class for widgets which visualize an adjustment, e.g scales or scrollbars.
 
-Apart from signals for monitoring the parameters of the adjustment, Range provides properties and methods for influencing the sensitivity of the "steppers". It also provides properties and methods for setting a "fill level" on range widgets. See Range::FillLevel(double).   
+Apart from signals for monitoring the parameters of the adjustment, Range provides properties and methods for influencing the sensitivity of the "steppers". It also provides properties and methods for setting a "fill level" on range widgets. See Range::FillLevel(double).
 */
     class Range : public Widget
     {
-        public: 
+        public:
 /// DOXYS_OFF
             operator  GtkRange *() const { return GTK_RANGE(Obj()); }
 
@@ -51,14 +51,14 @@ Additionally, it's possible to restrict the range's slider position to values wh
             void RestrictToFillLevel(bool flag) { gtk_range_set_restrict_to_fill_level(*this, flag); }
             /// Gets whether the range displays the fill level graphically.
             bool ShowFillLevel() const { return gtk_range_get_show_fill_level(*this); }
-            /// Sets whether a graphical fill level is show on the trough. 
+            /// Sets whether a graphical fill level is show on the trough.
             void ShowFillLevel(bool flag) { gtk_range_set_show_fill_level(*this, flag); }
             /// Gets the value set by Range::Inverted(bool).
             bool Inverted() const { return gtk_range_get_inverted(*this); }
             /// Ranges normally move from lower to higher values as the slider moves from top to bottom or left to right. Inverted ranges have higher values at the top or on the right rather than on the bottom or left.
             void Inverted(bool flag) { gtk_range_set_inverted(*this, flag); }
-            /** Sets the step and page sizes for the range. 
-              
+            /** Sets the step and page sizes for the range.
+
 The step size is used when the user clicks the Scrollbar arrows or moves Scale via arrow keys. The page size is used for example when moving via Page Up or Page Down keys.
 */
             void Increments(double step, double page) { gtk_range_set_increments(*this, step, page); }
@@ -89,15 +89,17 @@ The step size is used when the user clicks the Scrollbar arrows or moves Scale v
             BUILD_VOID_EVENT(OnChanged, "value-changed");
     };
 
-/** A Scale is a slider control used to select a numeric value. 
-  
+/** A Scale is a slider control used to select a numeric value.
+
 To use it, you'll probably want to investigate the methods on its base class, Range, in addition to the methods for Scale itself. To set the value of a scale, you would normally use Range::Value(double). To detect changes to the value, you would normally use the "value_changed" signal.
 
 The Scale widget is an abstract class, used only for deriving the subclasses HScale and VScale. To create a scale widget, call HScale::HScale() or VScale::VScale().
 */
-    class Scale : public Range
+    class Scale : public Range, public Orientable
     {
-        public: 
+        protected:
+            GtkOrientable *getorobj() const { return GTK_ORIENTABLE(Obj()); }
+        public:
 /// DOXYS_OFF
             operator  GtkScale *() const { return GTK_SCALE(Obj()); }
 
@@ -114,7 +116,7 @@ The Scale widget is an abstract class, used only for deriving the subclasses HSc
             bool DrawValue() const { return gtk_scale_get_draw_value(*this); }
     };
 
-/** The HScale widget is used to allow the user to select a value using a horizontal slider. 
+/** The HScale widget is used to allow the user to select a value using a horizontal slider.
 
 The position to show the current value, and the number of decimal places shown can be set using the parent Scale and Range class's functions.
 */
@@ -122,23 +124,21 @@ The position to show the current value, and the number of decimal places shown c
     {
         public:
 /// DOXYS_OFF
-            operator  GtkHScale *() const { return GTK_HSCALE(Obj()); }
-
             HScale(GObject *obj) : Scale(DerivedType()) { Init(obj); }
-/// DOXYS_ON        
+/// DOXYS_ON
             /** Creates a new horizontal scale widget that lets the user input a number between min and max (including min and max) with the increment step. step must be nonzero; it's the distance the slider moves when using the arrow keys to adjust the scale value.
 
 Note that the way in which the precision is derived works best if step is a power of ten. If the resulting precision is not suitable for your needs, use Scale::Digits(unsigned int) to correct it.
 */
             HScale(double vmin /**< minimum value */,
                    double vmax /**< maximum value */,
-                   double step /**< step increment (tick size) used with keyboard shortcuts */) : Scale(DerivedType()) { 
-                Init(gtk_hscale_new_with_range(vmin, vmax, step)); 
-                Internal(true); 
+                   double step /**< step increment (tick size) used with keyboard shortcuts */) : Scale(DerivedType()) {
+                Init(gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, vmin, vmax, step));
+                Internal(true);
             }
     };
 
-/** The VScale widget is used to allow the user to select a value using a vertical slider. 
+/** The VScale widget is used to allow the user to select a value using a vertical slider.
 
 The position to show the current value, and the number of decimal places shown can be set using the parent Scale and Range class's functions.
 */
@@ -146,30 +146,28 @@ The position to show the current value, and the number of decimal places shown c
     {
         public:
 /// DOXYS_OFF
-            operator  GtkVScale *() const { return GTK_VSCALE(Obj()); }
-
             VScale(GObject *obj) : Scale(DerivedType()) { Init(obj); }
-/// DOXYS_ON        
+/// DOXYS_ON
             /** Creates a new vertical scale widget that lets the user input a number between min and max (including min and max) with the increment step. step must be nonzero; it's the distance the slider moves when using the arrow keys to adjust the scale value.
 
 Note that the way in which the precision is derived works best if step is a power of ten. If the resulting precision is not suitable for your needs, use Scale::Digits(unsigned int) to correct it.
 */
             VScale(double vmin /**< minimum value */,
                    double vmax /**< maximum value */,
-                   double step /**< step increment (tick size) used with keyboard shortcuts */) : Scale(DerivedType()) { 
-                Init(gtk_vscale_new_with_range(vmin, vmax, step)); 
-                Internal(true); 
+                   double step /**< step increment (tick size) used with keyboard shortcuts */) : Scale(DerivedType()) {
+                Init(gtk_scale_new_with_range(GTK_ORIENTATION_VERTICAL, vmin, vmax, step));
+                Internal(true);
             }
     };
 
     /** A widget that creates a signal when clicked on
 The Button widget is generally used to attach a function to that is called when the button is pressed. The various signals and how to use them are outlined below.
 
-The Button widget can hold any valid child widget. That is it can hold most any other standard Widget. The most commonly used child is the Label. 
+The Button widget can hold any valid child widget. That is it can hold most any other standard Widget. The most commonly used child is the Label.
 */
     class Button : public Bin
     {
-        public: 
+        public:
 /// DOXYS_OFF
             operator  GtkButton *() const { return GTK_BUTTON(Obj()); }
 
@@ -196,7 +194,7 @@ The Button widget can hold any valid child widget. That is it can hold most any 
             /** Returns the current relief style of the given gtk::Button.
              \return The current gtk::ReliefStyle used by the button.
              */
-            ReliefStyle Relief() const { 
+            ReliefStyle Relief() const {
                 return (ReliefStyle)gtk_button_get_relief(*this);
             }
 
@@ -249,10 +247,10 @@ The Button widget can hold any valid child widget. That is it can hold most any 
                 return (PositionType)gtk_button_get_image_position(*this);
             }
 
-            /** if true, an underline in the text of the button label indicates the next character should be used for the mnemonic accelerator key. 
+            /** if true, an underline in the text of the button label indicates the next character should be used for the mnemonic accelerator key.
              */
-            void Underline(bool flag /** true if underlines in the text indicate mnemonics*/) { 
-                gtk_button_set_use_underline(*this, flag); 
+            void Underline(bool flag /** true if underlines in the text indicate mnemonics*/) {
+                gtk_button_set_use_underline(*this, flag);
             }
             /** Returns whether an embedded underline in the button label indicates a mnemonic.
              \return true if underlines in the text indicate mnemonics
@@ -284,9 +282,9 @@ The Button widget can hold any valid child widget. That is it can hold most any 
     {
         public:
             StockButton(const char *id ///< stock id for the button.
-                                         ) : Button(DerivedType()) { 
-                Init(gtk_button_new_from_stock(id)); 
-                Internal(true); 
+                                         ) : Button(DerivedType()) {
+                Init(gtk_button_new_from_stock(id));
+                Internal(true);
             }
     };
 
@@ -319,7 +317,7 @@ The state of a ToggleButton can be set specifically using ToggleButton::Active(b
             }
 
             /** Queries a ToggleButton and returns its current state. Returns true if the toggle button is pressed in and false if it is raised.
-             \return a boolean value. 
+             \return a boolean value.
              */
             bool Active() const { return gtk_toggle_button_get_active(*this); }
             /** Sets the status of the toggle button. Set to true if you want the ToggleButton to be 'pressed in', and false to raise it. This action causes the toggled signal to be emitted.
@@ -332,19 +330,19 @@ The state of a ToggleButton can be set specifically using ToggleButton::Active(b
             /**
 If the user has selected a range of elements (such as some text or spreadsheet cells) that are affected by a toggle button, and the current values in that range are inconsistent, you may want to display the toggle in an "in between" state. This function turns on "in between" display. Normally you would turn off the inconsistent state again if the user toggles the toggle button. This has to be done manually, gtk_toggle_button_set_inconsistent() only affects visual appearance, it doesn't affect the semantics of the button.
             */
-            void Inconsistent(bool flag /**< true if state is inconsistent, false otherwise */) { 
-                gtk_toggle_button_set_inconsistent(*this, flag); 
+            void Inconsistent(bool flag /**< true if state is inconsistent, false otherwise */) {
+                gtk_toggle_button_set_inconsistent(*this, flag);
             }
             /** Retrieves whether the button is displayed as a separate indicator and label.
-             \return true if the ToggleButton is drawn as a separate indicator and label. 
+             \return true if the ToggleButton is drawn as a separate indicator and label.
              */
             bool Mode() const { return gtk_toggle_button_get_mode(*this); }
             /** Sets whether the button is displayed as a separate indicator and label. You can call this function on a checkbutton or a radiobutton with draw_indicator = FALSE to make the button look like a normal button
 
 This function only affects instances of classes like GtkCheckButton and GtkRadioButton that derive from GtkToggleButton, not instances of GtkToggleButton itself.
             */
-            void Mode(bool flag /**< true if the togglebutton is drawn as a separate indicator and label. */) { 
-                gtk_toggle_button_set_mode(*this, flag); 
+            void Mode(bool flag /**< true if the togglebutton is drawn as a separate indicator and label. */) {
+                gtk_toggle_button_set_mode(*this, flag);
             }
 
             /// Connect a callback to this signal if you wish to perform an action whenever the ToggleButton's state is changed.
@@ -354,7 +352,7 @@ This function only affects instances of classes like GtkCheckButton and GtkRadio
     /** Create widgets with a discrete toggle button
 A CheckButton places a discrete ToggleButton next to a widget, (usually a Label). See the section on ToggleButton widgets for more information about toggle/check buttons.
 
-The important signal ('toggled', connected through the member function ToggleButton::OnToggle()) is also inherited from ToggleButton. 
+The important signal ('toggled', connected through the member function ToggleButton::OnToggle()) is also inherited from ToggleButton.
     */
     class CheckButton : public ToggleButton
     {
@@ -362,7 +360,7 @@ The important signal ('toggled', connected through the member function ToggleBut
 /// DOXYS_OFF
             CheckButton(GObject *obj) : ToggleButton(DerivedType()) { Init(obj); }
             CheckButton(const DerivedType &) : ToggleButton(DerivedType()) {} // empty costructor for subclasses
-/// DOXYS_ON            
+/// DOXYS_ON
             CheckButton(const std::string &label = "") : ToggleButton(DerivedType()) {
                 if (!label.empty())
                     Init(gtk_check_button_new_with_label(label.c_str()));
@@ -377,7 +375,7 @@ The important signal ('toggled', connected through the member function ToggleBut
         public:
             operator  GtkLinkButton *() const { return GTK_LINK_BUTTON(Obj()); }
             LinkButton(GObject *obj) : Button(DerivedType()) { Init(obj); }
-            LinkButton(const std::string &uri, const std::string &label = "") : 
+            LinkButton(const std::string &uri, const std::string &label = "") :
                 Button(DerivedType()) {
                 if (!label.empty())
                     Init(gtk_link_button_new_with_label(uri.c_str(), label.c_str()));
@@ -415,7 +413,7 @@ The important signal ('toggled', connected through the member function ToggleBut
                     Init(gtk_radio_button_new(NULL));
                 Internal(true);
             }
-            RadioButton(const RadioGroup &group, const std::string &label = "") : 
+            RadioButton(const RadioGroup &group, const std::string &label = "") :
                 CheckButton(DerivedType()) {
                 RadioGroup &gr = const_cast<RadioGroup &>(group);
 
@@ -427,7 +425,7 @@ The important signal ('toggled', connected through the member function ToggleBut
                 gr = Group();
                 Internal(true);
             }
-            RadioButton(const RadioButton &groupwith, const std::string &label = "") : 
+            RadioButton(const RadioButton &groupwith, const std::string &label = "") :
                 CheckButton(DerivedType()) {
                 if (!label.empty())
                     Init(gtk_radio_button_new_with_label_from_widget(groupwith, label.c_str()));

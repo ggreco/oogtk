@@ -879,11 +879,26 @@ The attributes set with this function will be ignored if the "use-underline" or 
             }
     };
 
+
+
+    /** An interface for flippable widgets
+The Grientable interface is implemented by all widgets that can be oriented horizontally or vertically. Historically, such widgets have been realized as subclasses of a common base class (e.g GtkBox/GtkHBox/GtkVBox or GtkScale/GtkHScale/GtkVScale). GtkOrientable is more flexible in that it allows the orientation to be changed at runtime, allowing the widgets to “flip”.
+    Orientable was introduced in GTK+ 2.16.
+    */
+    class Orientable
+    {
+        virtual GtkOrientable *getorobj() const = 0;
+
+        GtkOrientation Orientation() const { return (GtkOrientation)gtk_orientable_get_orientation(getorobj()); }
+        void Orientation(GtkOrientation o) { gtk_orientable_set_orientation(getorobj(), o); }
+    };
+
     /** Base class for HSeparator and VSeparator
 The Separator widget is an abstract class, used only for deriving the subclasses HSeparator and VSeparator.
 */
-    struct Separator : public Widget
+    struct Separator : public Widget, public Orientable
     {
+        GtkOrientable *getorobj() const { return GTK_ORIENTABLE(Obj()); }
     };
 /** A horizontal separator.
 The HSeparator widget is a horizontal separator, used to group the widgets within a window. It displays a horizontal line with a shadow to make it appear sunken into the interface.
@@ -900,7 +915,7 @@ The HSeparator widget is not used as a separator within menus. To create a separ
 /// DOXYS_ON
             /// Creates a new HSeparator.
             HSeparator() {
-                Init(gtk_hseparator_new());
+                Init(gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
                 Internal(true);
             }
     };
@@ -915,7 +930,7 @@ The VSeparator widget is a vertical separator, used to group the widgets within 
 /// DOXYS_ON
             /// Creates a new VSeparator.
             VSeparator() {
-                Init(gtk_vseparator_new());
+                Init(gtk_separator_new(GTK_ORIENTATION_VERTICAL));
                 Internal(true);
             }
     };
@@ -1924,10 +1939,11 @@ namespace gtk {
                 return new Button(o);
             } else if (GTK_IS_STATUSBAR(o)) {
                 return new Statusbar(o);
-            } else if (GTK_IS_VBUTTON_BOX(o)) {
-                return new VButtonBox(o);
-            } else if (GTK_IS_HBUTTON_BOX(o)) {
-                return new HButtonBox(o);
+            } else if (GTK_IS_BUTTON_BOX(o)) {
+                if (gtk_orientable_get_orientation(GTK_ORIENTABLE(o)) == GTK_ORIENTATION_HORIZONTAL)
+                    return new HButtonBox(o);
+                else
+                    return new VButtonBox(o);
             } else if (GTK_IS_IMAGE(o)) {
                 return new Image(o);
             } else if (GTK_IS_TEXT_MARK(o)) { // textview handing, from ootext.h
@@ -1970,12 +1986,11 @@ namespace gtk {
                 return new ToolItem(o);
             } else if (GTK_IS_TOOLBAR(o)) {
                 return new Toolbar(o);
-            } else if (GTK_IS_HSCALE(o)) {
-                return new HScale(o);
-            } else if (GTK_IS_VSCALE(o)) {
-                return new VScale(o);
             } else if (GTK_IS_SCALE(o)) {
-                return new Scale(o);
+                if (gtk_orientable_get_orientation(GTK_ORIENTABLE(o)) == GTK_ORIENTATION_HORIZONTAL)
+                    return new HScale(o);
+                else
+                    return new VScale(o);
             } else if (GTK_IS_RANGE(o)) {
                 return new Range(o);
             } else if (GTK_IS_ENTRY_COMPLETION(o)) {
@@ -1992,10 +2007,11 @@ namespace gtk {
                 return new AspectFrame(o);
             } else if (GTK_IS_FRAME(o)) {
                 return new Frame(o);
-            } else if (GTK_IS_VBOX(o)) {
-                return new VBox(o);
-            } else if (GTK_IS_HBOX(o)) {
-                return new HBox(o);
+            } else if (GTK_IS_BOX(o)) {
+                if (gtk_orientable_get_orientation(GTK_ORIENTABLE(o)) == GTK_ORIENTATION_HORIZONTAL)
+                    return new HBox(o);
+                else
+                    return new VBox(o);
             } else if (GTK_IS_PROGRESS_BAR(o)) {
                 return new ProgressBar(o);
             } else if (GTK_IS_NOTEBOOK(o)) {
@@ -2016,10 +2032,11 @@ namespace gtk {
                 return new UIManager(o);
             } else if (GTK_IS_ACCEL_GROUP(o)) {
                 return new AccelGroup(o);
-            } else if (GTK_IS_VPANED(o)) {
-                return new VPaned(o);
-            } else if (GTK_IS_HPANED(o)) {
-                return new HPaned(o);
+            } else if (GTK_IS_PANED(o)) {
+                if (gtk_orientable_get_orientation(GTK_ORIENTABLE(o)) == GTK_ORIENTATION_HORIZONTAL)
+                    return new HPaned(o);
+                else
+                    return new VPaned(o);
             } else if (GTK_IS_ALIGNMENT(o)) {
                 return new Alignment(o);
             } else if (GTK_IS_ACTION_GROUP(o)) {
@@ -2028,10 +2045,11 @@ namespace gtk {
                 return new Action(o);
             } else if (GTK_IS_SIZE_GROUP(o)) {
                 return new SizeGroup(o);
-            } else if (GTK_IS_HSEPARATOR(o)) {
-                return new HSeparator(o);
-            } else if (GTK_IS_VSEPARATOR(o)) {
-                return new VSeparator(o);
+            } else if (GTK_IS_SEPARATOR(o)) {
+                if (gtk_orientable_get_orientation(GTK_ORIENTABLE(o)) == GTK_ORIENTATION_HORIZONTAL)
+                    return new HSeparator(o);
+                else
+                    return new VSeparator(o);
             } else if (GTK_IS_CLIPBOARD(o)) {
                 return new Clipboard(o);
             } else

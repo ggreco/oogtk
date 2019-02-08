@@ -132,8 +132,10 @@ A paned widget draws a separator between the two child widgets and a small handl
 Each child has two options that can be set, resize and shrink. If resize is true, then when the GtkPaned is resized, that child will expand or shrink along with the paned widget. If shrink is true, then when that child can be made smaller than its requisition by the user. Setting shrink to FALSE allows the application to set a minimum size. If resize is false for both children, then this is treated as if resize is true for both children.
 The application can set the position of the slider as if it were set by the user, by calling Paned::Position(int).
 */
-    class Paned : public Container // COMPLETE API
+    class Paned : public Container, public Orientable // COMPLETE API
     {
+        protected:
+            GtkOrientable *getorobj() const { return GTK_ORIENTABLE(Obj()); }
         public:
 /// DOXYS_OFF
             operator  GtkPaned *() const { return GTK_PANED(Obj()); }
@@ -175,7 +177,7 @@ The application can set the position of the slider as if it were set by the user
             /// DOXYS_ON
             /// Create a new HPaned, see Paned for details.
             HPaned() {
-                Init(gtk_hpaned_new());
+                Init(gtk_paned_new(GTK_ORIENTATION_HORIZONTAL));
                 Internal(true);
             }
     };
@@ -188,7 +190,7 @@ The application can set the position of the slider as if it were set by the user
             /// DOXYS_ON
             /// Create a new HPaned, see Paned for details.
             VPaned() {
-                Init(gtk_vpaned_new());
+                Init(gtk_paned_new(GTK_ORIENTATION_VERTICAL));
                 Internal(true);
             }
     };
@@ -347,7 +349,9 @@ Use Box::Spacing(int) to determine how much space will be minimally placed betwe
 Use Box::ReorderChild() to move a Box child to a different place in the box.
 
 */
-    class Box : public Container { // COMPLETE API
+    class Box : public Container, public Orientable { // COMPLETE API
+        protected:
+            GtkOrientable *getorobj() const { return GTK_ORIENTABLE(Obj()); }
         public:
 /// DOXYS_OFF
             operator GtkBox *() const { return GTK_BOX(Obj()); }
@@ -429,30 +433,31 @@ All children are allocated the same width.
             /** Creates a new VBox. */
             VBox(bool homogenous = true /**< true if all children are to be given equal space allotments, defaults to true. */,
                  int spacing = 0 /**< the number of pixels to place by default between children, defaults to 0. */) {
-                Init(gtk_vbox_new(homogenous, spacing)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_VERTICAL, spacing)); Internal(true);
+                Homogeneous(homogenous);
             }
 
             /** Creates a new homogeneous VBox, with no spacing and one child. */
             VBox(const Widget &w1) {
-                Init(gtk_vbox_new(true, 0)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)); Internal(true);
                 PackStart(w1);
             }
             /** Creates a new homogeneous VBox, with no spacing and two children. */
             VBox(const Widget &w1, const Widget &w2) {
-                Init(gtk_vbox_new(false, 0)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
             }
             /** Creates a new homogeneous VBox, with no spacing and three children. */
             VBox(const Widget &w1, const Widget &w2, const Widget &w3) {
-                Init(gtk_vbox_new(false, 0)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
                 PackStart(w3);
             }
             /** Creates a new homogeneous VBox, with no spacing and four children. */
             VBox(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4) {
-                Init(gtk_vbox_new(false, 0)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
                 PackStart(w3);
@@ -460,7 +465,7 @@ All children are allocated the same width.
             }
             /** Creates a new homogeneous VBox, with no spacing and five children. */
             VBox(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4, const Widget &w5) {
-                Init(gtk_vbox_new(false, 0)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
                 PackStart(w3);
@@ -484,12 +489,13 @@ All children are allocated the same height.
             /** Creates a new VBox. */
             HBox(bool homogenous = true /**< true if all children are to be given equal space allotments, defaults to true.  */,
                  int spacing = 0 /**< the number of pixels to place by default between children, defaults to 0. */) {
-                Init(gtk_hbox_new(homogenous, spacing)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, spacing)); Internal(true);
+                Homogeneous(homogenous);
             }
 
             /** Creates a new homogeneous HBox, with no spacing and a single child. */
             HBox(const Widget &w1) {
-                Init(gtk_hbox_new(true, 0)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)); Internal(true);
                 PackStart(w1);
             }
             /** Creates a new homogeneous HBox, with no spacing and two children. */
@@ -500,14 +506,14 @@ All children are allocated the same height.
             }
             /** Creates a new homogeneous HBox, with no spacing and three children. */
             HBox(const Widget &w1, const Widget &w2, const Widget &w3) {
-                Init(gtk_hbox_new(false, 0)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
                 PackStart(w3);
             }
             /** Creates a new homogeneous HBox, with no spacing and four children. */
             HBox(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4) {
-                Init(gtk_hbox_new(false, 0)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
                 PackStart(w3);
@@ -515,7 +521,7 @@ All children are allocated the same height.
             }
             /** Creates a new homogeneous HBox, with no spacing and five children. */
             HBox(const Widget &w1, const Widget &w2, const Widget &w3, const Widget &w4, const Widget &w5) {
-                Init(gtk_hbox_new(false, 0)); Internal(true);
+                Init(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)); Internal(true);
                 PackStart(w1);
                 PackStart(w2);
                 PackStart(w3);
@@ -549,7 +555,9 @@ ButtonBox::Layout() retrieve and alter the method used to spread the buttons in 
 The main purpose of ButtonBox is to make sure the children have all the same size. Therefore it ignores the homogeneous property which it inherited from Box, and always behaves as if homogeneous was true.
 
 */
-    class ButtonBox : public Box { // COMPLETE API
+    class ButtonBox : public Box, public Orientable { // COMPLETE API
+        protected:
+            GtkOrientable *getorobj() const { return GTK_ORIENTABLE(Obj()); }
         public:
 /// DOXYS_OFF
             operator GtkButtonBox *() const { return GTK_BUTTON_BOX(Obj()); }
@@ -633,7 +641,7 @@ class HButtonBox : public ButtonBox { // COMPLETE API
 
 /// Create a new HORIZONTAL button box.
             HButtonBox() {
-                Init(gtk_hbutton_box_new());
+                Init(gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL));
                 Internal(true);
             }
     };
@@ -654,7 +662,7 @@ The spacing between buttons can be set with Box::Spacing(). The arrangement and 
 
 /// Create a new VERTICAL button box.
             VButtonBox() {
-                Init(gtk_vbutton_box_new());
+                Init(gtk_button_box_new(GTK_ORIENTATION_VERTICAL));
                 Internal(true);
             }
     };
