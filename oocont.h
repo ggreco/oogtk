@@ -555,9 +555,7 @@ ButtonBox::Layout() retrieve and alter the method used to spread the buttons in 
 The main purpose of ButtonBox is to make sure the children have all the same size. Therefore it ignores the homogeneous property which it inherited from Box, and always behaves as if homogeneous was true.
 
 */
-    class ButtonBox : public Box, public Orientable { // COMPLETE API
-        protected:
-            GtkOrientable *getorobj() const { return GTK_ORIENTABLE(Obj()); }
+    class ButtonBox : public Box { // COMPLETE API
         public:
 /// DOXYS_OFF
             operator GtkButtonBox *() const { return GTK_BUTTON_BOX(Obj()); }

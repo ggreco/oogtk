@@ -464,6 +464,50 @@ Things become more complicated when you try to preview the dragged data, as desc
             /// Tells the widget to emit ::drag-motion and ::drag-leave events regardless of the targets and the DestDefaultMotion flag.
             void DragMotion(bool value) { gtk_drag_dest_set_track_motion(*this, value); }
 
+            // Sets the amount of space to add around the widget.
+            void Padding(int xpad /**< 	the amount of space to add on the left and right of the widget, in pixels. */,
+                         int ypad = 0 /**< 	the amount of space to add on the top and bottom of the widget, in pixels, defaults to 0. */) {
+                gtk_widget_set_margin_start(*this, xpad);
+                gtk_widget_set_margin_end(*this, xpad);
+                gtk_widget_set_margin_top(*this, ypad);
+                gtk_widget_set_margin_bottom(*this, ypad);
+            }
+
+            /// Sets the amount of space to add around the widget.
+            void Padding(const Point &coords /**< A Point containing the padding values. */) { Padding(coords.x, coords.y); }
+            /// Gets the padding in the X and Y directions of the widget.
+            /// \return a Point containing the padding value for X and Y coordinates.
+            Point Padding() const {
+                Point p;
+                p.x = (gtk_widget_get_margin_start(*this) + gtk_widget_get_margin_end(*this)) / 2;
+                p.y = (gtk_widget_get_margin_top(*this) + gtk_widget_get_margin_bottom(*this)) / 2;
+                return p;
+            }
+
+            /// Sets the horizontal alignment of widget . See the “halign” property.
+            void HAlign(const GtkAlign &a) {
+                gtk_widget_set_halign(*this, a);
+            }
+/** Gets the value of the “halign” property.
+
+For backwards compatibility reasons this method will never return GTK_ALIGN_BASELINE, but instead it will convert it to GTK_ALIGN_FILL. Baselines are not supported for horizontal alignment.
+*/
+            GtkAlign HAlign() const {
+                return gtk_widget_get_halign(*this);
+            }
+
+             /// Sets the vertical alignment of widget . See the “halign” property.
+           void VAlign(const GtkAlign &a) {
+                gtk_widget_set_valign(*this, a);
+            }
+ /** Gets the value of the “valign” property.
+
+For backwards compatibility reasons this method will never return GTK_ALIGN_BASELINE, but instead it will convert it to GTK_ALIGN_FILL. If your widget want to support baseline aligned children it must use gtk_widget_get_valign_with_baseline(), or g_object_get (widget, "valign", &amp;value, NULL), which will also report the true value.
+*/
+            GtkAlign VAlign() const {
+                return gtk_widget_get_valign(*this);
+            }
+
 /** Enable/disable double buffering for this object.
 
 Widgets are double buffered by default; you can use this function to turn off the buffering. "Double buffered" simply means that gdk_window_begin_paint_region() and gdk_window_end_paint() are called automatically around expose events sent to the widget. gdk_window_begin_paint() diverts all drawing to a widget's window to an offscreen buffer, and gdk_window_end_paint() draws the buffer to the screen. The result is that users see the window update in one smooth step, and don't see individual graphics primitives being rendered.
@@ -522,53 +566,6 @@ Note: if you turn off double-buffering, you have to handle expose events, since 
     inline void Tooltip::Custom(const Widget &custom_widget) { gtk_tooltip_set_custom(*this, custom_widget); }
 #endif
 
-/** Base class for widgets with alignments and padding.
-The Misc widget is an abstract widget which is not useful itself, but is used to derive subclasses which have alignment and padding attributes.
-
-The horizontal and vertical padding attributes allows extra space to be added around the widget.
-
-The horizontal and vertical alignment attributes enable the widget to be positioned within its allocated area. Note that if the widget is added to a container in such a way that it expands automatically to fill its allocated area, the alignment settings will not alter the widgets position.
-*/
-    class Misc : public Widget
-    {
-        public:
-/// DOXYS_OFF
-            operator  GtkMisc *() const { return GTK_MISC(Obj()); }
-/// DOXYS_ON
-            /// Sets the amount of space to add around the widget.
-            void Padding(int xpad /**< 	the amount of space to add on the left and right of the widget, in pixels. */,
-                         int ypad = 0 /**< 	the amount of space to add on the top and bottom of the widget, in pixels, defaults to 0. */) {
-                gtk_misc_set_padding(*this, xpad, ypad);
-            }
-            /// Sets the amount of space to add around the widget.
-            void Padding(const Point &coords /**< A Point containing the padding values. */) { Padding(coords.x, coords.y); }
-            /// Gets the padding in the X and Y directions of the widget.
-            /// \return a Point containing the padding value for X and Y coordinates.
-            Point Padding() const {
-                Point c;
-                gtk_misc_get_padding(*this, &c.x, &c.y);
-                return c;
-            }
-
-            /// Sets the alignment of the widget.
-            void Alignment(float xalign /**< the horizontal alignment, from 0 (left) to 1 (right). */,
-                           float yalign = 0.5f /**< the vertical alignment, from 0 (top) to 1 (bottom). */) {
-                gtk_misc_set_alignment(*this, xalign, yalign);
-            }
-            /// Sets the alignment of the widget.
-            void Alignment(Align &align /**< the horizontal and vertical alignment, from 0, 0 (top left) to 1, 1 (bottom right)
-                    */) {
-                Alignment(align.first, align.second);
-            }
-            /// Gets the X and Y alignment of the widget within its allocation.
-            /// \return an Align containing X alignment in first and Y alignment in second (from 0 to 1).
-            Align Alignment() const {
-                Align a;
-                gtk_misc_get_alignment(*this, &a.first, &a.second);
-                return a;
-            }
-    };
-
     /** Describes the image data representation used by a Image. If you want to get the image from the widget, you can only get the currently-stored representation. e.g. if the Image::StorageType() returns ImageBixbuf, then you can call Image::Pixbuf() but not Image::Stock(). For empty images, you can request any storage type (call any of the "get" methods), but they will all return NULL values.
     */
     enum ImageType
@@ -622,7 +619,7 @@ When handling events on the event box, keep in mind that coordinates in the imag
 Sometimes an application will want to avoid depending on external data files, such as image files. GTK+ comes with a program to avoid this, called gdk-pixbuf-csource. This program allows you to convert an image into a C variable declaration, which can then be loaded into a Pixbuf.
 
 */
-    class Image : public Misc
+    class Image : public Widget
     {
         public:
 /// DOXYS_OFF
@@ -747,7 +744,7 @@ Labels can automatically wrap text if you call Label::LineWrap(bool).
 Label::Justify() sets how the lines in a label align with one another. If you want to set how the label as a whole aligns in its available space, see Misc::Alignment().
 
 */
-    class Label : public Misc
+    class Label : public Widget
     {
         public:
 /// DOXYS_OFF
@@ -874,9 +871,22 @@ Note that setting line wrapping to true does not make the label wrap at its pare
             /** Sets a PangoAttrList; the attributes in the list are applied to the label text.
 The attributes set with this function will be ignored if the "use-underline" or "use-markup" properties are set to true.
 */
-            void Attributes(const PangoAttrList &attrs /* a PangoAttrList */) {
+            void Attributes(const PangoAttrList &attrs /**< a PangoAttrList */) {
                 gtk_label_set_attributes(*this, const_cast<PangoAttrList *>(&attrs));
             }
+
+            /// Sets the “xalign” property for label .
+            void XAlign(float xalign /**< the new xalign value, between 0 and 1 */) {
+                gtk_label_set_xalign(*this, xalign);
+            }
+            /// Sets the “yalign” property for label .
+            void YAlign(float yalign /**< the new yalign value, between 0 and 1 */) {
+                gtk_label_set_yalign(*this, yalign);
+            }
+            /// Gets the “xalign” property for label .
+            float XAlign() const { return gtk_label_get_xalign(*this); }
+            /// Gets the “yalign” property for label .
+            float YAlign() const { return gtk_label_get_yalign(*this); }
     };
 
 

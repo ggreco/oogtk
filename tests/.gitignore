@@ -1,0 +1,16 @@
+*.dSYM
+.vscode
+testbuilder
+testbutton
+testcbks
+ooedit
+testimage
+testdialog
+testinline
+testnoapp
+testobjects
+testsocket
+testtext
+testtree
+testuimanager
+testwrapper
