@@ -1419,7 +1419,7 @@ To receive mouse events on a drawing area, you will need to enable them with Wid
 #if GTK_MINOR_VERSION > 19
 
 /// A spinner is a widget to indicate progresss
-    class Spinner : public DrawingArea {
+class Spinner : public DrawingArea {
         public:
 /// DOXYS_OFF
             operator GtkSpinner *() const { return GTK_SPINNER(Obj()); }
@@ -1615,15 +1615,9 @@ can pass a pointer to an object or a simple object, also if not PoD).
             }
 
             void DelSource(CbkId id) {
+                g_source_remove(id);
+
                 std::unique_lock<std::mutex> lock(mtx());
-
-                CbkIt it = Callbacks().find(id);
-
-                if (it != Callbacks().end()) {
-                    delete it->second;
-                    Callbacks().erase(id);
-                    g_source_remove(id);
-                }
 
                 ChannelIt cit = Channels().find(id);
 
@@ -1639,47 +1633,40 @@ can pass a pointer to an object or a simple object, also if not PoD).
 
         private:
             static std::mutex &mtx() { static std::mutex m; return m; }
-            static CbkMap &Callbacks() { static CbkMap objects; return objects; }
             static ChannelMap &Channels() { static ChannelMap channels; return channels; }
 
             CbkId AddKeySnooper(AbstractCbk *cbk) {
-                std::unique_lock<std::mutex> lock(mtx());
-                int id = gtk_key_snooper_install((gint (*)(GtkWidget*, GdkEventKey*, void*))
+                return gtk_key_snooper_install((gint (*)(GtkWidget*, GdkEventKey*, void*))
                                                  AbstractCbk::real_callback_2, cbk);
-                Callbacks().insert(CbkMap::value_type(id, cbk));
-                return id;
+            }
+
+            static void destroy_source(AbstractCbk * data) {
+                delete data;
             }
 
             CbkId AddIdle(AbstractCbk *cbk) {
-                std::unique_lock<std::mutex> lock(mtx());
-                int id = g_idle_add((gboolean (*)(void*))AbstractCbk::real_callback_0, cbk);
-                Callbacks().insert(CbkMap::value_type(id, cbk));
-                return id;
+                return g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (gboolean (*)(void*))AbstractCbk::real_callback_0, cbk, GDestroyNotify(destroy_source));
             }
             CbkId AddTimer(AbstractCbk *cbk, int msec) {
-                std::unique_lock<std::mutex> lock(mtx());
-                int id = g_timeout_add(msec, (gboolean (*)(void*))AbstractCbk::real_callback_0, cbk);
-                Callbacks().insert(CbkMap::value_type(id, cbk));
-                return id;
+                return g_timeout_add_full(G_PRIORITY_DEFAULT, msec, (gboolean (*)(void*))AbstractCbk::real_callback_0, cbk, GDestroyNotify(destroy_source));
             }
 
             CbkId AddSocket(AbstractCbk *cbk, SockFd fd, SocketCondition cond) {
-                std::unique_lock<std::mutex> lock(mtx());
-
                 GIOChannel *ch = FindChannel(fd);
 
-                if (!ch) {
+                if (ch)
+                    g_io_channel_ref(ch);
+                else {
 #ifdef WIN32
                     ch = g_io_channel_win32_new_socket(fd);
 #else
                     ch = g_io_channel_unix_new(fd);
 #endif
                 }
-                else
-                    g_io_channel_ref(ch);
 
-                int id = g_io_add_watch(ch, (GIOCondition)cond, (GIOFunc)AbstractCbk::real_callback_2, cbk);
-                Callbacks().insert(CbkMap::value_type(id, cbk));
+                int id = g_io_add_watch_full(ch, G_PRIORITY_DEFAULT, (GIOCondition)cond, (GIOFunc)AbstractCbk::real_callback_2, cbk, GDestroyNotify(destroy_source));
+
+                std::unique_lock<std::mutex> lock(mtx());
                 Channels().insert(ChannelMap::value_type(id, ch));
 
                 return id;
