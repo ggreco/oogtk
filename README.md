@@ -1,0 +1,50 @@
+# OOGtk - A modern GTK C++ lightweighted wrapper
+
+## Introduction
+OOGtk is a GTK+ object oriented C++ wrapper written in C++11. It's crossplatform, and it tries to give the user access to the complete API of GTK. The library is header only, so there are no architecture dependant downloads. At the moment the wrapper requires GTK 2.12, but with minor changes it can be made compatible with GTK 2.8+.
+
+The aim of oogtk is to give C++ programmers an easy and friend interface to GTK+ classes in an object oriented way with almost no overhead over the use of the C API and using C++ features where possible.
+
+There are also a few facilities, in form of new member functions of some classes, that make some tricky GTK+ operations easier, for instance oogtk has methods to easily add columns to a TreeView widget (TreeView::AddTextColum(), TreeView::AddPixColumn()...) or to navigate a TextView with STL like iterators.
+
+## Usage
+OOGtk is an header only library, so you only have to include "oogtk.h" in your project to use it. A simple OOGtk program starts often defining an MyApplication class deriving from gtk::Application. Your application class may contain only the few OOGtk widgets that you need to handle during the application flow, static elements of the GUI may be defined inline in your constructor/intialization function and then autoreleased when they go out of scope, the GTK+ widgets connected to them will not be destroyed if they are connected to other GTK+ objects. This rule is not true for Top Level widgets, ie widgets derived from gtk::Window
+
+```c++
+#include "oogtk.h"
+
+class MyApp : public gtk::Application {
+    gtk::Window win_;
+public:
+    MyApp() : win_("Hello World!") {
+        gtk::VBox box(false, 8); // creates a box
+        box.Border(8); // set border of the box to 8 pixels
+        box.PackStart(gtk::Label("<big>Hello world!</big>")); // pack at the start of the box a label
+        gtk::Button close("Close"); // create a button with label "Close"
+        close.OnClick(&Application::QuitLoop, dynamic_cast<Application *>(this)); // quit main loop if the button is clicked
+        win_.OnDelete(&Application::QuitLoop, dynamic_cast<Application *>(this)); // quit main loop if the window is closed
+        box.PackStart(close, false); // pack the button in the box
+        win_.Child(box); // place the box in the window
+        win_.ShowAll(); // show all widgets
+    }
+};
+
+int main() {
+    MyApp app;
+    app.Run();
+}
+```
+
+As you can see most objects have the life span of the constructor, once the constructor ends the C++ wrapper around the objects is freed from memory, but the underlying GTK+ object is not removed because it's linked to a top level widget.
+If you will ask again for a particular widget, let's say the child of the win_ object in the example, you can do it, a wrapper around the GTK+ object will be built again on the fly and a reference to the wrapper will be added in the widget data, if you ask it again and a reference it's already present on the widget you'll get the referenced wrapper and not a new one, the reference to the wrapper at this point will be destroyed with the widget.
+
+This mechanism is very flexible since it let you write inline GUIs that are really easy to be read. Differently from gtkmm you'll have to use "new" in your sources in very few circumstances.
+
+## compilation
+Provided you are on linux platform and that you unpacked oogtk in the dir /foo/oogtk you can compile for instance the program of the previous paragraph with the following command line:
+
+## Performance
+Only a few of the C++ classes that wrap the GTK+ objects add some data to the GTK+ object itself, so in most cases the overhead of using oogtk over plain GTK+ will be of a few pointers per object, let say 20/30 bytes. You may note that oogtk examples are quite big, this is because oogtk uses STL template classes like std::string, std::vector and std::list and STL has a relevant memory footprint.
+
+## Portability
+Since OOGtk is an header only library it's totally portable across the architectures that supports GTK+ and C++. It has been tested on Linux, Windows and OSX
