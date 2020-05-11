@@ -1,4 +1,5 @@
-CXXFLAGS = -std=c++11 `pkg-config --cflags gtk+-3.0` -g -DOOGTK_DEBUG -Wno-deprecated-declarations
+CXXFLAGS = -std=c++11 `pkg-config --cflags gtk+-3.0` -g -DOOGTK_DEBUG
+#-Wno-deprecated-declarations
 LDFLAGS = `pkg-config --libs gtk+-3.0 gmodule-2.0`
 
 MODULES = testinline testbuilder testtree testdialog testobjects \
