@@ -2,8 +2,8 @@
 #define OOWIN_H
 
 namespace gtk {
-    /** A Window can be one of these types. 
-Most things you'd consider a "window" should have type WindowTopLevel; windows with this type are managed by the window manager and have a frame by default (call Window::Decorated(bool) to toggle the frame). Windows with type WindowPopup are ignored by the window manager; window manager keybindings won't work on them, the window manager won't decorate the window with a frame, many GTK+ features that rely on the window manager will not work (e.g. resize grips and maximization/minimization). WindowPopup is used to implement widgets such as Menu or tooltips that you normally don't think of as windows per se. Nearly all windows should be WindowTopLevel. In particular, do not use WindowPopup just to turn off the window borders; use Window::Decorated(bool) for that. 
+    /** A Window can be one of these types.
+Most things you'd consider a "window" should have type WindowTopLevel; windows with this type are managed by the window manager and have a frame by default (call Window::Decorated(bool) to toggle the frame). Windows with type WindowPopup are ignored by the window manager; window manager keybindings won't work on them, the window manager won't decorate the window with a frame, many GTK+ features that rely on the window manager will not work (e.g. resize grips and maximization/minimization). WindowPopup is used to implement widgets such as Menu or tooltips that you normally don't think of as windows per se. Nearly all windows should be WindowTopLevel. In particular, do not use WindowPopup just to turn off the window borders; use Window::Decorated(bool) for that.
 */
     enum WindowType
     {
@@ -11,7 +11,7 @@ Most things you'd consider a "window" should have type WindowTopLevel; windows w
         WindowPopup = GTK_WINDOW_POPUP /**< A special window such as a tooltip. */
     };
 
-    /** Window placement can be influenced using this enumeration. 
+    /** Window placement can be influenced using this enumeration.
 Note that using PositionCenterAlways is almost always a bad idea. It won't necessarily work well with all window managers or on all windowing systems.
 */
     enum WindowPosition
@@ -43,10 +43,10 @@ If you simply want an undecorated window (no window borders), use Window::Decora
             Window(const DerivedType &) {} // do nothing
             Window(GObject *obj) { Init(obj); }
 /// DOXYS_ON
-            /** Create a new Window object. 
+            /** Create a new Window object.
             See Window class description for details. The type of the window can be chosen from the values in the WindowType enumeration and defaults to WindowTopLevel.
             */
-            Window(const std::string &title = "" /**< Window title*/, 
+            Window(const std::string &title = "" /**< Window title*/,
                    WindowType type = WindowTopLevel /**<A Window type value from WindowType, defaults to WindowTopLevel */) {
                 Init(gtk_window_new((GtkWindowType)type));
 
@@ -80,24 +80,24 @@ Modal windows prevent interaction with other windows in the same application. To
 
             /** Gets the title of the Window. */
             std::string Title() const { return std::string(gtk_window_get_title(*this)); }
-            /** Sets the title of the Window. 
+            /** Sets the title of the Window.
 The title of a window will be displayed in its title bar; on the X Window System, the title bar is rendered by the window manager, so exactly how the title appears to users may vary according to a user's exact configuration. The title should help a user distinguish this window from other windows they may have open. A good title might include the application name and current document filename, for example.
                */
-            void Title(const std::string &title /**< title of the window */) { 
-                gtk_window_set_title(*this, title.c_str()); 
+            void Title(const std::string &title /**< title of the window */) {
+                gtk_window_set_title(*this, title.c_str());
             }
-/// Assign a window to a particular screen            
+/// Assign a window to a particular screen
             void Screen(GdkScreen *s) { gtk_window_set_screen(*this, s); }
-/** Presents a window to the user. 
+/** Presents a window to the user.
 
 This may mean raising the window in the stacking order, deiconifying it, moving it to the current desktop, and/or giving it the keyboard focus, possibly dependent on the user's platform, window manager, and preferences.
 
 If window is hidden, this function calls Window::Show() as well.
 
-This function should be used when the user tries to open a window that's already open. Say for example the preferences dialog is currently open, and the user chooses Preferences from the menu a second time; use Window::Present() to move the already-open dialog where the user can see it. 
+This function should be used when the user tries to open a window that's already open. Say for example the preferences dialog is currently open, and the user chooses Preferences from the menu a second time; use Window::Present() to move the already-open dialog where the user can see it.
 */
             void Present() { gtk_window_present(*this); }
-/** Obtains the current size of window. 
+/** Obtains the current size of window.
 
 If window is not onscreen, it returns the size GTK+ will suggest to the window manager for the initial window size (but this is not reliably the same as the size the window manager will actually select). The size obtained by Window::Size() is the last size received in a EventConfigure, that is, GTK+ uses its locally-stored size, rather than querying the X server for the size. As a result, if you call Window::Resize() then immediately call Window::Size(), the size won't have taken effect yet. After the window manager processes the resize request, GTK+ receives notification that the size has changed via a configure event, and the size of the window gets updated.
 
@@ -109,9 +109,9 @@ Note 3: If you are getting a window size in order to position the window onscree
 
 In any case, if you insist on application-specified window positioning, there's still a better way than doing it yourself - Window::Position(const Point &) or better Window::Position(WindowPosition) will frequently handle the details for you.
 */
-            Point Size() const { 
+            Point Size() const {
                 Point pos;
-                gtk_window_get_size(*this, &pos.x, &pos.y); 
+                gtk_window_get_size(*this, &pos.x, &pos.y);
                 return pos;
             }
 /** Resizes a window.
@@ -123,10 +123,10 @@ Symmetric shortcut for Window::Resize() added in OOGtk for API coherence.
 /** Resizes a window.
 \sa Window::Resize()
 */
-            void Size(int width /**< wanted width in pixels */, 
-                      int height /**< wanted height in pixels */) 
+            void Size(int width /**< wanted width in pixels */,
+                      int height /**< wanted height in pixels */)
             { gtk_window_resize(*this, width, height); }
-/** Resizes the window as if the user had done so, obeying geometry constraints. 
+/** Resizes the window as if the user had done so, obeying geometry constraints.
 
 The default geometry constraint is that windows may not be smaller than their size request; to override this constraint, call Widget::SizeRequest() to set the window's request to a smaller value.
 
@@ -136,8 +136,8 @@ Windows may not be resized smaller than 1 by 1 pixels.
 
 \sa Window::Size(int, int), Window::Size(const Point &)
 */
-            void Resize(int width /**< wanted width in pixels*/, 
-                      int height /**< wanted height in pixels */) 
+            void Resize(int width /**< wanted width in pixels*/,
+                      int height /**< wanted height in pixels */)
             { gtk_window_resize(*this, width, height); }
 /** Obtain the position of a window.
 
@@ -151,7 +151,7 @@ Moreover, nearly all window managers are historically broken with respect to the
 
 \return a Point containing the top-left coordinates of the window.
 */
-            Point Position() const { 
+            Point Position() const {
                 Point pos;
                 gtk_window_get_position(*this, &pos.x, &pos.y);
                 return pos;
@@ -159,9 +159,9 @@ Moreover, nearly all window managers are historically broken with respect to the
             /** Move a window to (X,Y).
 \sa Window::Position(const Point &)
 */
-            void Position(int x /**< X coordinate of the top-left edge */, 
+            void Position(int x /**< X coordinate of the top-left edge */,
                           int y /**< Y coordinate of the top-left edge */) { gtk_window_move(*this, x, y); }
-/** Asks the window manager to move window to the given position. 
+/** Asks the window manager to move window to the given position.
 
 Window managers are free to ignore this; most window managers ignore requests for initial window positions (instead using a user-defined placement algorithm) and honor requests after the window has already been shown.
 
@@ -171,18 +171,18 @@ By default the gravity is GDK_GRAVITY_NORTH_WEST, so the reference point is simp
 
 To position a window at the bottom right corner of the screen, you would set GDK_GRAVITY_SOUTH_EAST, which means that the reference point is at x + the window width and y + the window height, and the bottom-right corner of the window border will be placed at that reference point. So, to place a window in the bottom right corner you would first set gravity to south east, then write: window->Position(gdk_screen_width() - window_width, gdk_screen_height() - window_height) (note that this example does not take multi-head scenarios into account).
 
-The Extended Window Manager Hints specification at http://www.freedesktop.org/Standards/wm-spec has a nice table of gravities in the "implementation notes" section.           
+The Extended Window Manager Hints specification at http://www.freedesktop.org/Standards/wm-spec has a nice table of gravities in the "implementation notes" section.
 */
             void Position(const Point &origin /**< Top left corner window coordinates */) { Position(origin.x, origin.y); }
 
-            /** Sets a position constraint for this window. 
+            /** Sets a position constraint for this window.
 If the old or new constraint is PositionCenterAlways, this will also cause the window to be repositioned to satisfy the new constraint.
-*/            void Position(WindowPosition pos) { 
-                gtk_window_set_position(*this, (GtkWindowPosition)pos); 
+*/            void Position(WindowPosition pos) {
+                gtk_window_set_position(*this, (GtkWindowPosition)pos);
             }
 /** Set a window as "transient" for a parent one.
 
-Dialog windows should be set transient for the main application window they were spawned from. 
+Dialog windows should be set transient for the main application window they were spawned from.
 
 This allows window managers to e.g. keep the dialog on top of the main window, or center the dialog over the main window. Dialog::Dialog() and other convenience functions in GTK+ will sometimes call Window::TransientFor() on your behalf.
 
@@ -196,7 +196,7 @@ On Windows, this function puts the child window on top of the parent, much as th
 
             /** Returns whether the window has been set to have decorations such as a title bar.
             \sa Window::Decorated(bool)
-            \return true if the window has been set to have decorations 
+            \return true if the window has been set to have decorations
             */
             bool Decorated() const {
                 return gtk_window_get_decorated(*this);
@@ -212,7 +212,7 @@ On Windows, this function always works, since there's no window manager policy i
 
             /** Returns whether the window has been set to have a close button
             \sa Window::Deletable(bool);
-            \return true if the window has been set to have a close button 
+            \return true if the window has been set to have a close button
             \note Since GTK 2.10
 */
             bool Deletable() const {
@@ -235,12 +235,8 @@ it to disk with Pixbuf::Save or to do some other stuff to the pixel data.
 */
             gtk::Pixbuf *Pixbuf() {
                 Application::Flush();
-                int w, h;
-                gdk_drawable_get_size(*this, &w, &h);
-                if (GdkPixbuf *buf = gdk_pixbuf_get_from_drawable(NULL,
-                                    *this, 
-                                    gdk_colormap_get_system(),
-                                    0, 0, 0, 0, w, h)) 
+                if (GdkPixbuf *buf = gdk_pixbuf_get_from_window(*this,
+                                    0, 0, gdk_window_get_width(*this), gdk_window_get_height(*this)))
                     return new gtk::Pixbuf((GObject *)buf);
                 else
                     return NULL;
@@ -257,10 +253,10 @@ You can track the fullscreen state via the "window-state-event" signal on gtk::W
 
 Note that you shouldn't assume the window is definitely not full screen afterward, because other entities (e.g. the user or window manager) could fullscreen it again, and not all window managers honor requests to unfullscreen windows. But normally the window will end up restored to its normal state. Just don't write code that crashes if not.
 
-You can track the fullscreen state via the "window-state-event" signal on gtk::Widget.   
+You can track the fullscreen state via the "window-state-event" signal on gtk::Widget.
 */
             void Unfullscreen() { gtk_window_unfullscreen(*this); }
-            /** Sets the default size of a window. 
+            /** Sets the default size of a window.
 If the window's "natural" size (its size request, as set by Widget::SizeRequest() ) is larger than the default, the default will be ignored. More generally, if the default size does not obey the geometry hints for the window (Window::GeometryHints() can be used to set these explicitly), the default size will be clamped to the nearest permitted size.
 
 Unlike Widget::SizeRequest(), which sets a size request for a widget and thus would keep users from shrinking the window, this function only sets the initial size, just as if the user had resized the window themselves. Users can still shrink the window again as they normally would. Setting a default size of -1 means to use the "natural" default size (the size request of the window).
@@ -273,8 +269,11 @@ The default size of a window only affects the first time a window is shown; if a
 
 Windows can't actually be 0x0 in size, they must be at least 1x1, but passing 0 for width and height is OK, resulting in a 1x1 default size.
 */
-            void DefaultSize(int width /**< width in pixels, or -1 to unset the default width */, 
+            void DefaultSize(int width /**< width in pixels, or -1 to unset the default width */,
                              int height /**< height in pixels, or -1 to unset the default height */ ) { gtk_window_set_default_size(*this, width, height); }
+
+            void ResizeGrip(bool flag) { gtk_window_set_has_resize_grip(*this, flag); }
+            bool ResizeGrip() const { return gtk_window_get_has_resize_grip(*this); }
     };
 
     typedef std::pair<std::string, int> ButtonData;
@@ -284,7 +283,7 @@ Windows can't actually be 0x0 in size, they must be at least 1x1, but passing 0 
     {
         DialogModal = GTK_DIALOG_MODAL /**< Make the constructed dialog modal, like calling Window::Modal(true) */,
         DialogDestroyWithParent = GTK_DIALOG_DESTROY_WITH_PARENT /**< Destroy the dialog when its parent is destroyed. */,
-        DialogNoSeparator = GTK_DIALOG_NO_SEPARATOR /**< Don't put a separator between the action area and the dialog content. */
+        DialogUseHeaderBar = GTK_DIALOG_USE_HEADER_BAR /**< Create dialog with actions in header bar instead of action area. Since 3.12. */
     };
 
     inline DialogFlags operator|(DialogFlags a, DialogFlags b) { return (DialogFlags)(((int)a)|((int)b)); }
@@ -329,10 +328,10 @@ If you add buttons to Dialog through the constructor, using Dialog::AddButton(),
 
 If you want to block waiting for a dialog to return before returning control flow to your code, you can call Dialog::Run(). This function enters a recursive main loop and waits for the user to respond to the dialog, returning the response ID corresponding to the button the user clicked.
 
-For the simple dialog in the following example, in reality you'd probably use GMessageDialog to save yourself some effort. But you'd need to create the dialog contents manually if you had more than a simple message in the dialog. 
+For the simple dialog in the following example, in reality you'd probably use GMessageDialog to save yourself some effort. But you'd need to create the dialog contents manually if you had more than a simple message in the dialog.
 
 \example
-// Function to open a dialog box displaying the message provided. 
+// Function to open a dialog box displaying the message provided.
 
 void quick_message (const char *message) {
    gtk::ButtonVec b;
@@ -369,28 +368,28 @@ This constructor creates a new dialog without title or any special attribute, us
             /** Create a new dialog.
 This constructor creates a new dialog with a title, an array of Button and an optional parent window, you can use Window::Title(const std::string &), Window::TransientFor(), Dialog::AddButton(), Window::Modal(bool)... to change dialog behaviour.
              */
-            Dialog(const std::string &title /**< Title of the window */, 
-                  const ButtonVec &buttons /**< A vector of ButtonData */, 
+            Dialog(const std::string &title /**< Title of the window */,
+                  const ButtonVec &buttons /**< A vector of ButtonData */,
                    Window *parent = NULL /**< Optional parent window to be transient for (see also Window::TransientFor() ) */
                    ) : Window(DerivedType()) {
                 Init(gtk_dialog_new());
                 AddButtons(buttons);
                 Title(title);
                 Internal(true);
-                if (parent) 
+                if (parent)
                     Window::TransientFor(*parent);
             }
 /** Add a widget inside the dialog.
 
 This function let you set the contents of the dialog body. A dialog is composed by a body, an horizontal separator and a button row, you can add buttons with Dialog::AddButton() or Dialog::AddButtons().
-*/            
+*/
             void Body(const Widget &widget) {
-                gtk_container_add(GTK_CONTAINER(GTK_DIALOG(Obj())->vbox), 
+                gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(*this)),
                                   widget);
             }
 /** Adds a button to the dialog.
 
-Add a button with the given text (or a stock button, if button_text is a stock ID) and sets things up so that clicking the button will emit the "response" signal with the given response_id. The button is appended to the end of the dialog's action area. 
+Add a button with the given text (or a stock button, if button_text is a stock ID) and sets things up so that clicking the button will emit the "response" signal with the given response_id. The button is appended to the end of the dialog's action area.
 */
             void AddButton(const std::string &label /**< Label of the button or a valid stock ID */,
                            int rc /**< A ResponseType value or a custom value to be returned in Dialog::Run() if the user click this button */ ) {
@@ -400,7 +399,7 @@ Add a button with the given text (or a stock button, if button_text is a stock I
                 AddButton(button.first, button.second);
             }
             void AddButtons(const ButtonVec &buttons) {
-                for (ButtonVec::const_iterator it = buttons.begin(); 
+                for (ButtonVec::const_iterator it = buttons.begin();
                                                it != buttons.end(); ++it)
                     AddButton(*it);
             }
@@ -436,30 +435,27 @@ Note that even though the recursive main loop gives the effect of a modal dialog
 
 /** Emits the "response" signal with the given response ID.
 
-Used to indicate that the user has responded to the dialog in some way; typically either you or Dialog::Run() will be monitoring the ::response signal and take appropriate action.            
+Used to indicate that the user has responded to the dialog in some way; typically either you or Dialog::Run() will be monitoring the ::response signal and take appropriate action.
 */
             void Response(int response_id /**< One of the ResponseType predefined value or an integer value of your choice, it will be the return value of Dialog::Run() */ ) { gtk_dialog_response(*this, response_id); }
 
             void DefaultResponse(int id) { gtk_dialog_set_default_response(*this, id); }
-
-            void Separator(bool flag = false) { gtk_dialog_set_has_separator(*this, flag); }
-            bool Separator() { return gtk_dialog_get_has_separator(*this); }
     };
 
 
 
-/** A FileFilter can be used to restrict the files being shown in a FileChooser. 
+/** A FileFilter can be used to restrict the files being shown in a FileChooser.
 
 Files can be filtered based on their name (FileFilter::AddPattern()), on their mime type (with FileFilter::AddMimeType()), or by a custom filter function (with FileFilter::AddCustom()).
 
 Filtering by mime types handles aliasing and subclassing of mime types; e.g. a filter for text/plain also matches a file with mime type application/rtf, since application/rtf is a subclass of text/plain. Note that FileFilter allows wildcards for the subtype of a mime type, so you can e.g. filter for image / *.
 
-Normally, filters are used by adding them to a FileChooser, see FileChooser::Filter(), but it is also possible to manually use a filter on a file with FileFilter::Filter(). 
+Normally, filters are used by adding them to a FileChooser, see FileChooser::Filter(), but it is also possible to manually use a filter on a file with FileFilter::Filter().
 */
     class FileFilter : public Object
     {
         public:
-            /// These flags indicate what informations are needed by a FileFilter::Custom() callback. 
+            /// These flags indicate what informations are needed by a FileFilter::Custom() callback.
             enum Flags {
                 Filename = GTK_FILE_FILTER_FILENAME /**< the filename of the file being tested */,
                 URI = GTK_FILE_FILTER_URI /**< the URI for the file being tested  */,
@@ -470,7 +466,7 @@ Normally, filters are used by adding them to a FileChooser, see FileChooser::Fil
         /// Support struct for FileFilter::Custom()
             struct Info
             {
-        /// DOXYS_OFF        
+        /// DOXYS_OFF
                 Info(GtkFileFilterInfo *info) :
                     flags(info->contains) {
                     if (flags & FileFilter::Filename)
@@ -484,7 +480,7 @@ Normally, filters are used by adding them to a FileChooser, see FileChooser::Fil
                 }
                 Info() : flags(0) {}
         /// DOXYS_ON
-                uint32_t flags /**< Flags indicating which of the following fields need are filled */; 
+                uint32_t flags /**< Flags indicating which of the following fields need are filled */;
                 std::string filename /**< 	the filename of the file being tested */;
                 std::string uri /**< 	the URI for the file being tested */;
                 std::string displayname /**< 	the string that will be used to display the file in the file chooser */;
@@ -501,14 +497,14 @@ Normally, filters are used by adding them to a FileChooser, see FileChooser::Fil
             class FilterCbk : public AbstractFilter
             {
                 public:
-                    FilterCbk(T*obj, void (T::*func)(Info &)) : 
+                    FilterCbk(T*obj, void (T::*func)(Info &)) :
                         myObj(obj), myFnc0(func), myFnc1(NULL) {}
                     FilterCbk(T*obj, void (T::*func)(Info &), J data) :
                         myObj(obj), myFnc1(func), myFnc0(NULL), ma1(data) {}
                     void notify(Info &val) {
                         if (myFnc0)
                             (myObj->*myFnc0)(val);
-                        else 
+                        else
                             (myObj->*myFnc1)(val, ma1);
                     }
                 private:
@@ -523,15 +519,15 @@ Normally, filters are used by adding them to a FileChooser, see FileChooser::Fil
             }
             std::vector<AbstractFilter *> cbks_;
         public:
-/// DOXYS_OFF       
+/// DOXYS_OFF
             operator GtkFileFilter *() const { return GTK_FILE_FILTER(Obj()); }
-            FileFilter(GObject *obj) { Init(obj); }     
+            FileFilter(GObject *obj) { Init(obj); }
             ~FileFilter() {
                 for(std::vector<AbstractFilter *>::iterator it = cbks_.begin(); it != cbks_.end(); ++it)
                     delete (*it);
             }
 /// DOXYS_ON
-/** Creates a new FileFilter with no rules added to it. 
+/** Creates a new FileFilter with no rules added to it.
 
 Such a filter doesn't accept any files, so is not particularly useful until you add rules with FileFilter::AddMimeType(), FileFilter::AddPattern(), or FileFilter::AddCustom(). To create a filter that accepts any file, use:
 
@@ -540,7 +536,7 @@ FileFilter filter;
 Filter::AddPattern("*");
 \endexample
 */
-            FileFilter(const std::string &name = "") { 
+            FileFilter(const std::string &name = "") {
                 Init(gtk_file_filter_new());
                 if (!name.empty())
                     Name(name);
@@ -551,14 +547,14 @@ Filter::AddPattern("*");
 This is the string that will be displayed in the file selector user interface if there is a selectable list of filters.
 */
             void Name(const std::string &name /**< the name for this filter */) { gtk_file_filter_set_name(*this, name.c_str()); }
-            /** Gets the human-readable name for the filter. 
+            /** Gets the human-readable name for the filter.
             \sa FileFilter::Name(const std::string &)
             \return The human-readable name of the filter, or an empty string if none.
              */
-            std::string Name() const { 
-                if (const gchar *c = gtk_file_filter_get_name(*this)) 
-                    return c; 
-                else 
+            std::string Name() const {
+                if (const gchar *c = gtk_file_filter_get_name(*this))
+                    return c;
+                else
                     return "";
             }
             /// Adds a rule allowing a shell style glob to a filter.
@@ -571,25 +567,25 @@ This is the string that will be displayed in the file selector user interface if
             }
             /// Adds a rule allowing image files in the formats supported by GdkPixbuf.
             void AddPixbufFormats() { gtk_file_filter_add_pixbuf_formats(*this); }
-/** Adds rule to a filter that allows files based on a custom callback function. 
+/** Adds rule to a filter that allows files based on a custom callback function.
 
 The bitfield needed which is passed in provides information about what sorts of information that the filter function needs; this allows GTK+ to avoid retrieving expensive information when it isn't needed by the filter.
 */
             template <typename T, typename J>
-            void AddCustom(uint32_t flags /**< bitfield of FileFilter::Flags indicating the information that the custom filter function needs.  */, 
+            void AddCustom(uint32_t flags /**< bitfield of FileFilter::Flags indicating the information that the custom filter function needs.  */,
                         void (T::*callback)(Info &, J) /**< member function pointer to the function to call */,
-                        T *base /**< pointer to the base of the class */, 
+                        T *base /**< pointer to the base of the class */,
                         J data /**< user data for the function*/) {
                 AbstractFilter *cbk = new FilterCbk<T,J>(base, callback, data);
                 cbks_.push_back(cbk);
                 gtk_file_filter_add_custom(*this, (GtkFileFilterFlags)flags, (GtkFileFilterFunc)filter_wrapper, cbk, NULL);
             }
-/** Adds rule to a filter that allows files based on a custom callback function. 
+/** Adds rule to a filter that allows files based on a custom callback function.
 
 The bitfield needed which is passed in provides information about what sorts of information that the filter function needs; this allows GTK+ to avoid retrieving expensive information when it isn't needed by the filter.
 */
             template <typename T>
-            void AddCustom(uint32_t flags /**< bitfield of FileFilter::Flags indicating the information that the custom filter function needs.  */, 
+            void AddCustom(uint32_t flags /**< bitfield of FileFilter::Flags indicating the information that the custom filter function needs.  */,
                         void (T::*callback)(Info &) /**< member function pointer to the function to call */,
                         T *base /**< pointer to the base of the class */) {
                 AbstractFilter *cbk = new FilterCbk<T, void>(base, callback);
@@ -606,11 +602,11 @@ FileChooser allows for shortcuts to various places in the filesystem. In the def
 
 |Bookmarks|are created by the user, by dragging folders from the right pane to the left pane, or by using the "Add". Bookmarks can be renamed and deleted by the user.
 |Shortcuts|can be provided by the application or by the underlying filesystem abstraction (e.g. both the gnome-vfs and the Windows filesystems provide "Desktop" shortcuts). Shortcuts cannot be modified by the user.
-|Volumes|are provided by the underlying filesystem abstraction. They are the "roots" of the filesystem. 
+|Volumes|are provided by the underlying filesystem abstraction. They are the "roots" of the filesystem.
 
 !File Names and Encodings
 
-When the user is finished selecting files in a FileChooser, your program can get the selected names either as filenames or as URIs. For URIs, the normal escaping rules are applied if the URI contains non-ASCII characters. However, filenames are always returned in the character set specified by the G_FILENAME_ENCODING environment variable. Please see the Glib documentation for more details about this variable. 
+When the user is finished selecting files in a FileChooser, your program can get the selected names either as filenames or as URIs. For URIs, the normal escaping rules are applied if the URI contains non-ASCII characters. However, filenames are always returned in the character set specified by the G_FILENAME_ENCODING environment variable. Please see the Glib documentation for more details about this variable.
 #IMPORTANT:# This means that while you can pass the result of FileChooser::Filename() to open(2) or fopen(3), you may not be able to directly set it as the text of a Label widget unless you convert it first to UTF-8, which all GTK+ widgets expect. You should use g_filename_to_utf8() to convert filenames into strings that can be passed to GTK+ widgets.
 
 !Key Bindings
@@ -648,13 +644,13 @@ binding "my-own-gtkfilechooser-bindings" {
 }
 
 class "GtkFileChooserDefault" binding "my-own-gtkfilechooser-bindings"
-\endexample	
+\endexample
 
 
 */
     class FileChooser {
         public:
-            /// Describes whether a FileChooser is being used to open existing files or to save to a possibly new file. 
+            /// Describes whether a FileChooser is being used to open existing files or to save to a possibly new file.
             enum ActionValue
             {
                 ActionOpen = GTK_FILE_CHOOSER_ACTION_OPEN /**< Indicates open mode. The file chooser will only let the user pick an existing file.  */,
@@ -667,13 +663,13 @@ class "GtkFileChooserDefault" binding "my-own-gtkfilechooser-bindings"
             virtual GtkFileChooser *getobj() const = 0; // this is needed to make it pure virtual
             virtual ~FileChooser() {}
 /// DOXYS_ON
-/** Gets the URI for the currently selected file in the file selector. 
+/** Gets the URI for the currently selected file in the file selector.
 
 If multiple files are selected, one of the filenames will be returned at random.
 
 If the file chooser is in folder mode, this function returns the selected folder.
 
-\return The currently selected URI, or an empty string if no file is selected. 
+\return The currently selected URI, or an empty string if no file is selected.
 */
             std::string URI() const {
                 std::string file;
@@ -682,13 +678,13 @@ If the file chooser is in folder mode, this function returns the selected folder
                     g_free(name);
                 }
                 return file;
-            }      
+            }
 /** Sets the file referred to by uri as the current file for the file chooser.
 The operation is performed by changing to the URI's parent folder and actually selecting the URI in the list. If the chooser is FileChooser::ActionSave mode, the URI's base name will also appear in the dialog's file name entry.
 
-If the URI isn't in the current folder of chooser, then the current folder of chooser will be changed to the folder containing uri. This is equivalent to a sequence of FileChooser::UnselectAll() followed by FileChooser::SelectURI(). 
+If the URI isn't in the current folder of chooser, then the current folder of chooser will be changed to the folder containing uri. This is equivalent to a sequence of FileChooser::UnselectAll() followed by FileChooser::SelectURI().
 
-\return true if both the folder could be changed and the URI was selected successfully, false otherwise. 
+\return true if both the folder could be changed and the URI was selected successfully, false otherwise.
 */
             bool URI(const std::string &uri /**< the URI to set as current */) {
                 return gtk_file_chooser_set_uri(getobj(), uri.c_str());
@@ -723,12 +719,12 @@ if (document_is_new) {
     chooser.CurrentFolder(default_folder_for_saving);
     chooser.CurrentName("Untitled document");
 } else {
-    // the user edited an existing document 
+    // the user edited an existing document
     chooser.Filename(existing_filename);
 }
 \endexample
 
-\return true if both the folder could be changed and the file was selected successfully, false otherwise. 
+\return true if both the folder could be changed and the file was selected successfully, false otherwise.
 */
             bool Filename(const std::string &name /**< 	 the filename to set as current */) {
                 return gtk_file_chooser_set_filename(getobj(), name.c_str());
@@ -738,7 +734,7 @@ if (document_is_new) {
  *
 Note that this is the folder that the file chooser is currently displaying (e.g. "/home/username/Documents"), which is not the same as the currently-selected folder if the chooser is in FileChooser::SelectFolder mode (e.g. "/home/username/Documents/selected-folder/". To get the currently-selected folder in that mode, use FileChooser::URI() as the usual way to get the selection.
 
-\return the full path of the current folder, or an empty string if the current path cannot be represented as a local filename. This function will also return an empty string if the file chooser was unable to load the last folder that was requested from it; for example, as would be for calling FileChooser::CurrentFolder(const std::string &) on a nonexistent folder. 
+\return the full path of the current folder, or an empty string if the current path cannot be represented as a local filename. This function will also return an empty string if the file chooser was unable to load the last folder that was requested from it; for example, as would be for calling FileChooser::CurrentFolder(const std::string &) on a nonexistent folder.
 \sa FileChooser::CurrentFolder(const std::string &)
 */
             std::string CurrentFolder() const {
@@ -749,71 +745,71 @@ Note that this is the folder that the file chooser is currently displaying (e.g.
                 }
                 return result;
             }
-/** Sets the current folder for chooser from a local filename. 
+/** Sets the current folder for chooser from a local filename.
 
 The user will be shown the full contents of the current folder, plus user interface elements for navigating to other folders.
 
-\return true if the folder could be changed successfully, false otherwise. 
+\return true if the folder could be changed successfully, false otherwise.
  */
             bool CurrentFolder(const std::string &folder /**< the full path of the new current folder */) {
                  return gtk_file_chooser_set_current_folder(getobj(), folder.c_str());
             }
 
-/** Sets the current name in the file selector, as if entered by the user. 
-  
+/** Sets the current name in the file selector, as if entered by the user.
+
 Note that the name passed in here is a UTF-8 string rather than a filename. This function is meant for such uses as a suggested name in a "Save As..." dialog.
 
 If you want to preselect a particular existing file, you should use FileChooser::Filename() instead. Please see the documentation for those functions for an example of using FileChooser::CurrentName() as well.
 
-*/  
+*/
             void CurrentName(const std::string &name /**< the filename to use, as a UTF-8 string. */) {
                  gtk_file_chooser_set_current_name(getobj(), name.c_str());
             }
             /** Gets whether only local files can be selected in the file selector.
             \sa FileChooser::LocalOnly(bool)
-            \return true if only local files can be selected 
+            \return true if only local files can be selected
             */
             bool LocalOnly() const { return gtk_file_chooser_get_local_only(getobj()); }
-            /** Sets whether only local files can be selected in the file selector. 
+            /** Sets whether only local files can be selected in the file selector.
 If local_only is true (the default), then the selected file are files are guaranteed to be accessible through the operating systems native file file system and therefore the application only needs to worry about the filename functions in FileChooser, like FileChooser::Filename(), rather than the URI functions like FileChooser::Uri().
              */
-            void LocalOnly(bool flag /**< true if only local files can be selected. */) { 
-                gtk_file_chooser_set_local_only(getobj(), flag); 
+            void LocalOnly(bool flag /**< true if only local files can be selected. */) {
+                gtk_file_chooser_set_local_only(getobj(), flag);
             }
-            /** Sets whether multiple files can be selected in the file selector. 
+            /** Sets whether multiple files can be selected in the file selector.
 This is only relevant if the action is set to be FileChooser::SelectFolder or FileChooser::ActionOpen.
             */
-            void SelectMultiple(bool flag /**< true if multiple files can be selected. */) { 
-                gtk_file_chooser_set_select_multiple(getobj(), flag); 
+            void SelectMultiple(bool flag /**< true if multiple files can be selected. */) {
+                gtk_file_chooser_set_select_multiple(getobj(), flag);
             }
-            /** Gets whether multiple files can be selected in the file selector. 
+            /** Gets whether multiple files can be selected in the file selector.
             \sa FileChooser::SelectMultiple(bool)
-            \return true if multiple files can be selected. 
+            \return true if multiple files can be selected.
             */
             bool SelectMultiple() const { return gtk_file_chooser_get_select_multiple(getobj()); }
             /// Sets whether hidden files and folders are displayed in the file selector.
-            void ShowHidden(bool flag /**< true if hidden files and folders should be displayed.  */) { 
-                gtk_file_chooser_set_show_hidden(getobj(), flag); 
+            void ShowHidden(bool flag /**< true if hidden files and folders should be displayed.  */) {
+                gtk_file_chooser_set_show_hidden(getobj(), flag);
             }
-            /// Gets whether hidden files and folders are displayed in the file selector. 
-            /// \return true if hidden files and folders are displayed. 
+            /// Gets whether hidden files and folders are displayed in the file selector.
+            /// \return true if hidden files and folders are displayed.
             bool ShowHidden() const { return gtk_file_chooser_get_show_hidden(getobj()); }
 
             /// Gets the type of operation that the file chooser is performing
-            /// \return the action that the file selector is performing 
-            FileChooser::ActionValue Action() const { 
-                return  (FileChooser::ActionValue)gtk_file_chooser_get_action(getobj()); 
+            /// \return the action that the file selector is performing
+            FileChooser::ActionValue Action() const {
+                return  (FileChooser::ActionValue)gtk_file_chooser_get_action(getobj());
             }
             /// Sets the type of operation that the chooser is performing; the user interface is adapted to suit the selected action. For example, an option to create a new folder might be shown if the action is FileChooser::ActionSave but not if the action is FileChooser::ActionOpen.
-            void Action(FileChooser::ActionValue action /**< the action that the file selector is performing */) { 
-                gtk_file_chooser_set_action(getobj(), (GtkFileChooserAction)action); 
+            void Action(FileChooser::ActionValue action /**< the action that the file selector is performing */) {
+                gtk_file_chooser_set_action(getobj(), (GtkFileChooserAction)action);
             }
 
             /// Queries whether a file chooser is set to confirm for overwriting when the user types a file name that already exists.
-            /// \return true if the file chooser will present a confirmation dialog; false otherwise. 
+            /// \return true if the file chooser will present a confirmation dialog; false otherwise.
             bool OverwriteConfirmation() const { return gtk_file_chooser_get_do_overwrite_confirmation(getobj()); }
 
-/** Sets whether a file chooser in FileChooser::ActionSave mode will present a confirmation dialog if the user types a file name that already exists. 
+/** Sets whether a file chooser in FileChooser::ActionSave mode will present a confirmation dialog if the user types a file name that already exists.
 
 This is false by default.
 
@@ -821,8 +817,8 @@ Regardless of this setting, the chooser will emit the "confirm-overwrite" signal
 
 If all you need is the stock confirmation dialog, set this property to true. You can override the way confirmation is done by actually handling the "confirm-overwrite" signal; please refer to its GTK+ documentation for the details.
 */
-            void OverwriteConfirmation(bool flag /**< whether to confirm overwriting in save mode */) { 
-                gtk_file_chooser_set_do_overwrite_confirmation(getobj(), flag); 
+            void OverwriteConfirmation(bool flag /**< whether to confirm overwriting in save mode */) {
+                gtk_file_chooser_set_do_overwrite_confirmation(getobj(), flag);
             }
 
             /// Selects all the files in the current folder of a file chooser.
@@ -830,10 +826,10 @@ If all you need is the stock confirmation dialog, set this property to true. You
             /// Unselects all the files in the current folder of a file chooser.
             void UnselectAll() { gtk_file_chooser_unselect_all(getobj()); }
 
-            /** Selects a filename. 
+            /** Selects a filename.
  If the file name isn't in the current folder of chooser, then the current folder of chooser will be changed to the folder containing filename.
 
- \return true if both the folder could be changed and the file was selected successfully, false otherwise. 
+ \return true if both the folder could be changed and the file was selected successfully, false otherwise.
  */
             bool SelectFilename(const std::string &name /**< the filename to select */) {
                 return gtk_file_chooser_select_filename(getobj(), name.c_str());
@@ -843,7 +839,7 @@ If all you need is the stock confirmation dialog, set this property to true. You
                 gtk_file_chooser_unselect_filename(getobj(), name.c_str());
             }
 
-/** Lists all the selected files and subfolders in the current folder of chooser. 
+/** Lists all the selected files and subfolders in the current folder of chooser.
 The returned names are full absolute paths. If files in the current folder cannot be represented as local filenames they will be ignored. (See FileChooser::URIs())
  */
             void Filenames(std::vector<std::string> &results) {
@@ -859,7 +855,7 @@ The returned names are full absolute paths. If files in the current folder canno
                 }
             }
 
-            /// Adds filter to the list of filters that the user can select between. When a filter is selected, only files that are passed by that filter are displayed. 
+            /// Adds filter to the list of filters that the user can select between. When a filter is selected, only files that are passed by that filter are displayed.
             void AddFilter(const FileFilter &file /**< A FileFilter */) {
                 gtk_file_chooser_add_filter(getobj(), file);
             }
@@ -870,12 +866,12 @@ The returned names are full absolute paths. If files in the current folder canno
 
             /// Lists the current set of user-selectable filters.
             void ListFilters(std::vector<FileFilter *> &filters /**< A list of FileFilter pointers to be filled */) {
-                GSList *list = gtk_file_chooser_list_filters(getobj()), 
+                GSList *list = gtk_file_chooser_list_filters(getobj()),
                        *e = list;
                 while (e) {
                     if (FileFilter *f = dynamic_cast<FileFilter *>(
                                     Object::Find((GObject *)e -> data)))
-                        filters.push_back(f);                    
+                        filters.push_back(f);
                     e = e -> next;
                 }
                 g_slist_free(list);
@@ -912,7 +908,7 @@ std::string open() {
 
     if (dlg.Run() == gtk::ResponseOk)
         return dlg.Filename();
-    
+
     return std::string();
 }
 \endexample
@@ -929,18 +925,18 @@ std::string open() {
             FileChooserDialog(const std::string &title = "" /**< Title of the window, it can be empty. */,
                               Window *parent_window = NULL /**< Transient parent of the dialog, or NULL. */,
                               FileChooser::ActionValue action =  FileChooser::ActionOpen /**< Open or save mode for the dialog */,
-                              const ButtonVec &buttons = ButtonVec() /**< Vector of buttons to be added to the dialog, you can also use Dialog::AddButton() after the object is created to do this (look at the example) */ ) : 
+                              const ButtonVec &buttons = ButtonVec() /**< Vector of buttons to be added to the dialog, you can also use Dialog::AddButton() after the object is created to do this (look at the example) */ ) :
                 Dialog(DerivedType()) {
-                Init(gtk_file_chooser_dialog_new(title.c_str(), NULL, (GtkFileChooserAction)action, 
+                Init(gtk_file_chooser_dialog_new(title.c_str(), NULL, (GtkFileChooserAction)action,
                                           NULL, NULL));
                 AddButtons(buttons);
                 Internal(true);
-            } 
+            }
             virtual GtkFileChooser *getobj() const { return GTK_FILE_CHOOSER(Obj()); }
     };
 
-/** The FileChooserButton is a widget that lets the user select a file. 
-  
+/** The FileChooserButton is a widget that lets the user select a file.
+
 It implements the FileChooser interface. Visually, it is a file name with a button to bring up a FileChooserDialog. The user can then use that dialog to change the file associated with that button. This widget does not support setting the "select-multiple" property to TRUE.
 
 The FileChooserButton supports the FileChooser Actions FileChooser::ActionOpen and FileChooser::ActionSelectFolder.
@@ -960,11 +956,11 @@ The FileChooserButton will ellipsize the label, and thus will thus request littl
 
             /** Create a new FileChooserDialog. */
             FileChooserButton(const std::string &title = "" /**< Title of the popup FileChooserDialog window, it can be empty. */,
-                              FileChooser::ActionValue action =  FileChooser::ActionOpen /**< Open or select folder mode for the button */) : 
+                              FileChooser::ActionValue action =  FileChooser::ActionOpen /**< Open or select folder mode for the button */) :
                 HBox(DerivedType()) {
                 Init(gtk_file_chooser_button_new(title.c_str(), (GtkFileChooserAction)action));
                 Internal(true);
-            } 
+            }
             virtual GtkFileChooser *getobj() const { return GTK_FILE_CHOOSER(Obj()); }
             /// Modifies the title of the browse dialog.
             void Title(const std::string &title /**< the new browse dialog title. */) { gtk_file_chooser_button_set_title(*this, title.c_str()); }
@@ -998,7 +994,7 @@ The FileChooserButton will ellipsize the label, and thus will thus request littl
     };
 
             /**
-A message dialog is a simple dialog with an icon indicating the dialog type (error, warning, etc.) and some text which is marked up with the Pango text markup language. When the user clicks a button a "response" signal is emitted with response IDs from gtk::ResponseType. See gtk::Dialog for more details. 
+A message dialog is a simple dialog with an icon indicating the dialog type (error, warning, etc.) and some text which is marked up with the Pango text markup language. When the user clicks a button a "response" signal is emitted with response IDs from gtk::ResponseType. See gtk::Dialog for more details.
              */
     class MessageDialog : public Dialog
     {
@@ -1020,7 +1016,7 @@ A message dialog is a simple dialog with an icon indicating the dialog type (err
                 g_vasprintf(&msg, msg_format, va);
                 va_end(va);
 
-                Init(gtk_message_dialog_new_with_markup(parent ? GTK_WINDOW(parent->Obj()) : NULL, (GtkDialogFlags)flags, (GtkMessageType)msgtype, 
+                Init(gtk_message_dialog_new_with_markup(parent ? GTK_WINDOW(parent->Obj()) : NULL, (GtkDialogFlags)flags, (GtkMessageType)msgtype,
                             (GtkButtonsType)buttontype, "."));
                 gtk_message_dialog_set_markup(*this, msg);
                 g_free(msg);
@@ -1047,7 +1043,7 @@ A message dialog is a simple dialog with an icon indicating the dialog type (err
                           ButtonsType buttontype = ButtonsOk,
                           DialogFlags flags = DialogDestroyWithParent,
                           Window *parent = NULL) : Dialog(DerivedType()) {
-                Init(gtk_message_dialog_new_with_markup(parent ? GTK_WINDOW(parent->Obj()) : NULL, 
+                Init(gtk_message_dialog_new_with_markup(parent ? GTK_WINDOW(parent->Obj()) : NULL,
                             (GtkDialogFlags)flags, (GtkMessageType)msgtype, (GtkButtonsType)buttontype, "."));
                 gtk_message_dialog_set_markup(*this, msg.c_str());
                 Internal(true);
@@ -1058,7 +1054,7 @@ A message dialog is a simple dialog with an icon indicating the dialog type (err
                 va_start(va, format);
                 g_vasprintf(&msg, format, va);
                 va_end(va);
-               
+
                 gtk_message_dialog_set_markup(*this, msg);
                 g_free(msg);
             }
@@ -1074,7 +1070,7 @@ A message dialog is a simple dialog with an icon indicating the dialog type (err
             void Secondary(const std::string &text/**< print-f style format string */) {
                 gtk_message_dialog_format_secondary_markup(*this, "%s", text.c_str());
             }
-            /// Sets the dialog image to a gtk::Image 
+            /// Sets the dialog image to a gtk::Image
             void Image(gtk::Image &image) {
                  gtk_message_dialog_set_image(*this, image);
             }

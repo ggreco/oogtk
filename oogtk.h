@@ -18,6 +18,11 @@
 #include "oogdk.h"
 #include <mutex>
 
+
+struct _GtkSelectionData {
+    unsigned char opaque[0];
+};
+
 namespace gtk
 {
     class Widget;
@@ -136,31 +141,6 @@ namespace gtk
 /// DOXYS_ON
     };
 
-
-  /// Tells about certain properties of the widget.
-    enum WidgetFlags
-    {
-        TopLevel =  GTK_TOPLEVEL /**< widgets without a real parent, as there are Windows and Menus have this flag set throughout their lifetime. Toplevel widgets always contain their own GdkWindow. */,
-        NoWindow =  GTK_NO_WINDOW /**< indicative for a widget that does not provide its own GdkWindow. Visible action (e.g. drawing) is performed on the parent's GdkWindow.  */,
-        Realized =  GTK_REALIZED /**< Set by Widget::Realize(), unset by Widget::Unrealize(). A realized widget has an associated GdkWindow. */,
-        Mapped =  GTK_MAPPED /**< Set by Widget::Map(), unset by Widget::Unmap(). Only realized widgets can be mapped. It means that gdk_window_show() has been called on the widgets window(s). */,
-        Visible =  GTK_VISIBLE /**< Set by Widget:Show(), unset by Widget:Hide(). Implies that a widget will be mapped as soon as its parent is mapped. */,
-        WidgetSensitive =  GTK_SENSITIVE /**< Set and unset by Widget::Sensitive(bool). The sensitivity of a widget determines whether it will receive certain events (e.g. button or key presses). One premise for the widget's sensitivity is to have this flag set. */,
-        ParentSensitive =  GTK_PARENT_SENSITIVE /**< Set and unset by Widget::Sensitive(bool) operations on the parents of the widget. This is the second premise for the widget's sensitivity. Once it has Sensitive and ParentSensitive set, its state is effectively sensitive. This is expressed (and can be examined) by the Widget::IsSensitive() method. */,
-        CanFocus =  GTK_CAN_FOCUS /**< Determines whether a widget is able to handle focus grabs. */,
-        HasFocus =  GTK_HAS_FOCUS /**< Set by Widget::GrabFocus() for widgets that also have GTK_CAN_FOCUS set. The flag will be unset once another widget grabs the focus. */,
-        CanDefault =  GTK_CAN_DEFAULT /**<	 The widget is allowed to receive the default action via Widget::GrabDefault().  */,
-        HasDefault =  GTK_HAS_DEFAULT /**< 	 The widget currently is receiving the default action. */,
-        HasGrab =  GTK_HAS_GRAB /**< Set by gtk_grab_add(), unset by gtk_grab_remove(). It means that the widget is in the grab_widgets stack, and will be the preferred one for receiving events other than ones of cosmetic value. */,
-        WidgetRcStyle =  GTK_RC_STYLE /**< Indicates that the widget's style has been looked up through the rc mechanism. It does not imply that the widget actually had a style defined through the rc mechanism. */,
-        CompositeChild =  GTK_COMPOSITE_CHILD /**< Indicates that the widget is a composite child of its parent; see gtk_widget_push_composite_child(), gtk_widget_pop_composite_child(). */,
-        NoReparent =  GTK_NO_REPARENT /**< Unused since before GTK+ 1.2, will be removed in a future version. */,
-        AppPaintable = GTK_APP_PAINTABLE /**< Set and unset by Widget::AppPaintable(bool). Must be set on widgets whose window the application directly draws on, in order to keep GTK+ from overwriting the drawn stuff.  */,
-        ReceiveDefault =  GTK_RECEIVES_DEFAULT /**< The widget when focused will receive the default action and have GTK_HAS_DEFAULT set even if there is a different widget set as default. */,
-        DoubleBuffered =  GTK_DOUBLE_BUFFERED /**< Set and unset by Widget::DoubleBuffered(bool). Indicates that exposes done on the widget should be double-buffered. */,
-        NoShowAll =  GTK_NO_SHOW_ALL /**< */
-    };
-
 // only in GTK 2.12+
 #if GTK_MINOR_VERSION > 12
 
@@ -218,11 +198,7 @@ Widget introduces to the hiearchy style properties - these are basically object 
         public:
 /// DOXYS_OFF
             operator  GtkWidget *() const { return GTK_WIDGET(obj_); }
-#if GTK_MINOR_VERSION > 15
-            operator  Drawable *() const { return GDK_DRAWABLE(gtk_widget_get_window(GTK_WIDGET(obj_))); }
-#else
-            operator  Drawable *() const { return GDK_DRAWABLE((GTK_WIDGET(obj_)->window)); }
-#endif
+            operator  GdkWindow *() const { return GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(obj_))); }
 /// DOXYS_ON
             Widget &Ref() { g_object_ref(obj_); return *this; }
             /// Sets text as the contents of the tooltip. This function will take care of setting GtkWidget:has-tooltip to TRUE and of the default handler for the GtkWidget::query-tooltip signal.
@@ -301,8 +277,11 @@ Widgets can't actually be allocated a size less than 1 by 1, but you can pass 0,
             // returns a Point containing width and height for the CURRENT size of the widget
           //  Point Allocation() const { return Point(GTK_WIDGET(Obj())->allocation.width, GTK_WIDGET(Obj())->allocation.height); }
             Rect Allocation() const {
-                if (const GtkWidget *w = GTK_WIDGET(Obj()))
-                    return Rect(w->allocation.x, w->allocation.y, w->allocation.width,w->allocation.height);
+                if (const GtkWidget *w = GTK_WIDGET(Obj())) {
+                    GtkAllocation allocation;
+                    gtk_widget_get_allocation(const_cast<GtkWidget*>(w), &allocation);
+                    return Rect(allocation.x, allocation.y, allocation.width, allocation.height);
+                }
                 else
                     return Rect(0,0,0,0);
             }
@@ -407,18 +386,25 @@ This function is only useful in widget implementations. Causes a widget to be un
             /** Returns the sensitivity state of a widget
             \return true if the widget is sensitive.
             */
-            bool IsSensitive() const { return GTK_WIDGET_IS_SENSITIVE(GTK_WIDGET(Obj())); }
+            bool IsSensitive() const { return gtk_widget_is_sensitive(*this); }
             /** Returns the widget focus.
             \return true if the widget has focus
             */
-            bool HasFocus() const { return GTK_WIDGET_HAS_FOCUS(GTK_WIDGET(Obj())); }
+            bool HasFocus() const { return gtk_widget_has_focus(*this); }
 
+            /// Returns whether the widget should grab focus when it is clicked with the mouse.
+            bool FocusOnClick() const { return gtk_widget_get_focus_on_click(*this); }
+            /** Sets whether the widget should grab focus when it is clicked with the mouse.
+             * Making mouse clicks not grab focus is useful in places like toolbars where you don’t want the keyboard focus removed from the main area of the application. */
+            void FocusOnClick(bool flag /**< whether the widget should grab focus when clicked with the mouse */) { gtk_widget_set_focus_on_click(*this, flag); }
+#if 0
             /// Sets Pixbuf as background image for this widget
             void BackImage(const Pixbuf &pix) {
                 GtkStyle *s = gtk_style_new();
                 s->bg_pixmap[0] = pix.Pixmap();
                 gtk_widget_set_style(*this, s);
             }
+
             /** Returns the active WidgetFlags for the widget.
             \return a bitmask of WidgetFlags
             */
@@ -427,6 +413,7 @@ This function is only useful in widget implementations. Causes a widget to be un
             void SetFlags(uint32_t flags /**< flags to be set */) const { GTK_WIDGET_SET_FLAGS(GTK_WIDGET(Obj()), flags); }
             /// Unsets one or more WidgetFlags for the widget.
             void UnsetFlags(uint32_t flags /**< flags to be unset */) const { GTK_WIDGET_SET_FLAGS(GTK_WIDGET(Obj()), flags); }
+#endif
             /** Activates a widget.
 For widgets that can be "activated" (buttons, menu items, etc.) this function activates them.
 Activation is what happens when you press Enter on a widget during key navigation. If widget isn't activatable, the function returns false.
@@ -481,6 +468,50 @@ Things become more complicated when you try to preview the dragged data, as desc
 
             /// Tells the widget to emit ::drag-motion and ::drag-leave events regardless of the targets and the DestDefaultMotion flag.
             void DragMotion(bool value) { gtk_drag_dest_set_track_motion(*this, value); }
+
+            // Sets the amount of space to add around the widget.
+            void Padding(int xpad /**< 	the amount of space to add on the left and right of the widget, in pixels. */,
+                         int ypad = 0 /**< 	the amount of space to add on the top and bottom of the widget, in pixels, defaults to 0. */) {
+                gtk_widget_set_margin_start(*this, xpad);
+                gtk_widget_set_margin_end(*this, xpad);
+                gtk_widget_set_margin_top(*this, ypad);
+                gtk_widget_set_margin_bottom(*this, ypad);
+            }
+
+            /// Sets the amount of space to add around the widget.
+            void Padding(const Point &coords /**< A Point containing the padding values. */) { Padding(coords.x, coords.y); }
+            /// Gets the padding in the X and Y directions of the widget.
+            /// \return a Point containing the padding value for X and Y coordinates.
+            Point Padding() const {
+                Point p;
+                p.x = (gtk_widget_get_margin_start(*this) + gtk_widget_get_margin_end(*this)) / 2;
+                p.y = (gtk_widget_get_margin_top(*this) + gtk_widget_get_margin_bottom(*this)) / 2;
+                return p;
+            }
+
+            /// Sets the horizontal alignment of widget . See the “halign” property.
+            void HAlign(const GtkAlign &a) {
+                gtk_widget_set_halign(*this, a);
+            }
+/** Gets the value of the “halign” property.
+
+For backwards compatibility reasons this method will never return GTK_ALIGN_BASELINE, but instead it will convert it to GTK_ALIGN_FILL. Baselines are not supported for horizontal alignment.
+*/
+            GtkAlign HAlign() const {
+                return gtk_widget_get_halign(*this);
+            }
+
+             /// Sets the vertical alignment of widget . See the “halign” property.
+           void VAlign(const GtkAlign &a) {
+                gtk_widget_set_valign(*this, a);
+            }
+ /** Gets the value of the “valign” property.
+
+For backwards compatibility reasons this method will never return GTK_ALIGN_BASELINE, but instead it will convert it to GTK_ALIGN_FILL. If your widget want to support baseline aligned children it must use gtk_widget_get_valign_with_baseline(), or g_object_get (widget, "valign", &amp;value, NULL), which will also report the true value.
+*/
+            GtkAlign VAlign() const {
+                return gtk_widget_get_valign(*this);
+            }
 
 /** Enable/disable double buffering for this object.
 
@@ -540,65 +571,18 @@ Note: if you turn off double-buffering, you have to handle expose events, since 
     inline void Tooltip::Custom(const Widget &custom_widget) { gtk_tooltip_set_custom(*this, custom_widget); }
 #endif
 
-/** Base class for widgets with alignments and padding.
-The Misc widget is an abstract widget which is not useful itself, but is used to derive subclasses which have alignment and padding attributes.
-
-The horizontal and vertical padding attributes allows extra space to be added around the widget.
-
-The horizontal and vertical alignment attributes enable the widget to be positioned within its allocated area. Note that if the widget is added to a container in such a way that it expands automatically to fill its allocated area, the alignment settings will not alter the widgets position.
-*/
-    class Misc : public Widget
-    {
-        public:
-/// DOXYS_OFF
-            operator  GtkMisc *() const { return GTK_MISC(Obj()); }
-/// DOXYS_ON
-            /// Sets the amount of space to add around the widget.
-            void Padding(int xpad /**< 	the amount of space to add on the left and right of the widget, in pixels. */,
-                         int ypad = 0 /**< 	the amount of space to add on the top and bottom of the widget, in pixels, defaults to 0. */) {
-                gtk_misc_set_padding(*this, xpad, ypad);
-            }
-            /// Sets the amount of space to add around the widget.
-            void Padding(const Point &coords /**< A Point containing the padding values. */) { Padding(coords.x, coords.y); }
-            /// Gets the padding in the X and Y directions of the widget.
-            /// \return a Point containing the padding value for X and Y coordinates.
-            Point Padding() const {
-                Point c;
-                gtk_misc_get_padding(*this, &c.x, &c.y);
-                return c;
-            }
-
-            /// Sets the alignment of the widget.
-            void Alignment(float xalign /**< the horizontal alignment, from 0 (left) to 1 (right). */,
-                           float yalign = 0.5f /**< the vertical alignment, from 0 (top) to 1 (bottom). */) {
-                gtk_misc_set_alignment(*this, xalign, yalign);
-            }
-            /// Sets the alignment of the widget.
-            void Alignment(Align &align /**< the horizontal and vertical alignment, from 0, 0 (top left) to 1, 1 (bottom right)
-                    */) {
-                Alignment(align.first, align.second);
-            }
-            /// Gets the X and Y alignment of the widget within its allocation.
-            /// \return an Align containing X alignment in first and Y alignment in second (from 0 to 1).
-            Align Alignment() const {
-                Align a;
-                gtk_misc_get_alignment(*this, &a.first, &a.second);
-                return a;
-            }
-    };
-
     /** Describes the image data representation used by a Image. If you want to get the image from the widget, you can only get the currently-stored representation. e.g. if the Image::StorageType() returns ImageBixbuf, then you can call Image::Pixbuf() but not Image::Stock(). For empty images, you can request any storage type (call any of the "get" methods), but they will all return NULL values.
     */
     enum ImageType
     {
         ImageEmpty = GTK_IMAGE_EMPTY /**< there is no image displayed by the widget */,
-        ImagePixmap = GTK_IMAGE_PIXMAP /**< the widget contains a GdkPixmap */,
-        ImageImage = GTK_IMAGE_IMAGE /**< 	the widget contains a GdkImage */,
         ImagePixbuf = GTK_IMAGE_PIXBUF /**< 	the widget contains a Pixbuf */,
         ImageStock = GTK_IMAGE_STOCK /**< 	the widget contains a stock icon name */,
         ImageIconSet = GTK_IMAGE_ICON_SET /**< 	the widget contains a GtkIconSet */,
         ImageAnimation = GTK_IMAGE_ANIMATION /**< the widget contains a PixbufAnimation */,
-        ImageIconName = GTK_IMAGE_ICON_NAME /**< 	the widget contains a named icon. This image type was added in GTK+ 2.6 */
+        ImageIconName = GTK_IMAGE_ICON_NAME /**< 	the widget contains a named icon. This image type was added in GTK+ 2.6 */,
+        ImageGIcon = GTK_IMAGE_GICON /**< the widget contains a GIcon. This image type was added in GTK+ 2.14 */,
+        ImageSurface = GTK_IMAGE_SURFACE /**< the widget contains a cairo_surface_t. This image type was added in GTK+ 3.10 */
     };
 
     /** A widget displaying an image
@@ -640,7 +624,7 @@ When handling events on the event box, keep in mind that coordinates in the imag
 Sometimes an application will want to avoid depending on external data files, such as image files. GTK+ comes with a program to avoid this, called gdk-pixbuf-csource. This program allows you to convert an image into a C variable declaration, which can then be loaded into a Pixbuf.
 
 */
-    class Image : public Misc
+    class Image : public Widget
     {
         public:
 /// DOXYS_OFF
@@ -765,7 +749,7 @@ Labels can automatically wrap text if you call Label::LineWrap(bool).
 Label::Justify() sets how the lines in a label align with one another. If you want to set how the label as a whole aligns in its available space, see Misc::Alignment().
 
 */
-    class Label : public Misc
+    class Label : public Widget
     {
         public:
 /// DOXYS_OFF
@@ -892,16 +876,44 @@ Note that setting line wrapping to true does not make the label wrap at its pare
             /** Sets a PangoAttrList; the attributes in the list are applied to the label text.
 The attributes set with this function will be ignored if the "use-underline" or "use-markup" properties are set to true.
 */
-            void Attributes(const PangoAttrList &attrs /* a PangoAttrList */) {
+            void Attributes(const PangoAttrList &attrs /**< a PangoAttrList */) {
                 gtk_label_set_attributes(*this, const_cast<PangoAttrList *>(&attrs));
             }
+
+            /// Sets the “xalign” property for label .
+            void XAlign(float xalign /**< the new xalign value, between 0 and 1 */) {
+                gtk_label_set_xalign(*this, xalign);
+            }
+            /// Sets the “yalign” property for label .
+            void YAlign(float yalign /**< the new yalign value, between 0 and 1 */) {
+                gtk_label_set_yalign(*this, yalign);
+            }
+            /// Gets the “xalign” property for label .
+            float XAlign() const { return gtk_label_get_xalign(*this); }
+            /// Gets the “yalign” property for label .
+            float YAlign() const { return gtk_label_get_yalign(*this); }
+    };
+
+
+
+    /** An interface for flippable widgets
+The Grientable interface is implemented by all widgets that can be oriented horizontally or vertically. Historically, such widgets have been realized as subclasses of a common base class (e.g GtkBox/GtkHBox/GtkVBox or GtkScale/GtkHScale/GtkVScale). GtkOrientable is more flexible in that it allows the orientation to be changed at runtime, allowing the widgets to “flip”.
+    Orientable was introduced in GTK+ 2.16.
+    */
+    class Orientable
+    {
+        virtual GtkOrientable *getorobj() const = 0;
+
+        GtkOrientation Orientation() const { return (GtkOrientation)gtk_orientable_get_orientation(getorobj()); }
+        void Orientation(GtkOrientation o) { gtk_orientable_set_orientation(getorobj(), o); }
     };
 
     /** Base class for HSeparator and VSeparator
 The Separator widget is an abstract class, used only for deriving the subclasses HSeparator and VSeparator.
 */
-    struct Separator : public Widget
+    struct Separator : public Widget, public Orientable
     {
+        GtkOrientable *getorobj() const { return GTK_ORIENTABLE(Obj()); }
     };
 /** A horizontal separator.
 The HSeparator widget is a horizontal separator, used to group the widgets within a window. It displays a horizontal line with a shadow to make it appear sunken into the interface.
@@ -918,7 +930,7 @@ The HSeparator widget is not used as a separator within menus. To create a separ
 /// DOXYS_ON
             /// Creates a new HSeparator.
             HSeparator() {
-                Init(gtk_hseparator_new());
+                Init(gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
                 Internal(true);
             }
     };
@@ -933,7 +945,7 @@ The VSeparator widget is a vertical separator, used to group the widgets within 
 /// DOXYS_ON
             /// Creates a new VSeparator.
             VSeparator() {
-                Init(gtk_vseparator_new());
+                Init(gtk_separator_new(GTK_ORIENTATION_VERTICAL));
                 Internal(true);
             }
     };
@@ -1082,13 +1094,11 @@ The Entry widget is a single line text entry widget. A fairly large set of key b
                 }
 
                 if (!result.empty()) {
-                    gtk_signal_handler_block_by_func (GTK_OBJECT (editable),
-                            GTK_SIGNAL_FUNC (insert_filtered_handler), user_data);
+                    g_signal_handlers_block_by_func (editable, (void*)insert_filtered_handler, user_data);
                     gtk_editable_insert_text (editable, result.c_str(), result.length(), position);
-                    gtk_signal_handler_unblock_by_func (GTK_OBJECT (editable),
-                            GTK_SIGNAL_FUNC (insert_filtered_handler), user_data);
+                    g_signal_handlers_unblock_by_func (editable, (void*)insert_filtered_handler, user_data);
                 }
-                gtk_signal_emit_stop_by_name (GTK_OBJECT (editable), "insert_text");
+                g_signal_stop_emission_by_name (G_OBJECT (editable), "insert_text");
             }
             std::string m_filter;
         public:
@@ -1099,12 +1109,10 @@ The Entry widget is a single line text entry widget. A fairly large set of key b
         public:
             /// Creates a new entry with an optional max length in characters.
             Entry(int maxlen = -1) {
-                if (maxlen != -1) {
-                    Init(gtk_entry_new_with_max_length(maxlen));
-                }
-                else
-                    Init(gtk_entry_new());
+                Init(gtk_entry_new());
                 Internal(true);
+                if (maxlen != -1)
+                    gtk_entry_set_max_width_chars(*this, maxlen);
             }
             /** Sets the text in the widget to the given value, every streamable type is accepted.
             The new value will replace the current contents.
@@ -1263,15 +1271,6 @@ If setting is true, pressing Enter in the entry will activate the default widget
 
     };
 
-/// An enumeration representing possible orientations and growth directions for the visible progress bar.
-    enum ProgressBarOrientation
-    {
-      ProgressLeftToRight = GTK_PROGRESS_LEFT_TO_RIGHT /**< A horizontal progress bar growing from left to right. */,
-      ProgressRightToLeft = GTK_PROGRESS_RIGHT_TO_LEFT /**< A horizontal progress bar growing from right to left.  */,
-      ProgressBottomToTop = GTK_PROGRESS_BOTTOM_TO_TOP /**< A vertical progress bar growing from bottom to top. */,
-      ProgressTopToBottom = GTK_PROGRESS_TOP_TO_BOTTOM /**< A vertical progress bar growing from top to bottom.  */
-    };
-
     enum SocketCondition {
         SocketRead = G_IO_IN|G_IO_HUP 	/**< There is data to read. */,
         SocketWrite = G_IO_OUT 	/**< Data can be written (without blocking). */,
@@ -1318,8 +1317,8 @@ Causes the progress bar to enter "activity mode," where a block bounces back and
             /// Sets the fraction of total progress bar length to move the bouncing block for each call to ProgressBar::Pulse().
             void PulseStep(double value /**< fraction between 0.0 and 1.0 */) { gtk_progress_bar_set_pulse_step(*this, value); }
             /// Causes the progress bar to switch to a different orientation (left-to-right, right-to-left, top-to-bottom, or bottom-to-top).
-            void Orientation(ProgressBarOrientation mode /**< orientation of the progress bar */) {
-                gtk_progress_bar_set_orientation(*this, (GtkProgressBarOrientation)mode);
+            void Inverted(bool flag /**< orientation of the progress bar, false for left to right, true for right to left */) {
+                gtk_progress_bar_set_inverted(*this, flag);
             }
             /** Retrieves the text displayed superimposed on the progress bar.
             This method returns the text displayed superimposed on the progress bar, if any, otherwise it returns an empty string. The return value is a copy to the text, so will not become invalid (nor change) if you change the text in the progress bar.
@@ -1334,8 +1333,8 @@ Causes the progress bar to enter "activity mode," where a block bounces back and
             */
             double PulseStep() const { return gtk_progress_bar_get_pulse_step(*this); }
             /// Retrieves the current progress bar orientation.
-            ProgressBarOrientation Orientation() const {
-                return (ProgressBarOrientation)gtk_progress_bar_get_orientation(*this);
+            bool Inverted() const {
+                return gtk_progress_bar_get_inverted(*this);
             }
     };
 
@@ -1918,8 +1917,6 @@ namespace gtk {
                 return new Window(o);
             } else if (GTK_IS_CHECK_MENU_ITEM(o)) { // menu handling
                 return new CheckMenuItem(o);
-            } else if (GTK_IS_IMAGE_MENU_ITEM(o)) {
-                return new ImageMenuItem(o);
             } else if (GTK_IS_SEPARATOR_MENU_ITEM(o)) {
                 return new SeparatorMenuItem(o);
             } else if (GTK_IS_MENU_ITEM(o)) {
@@ -1942,10 +1939,11 @@ namespace gtk {
                 return new Button(o);
             } else if (GTK_IS_STATUSBAR(o)) {
                 return new Statusbar(o);
-            } else if (GTK_IS_VBUTTON_BOX(o)) {
-                return new VButtonBox(o);
-            } else if (GTK_IS_HBUTTON_BOX(o)) {
-                return new HButtonBox(o);
+            } else if (GTK_IS_BUTTON_BOX(o)) {
+                if (gtk_orientable_get_orientation(GTK_ORIENTABLE(o)) == GTK_ORIENTATION_HORIZONTAL)
+                    return new HButtonBox(o);
+                else
+                    return new VButtonBox(o);
             } else if (GTK_IS_IMAGE(o)) {
                 return new Image(o);
             } else if (GTK_IS_TEXT_MARK(o)) { // textview handing, from ootext.h
@@ -1988,12 +1986,11 @@ namespace gtk {
                 return new ToolItem(o);
             } else if (GTK_IS_TOOLBAR(o)) {
                 return new Toolbar(o);
-            } else if (GTK_IS_HSCALE(o)) {
-                return new HScale(o);
-            } else if (GTK_IS_VSCALE(o)) {
-                return new VScale(o);
             } else if (GTK_IS_SCALE(o)) {
-                return new Scale(o);
+                if (gtk_orientable_get_orientation(GTK_ORIENTABLE(o)) == GTK_ORIENTATION_HORIZONTAL)
+                    return new HScale(o);
+                else
+                    return new VScale(o);
             } else if (GTK_IS_RANGE(o)) {
                 return new Range(o);
             } else if (GTK_IS_ENTRY_COMPLETION(o)) {
@@ -2010,10 +2007,11 @@ namespace gtk {
                 return new AspectFrame(o);
             } else if (GTK_IS_FRAME(o)) {
                 return new Frame(o);
-            } else if (GTK_IS_VBOX(o)) {
-                return new VBox(o);
-            } else if (GTK_IS_HBOX(o)) {
-                return new HBox(o);
+            } else if (GTK_IS_BOX(o)) {
+                if (gtk_orientable_get_orientation(GTK_ORIENTABLE(o)) == GTK_ORIENTATION_HORIZONTAL)
+                    return new HBox(o);
+                else
+                    return new VBox(o);
             } else if (GTK_IS_PROGRESS_BAR(o)) {
                 return new ProgressBar(o);
             } else if (GTK_IS_NOTEBOOK(o)) {
@@ -2024,8 +2022,8 @@ namespace gtk {
 #endif
             } else if (GTK_IS_DRAWING_AREA(o)) {
                 return new DrawingArea(o);
-            } else if (GTK_IS_TABLE(o)) {
-                return new Table(o);
+            } else if (GTK_IS_GRID(o)) {
+                return new Grid(o);
             } else if (GTK_IS_LABEL(o)) {
                 return new Label(o);
             } else if (GTK_IS_FILE_FILTER(o)) { // file filter for FileChooser widget
@@ -2034,26 +2032,26 @@ namespace gtk {
                 return new UIManager(o);
             } else if (GTK_IS_ACCEL_GROUP(o)) {
                 return new AccelGroup(o);
-            } else if (GTK_IS_VPANED(o)) {
-                return new VPaned(o);
-            } else if (GTK_IS_HPANED(o)) {
-                return new HPaned(o);
-            } else if (GTK_IS_ALIGNMENT(o)) {
-                return new Alignment(o);
+            } else if (GTK_IS_PANED(o)) {
+                if (gtk_orientable_get_orientation(GTK_ORIENTABLE(o)) == GTK_ORIENTATION_HORIZONTAL)
+                    return new HPaned(o);
+                else
+                    return new VPaned(o);
             } else if (GTK_IS_ACTION_GROUP(o)) {
                 return new ActionGroup(o);
             } else if (GTK_IS_ACTION(o)) {
                 return new Action(o);
             } else if (GTK_IS_SIZE_GROUP(o)) {
                 return new SizeGroup(o);
-            } else if (GTK_IS_HSEPARATOR(o)) {
-                return new HSeparator(o);
-            } else if (GTK_IS_VSEPARATOR(o)) {
-                return new VSeparator(o);
+            } else if (GTK_IS_SEPARATOR(o)) {
+                if (gtk_orientable_get_orientation(GTK_ORIENTABLE(o)) == GTK_ORIENTATION_HORIZONTAL)
+                    return new HSeparator(o);
+                else
+                    return new VSeparator(o);
             } else if (GTK_IS_CLIPBOARD(o)) {
                 return new Clipboard(o);
             } else
-                std::cerr << "Undefined type " << g_type_name(GTK_OBJECT_TYPE(o)) << '\n';
+                std::cerr << "Undefined type " << g_type_name(G_OBJECT_TYPE(o)) << '\n';
         }
 
         return NULL;
