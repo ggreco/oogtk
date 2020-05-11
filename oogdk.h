@@ -1,5 +1,4 @@
-#ifndef OOGDK_H
-#define OOGDK_H
+#pragma once
 
 #include "ooobj.h"
 #include <sstream>
@@ -525,4 +524,3 @@ inline std::ostream &operator<<(std::ostream &dest, const gtk::Rect &rect) {
     dest << '(' << rect.x << ',' << rect.y << ' ' << rect.width << 'x' << rect.height << ')';
     return dest;
 }
-#endif

@@ -1,5 +1,4 @@
-#ifndef OOCONT_H
-#define OOCONT_H
+#pragma once
 
 #include "oogtk.h"
 #include <string>
@@ -1250,5 +1249,3 @@ Insert a ToolItem into the toolbar at position pos. If pos is 0 the item is prep
             }
     };
 }
-
-#endif

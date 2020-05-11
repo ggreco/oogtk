@@ -1,6 +1,4 @@
-#ifndef OOUI_H
-
-#define OOUI_H
+#pragma once
 
 namespace gtk {
     class ActionGroup;
@@ -280,5 +278,3 @@ namespace gtk {
 
     };
 }
-
-#endif

@@ -1,5 +1,5 @@
-#ifndef TCP_COMMON_H
-#define TCP_COMMON_H
+#pragma once
+
 #ifndef WIN32
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -57,4 +57,3 @@ extern "C" int gettimeofday(struct timeval *, void *);
 #define localtime_r(x,y) localtime(x)
 #endif
 
-#endif

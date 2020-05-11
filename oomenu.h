@@ -1,5 +1,4 @@
-#ifndef OOMENU_H
-#define OOMENU_H
+#pragma once
 
 /*
 \unit
@@ -336,4 +335,3 @@ If the user has selected a range of elements (such as some text or spreadsheet c
             void Toggled() { gtk_check_menu_item_toggled(*this); }
     };
 }
-#endif

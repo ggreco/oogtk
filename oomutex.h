@@ -1,5 +1,4 @@
-#ifndef OOCRIT_H__
-#define OOCRIT_H__
+#pragma once
 
 /**
  * GG
@@ -105,5 +104,4 @@ typedef gtk::Mutex CritSection;
 typedef gtk::AutoMutex AutoCS;
 #endif
 
-#endif
 

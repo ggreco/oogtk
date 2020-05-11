@@ -1,5 +1,4 @@
-#ifndef OOOBJ_H
-#define OOOBJ_H
+#pragma once
 
 #include <gtk/gtk.h>
 #include <stdexcept>
@@ -512,4 +511,3 @@ oogtk C++ enums.
         obj_ = NULL;
     }
 }
-#endif

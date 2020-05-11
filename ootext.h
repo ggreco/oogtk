@@ -1,5 +1,4 @@
-#ifndef OOTEXT_H
-#define OOTEXT_H
+#pragma once
 
 #include "oocont.h"
 
@@ -582,5 +581,3 @@ The rectangle position is in buffer coordinates; use TextView::BufferToWindow() 
             BUILD_VOID_EVENT(OnViewportMove, "move-viewport");
     };
 }
-
-#endif

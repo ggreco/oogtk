@@ -1,5 +1,4 @@
-#ifndef OOWIN_H
-#define OOWIN_H
+#pragma once
 
 namespace gtk {
     /** A Window can be one of these types.
@@ -1076,5 +1075,3 @@ A message dialog is a simple dialog with an icon indicating the dialog type (err
             }
     };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef OOCAIRO_H
-#define OOCAIRO_H
+#pragma once
 
 #include "oogtk.h"
 
@@ -171,4 +170,3 @@ inline void Surface::scale(int new_width, int new_height) {
 }
 
 }
-#endif

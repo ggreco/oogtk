@@ -1,6 +1,4 @@
-#ifndef OOTHREAD_H
-
-#define OOTHREAD_H
+#pragma once
 
 #include <string>
 #include <stdexcept>
@@ -233,4 +231,3 @@ private:
 };
 
 }
-#endif

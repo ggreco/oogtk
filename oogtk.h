@@ -1,8 +1,7 @@
+#pragma once
+
 /**
  */
-#ifndef OOGTK_H
-
-#define OOGTK_H
 
 #include <gtk/gtk.h>
 #include <glib/gprintf.h>
@@ -1665,13 +1664,13 @@ can pass a pointer to an object or a simple object, also if not PoD).
 
                 int id = g_io_add_watch_full(ch, G_PRIORITY_DEFAULT, (GIOCondition)cond, (GIOFunc)AbstractCbk::real_callback_2, cbk, GDestroyNotify(destroy_source));
 
-                std::unique_lock<std::mutex> lock(mtx());
+                std::lock_guard<std::mutex> lock(mtx());
                 Channels().insert(ChannelMap::value_type(id, ch));
 
                 return id;
             }
             GIOChannel *FindChannel(SockFd fd) {
-                std::unique_lock<std::mutex> lock(mtx());
+                std::lock_guard<std::mutex> lock(mtx());
 
                 for (ChannelIt it = Channels().begin(); it != Channels().end(); ++it)
                     if (fd == g_io_channel_unix_get_fd((it->second)))
@@ -2135,5 +2134,3 @@ inline std::ostream& operator<<(std::ostream& os, const gtk::Entry &entry) {
     os << entry.Get();
     return os;
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef OOTREE_H
-#define OOTREE_H
+#pragma once
 
 #include "oogtk.h"
 #include <vector>
@@ -1907,5 +1906,3 @@ This function does not give you any degree of control over the order -- any reor
             bool Reorderable() const { return gtk_icon_view_get_reorderable(*this); }
     };
 }
-
-#endif

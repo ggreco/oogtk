@@ -1,5 +1,4 @@
-#ifndef OOBUTTON_H
-#define OOBUTTON_H
+#pragma once
 
 #include "oocont.h"
 
@@ -432,5 +431,3 @@ The important signal ('toggled', connected through the member function ToggleBut
     };
 
 }
-
-#endif
